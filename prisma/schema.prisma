@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  avatar    String?
+  role      UserRole @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile   Profile?
+  sessions  Session[]
+  auditLogs AuditLog[]
+
+  @@map("users")
+}
+
+model Profile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio       String?
+  phone     String?
+  company   String?
+  website   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("profiles")
+}
+
+model Session {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String    @unique
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  
+  // Device information
+  deviceType     String?  // mobile, tablet, desktop
+  deviceName     String?  // User-Agent device name
+  browser        String?  // Chrome, Firefox, Safari, etc.
+  browserVersion String?
+  os             String?  // Windows, macOS, Linux, iOS, Android
+  osVersion      String?
+  
+  // Location and IP
+  ipAddress      String?
+  country        String?
+  city           String?
+  
+  // Session tracking
+  isActive       Boolean  @default(true)
+  lastActivity   DateTime @default(now())
+  loginMethod    String?  // email, google, github, etc.
+  
+  @@index([userId])
+  @@index([isActive])
+  @@index([lastActivity])
+  @@map("sessions")
+}
+
+model AuditLog {
+  id          String      @id @default(uuid())
+  action      AuditAction
+  resource    String      // users, files, sessions, etc.
+  resourceId  String?     // ID of the affected resource
+  userId      String?     // User who performed the action
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  // Request details
+  endpoint    String?     // API endpoint called
+  method      String?     // HTTP method
+  userAgent   String?     // User agent string
+  ipAddress   String?     // Client IP address
+  
+  // Data tracking
+  oldData     Json?       // Previous state (for updates/deletes)
+  newData     Json?       // New state (for creates/updates)
+  metadata    Json?       // Additional context data
+  
+  // Categorization
+  severity    AuditSeverity @default(INFO)
+  category    String?     // auth, user_management, file_upload, etc.
+  
+  // Status and error tracking
+  success     Boolean     @default(true)
+  errorMessage String?    // Error details if action failed
+  
+  createdAt   DateTime    @default(now())
+  
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+  @@index([severity])
+  @@index([success])
+  @@map("audit_logs")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+
+  @@map("user_roles")
+}
+
+enum AuditAction {
+  // Authentication actions
+  LOGIN
+  LOGOUT
+  LOGIN_FAILED
+  PASSWORD_RESET
+  PASSWORD_CHANGED
+  EMAIL_VERIFIED
+  
+  // User management actions
+  USER_CREATED
+  USER_UPDATED
+  USER_DELETED
+  USER_ROLE_CHANGED
+  USER_IMPERSONATED
+  USER_IMPERSONATION_ENDED
+  
+  // Profile actions
+  PROFILE_UPDATED
+  AVATAR_UPLOADED
+  AVATAR_DELETED
+  
+  // File actions
+  FILE_UPLOADED
+  FILE_DOWNLOADED
+  FILE_DELETED
+  FILE_SHARED
+  
+  // Session actions
+  SESSION_CREATED
+  SESSION_TERMINATED
+  SESSION_EXPIRED
+  
+  // Security actions
+  RATE_LIMIT_EXCEEDED
+  SUSPICIOUS_ACTIVITY
+  SECURITY_VIOLATION
+  
+  // Admin actions
+  BULK_USER_OPERATION
+  SYSTEM_CONFIGURATION_CHANGED
+  AUDIT_LOG_VIEWED
+  AUDIT_LOG_EXPORTED
+
+  @@map("audit_actions")
+}
+
+enum AuditSeverity {
+  LOW
+  INFO
+  WARNING
+  HIGH
+  CRITICAL
+
+  @@map("audit_severities")
+}

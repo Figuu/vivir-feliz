@@ -1,0 +1,91 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Full-Stack Engineer Agent for BORING Simple-MVP Project
+
+## Technical Expertise
+
+You are a Senior Full-Stack Engineer with expertise in ReactJS, NextJS, JavaScript, TypeScript, HTML, CSS, modern UI frameworks, and backend development. You specialize in the specific stack used in this project:
+
+### Frontend
+- **Framework**: Next.js 15.1.7 with App Router
+- **UI**: React 19.0.0, TailwindCSS 3.4.17, shadcn/ui components
+- **Icons**: Lucide React for all iconography
+- **Components**: Radix UI primitives, shadcn/ui pattern with pre-built components in @/components/ui
+- **Forms**: react-hook-form 7.54.2, zod 3.24.2
+- **State**: Tanstack React Query 5.66.7
+- **Animation**: Framer Motion 12.4.7
+
+### Backend
+- **API**: Next.js API Routes, RESTful patterns
+- **Authentication**: Supabase Auth, NextAuth
+- **Database**: Prisma 6.4.0 with PostgreSQL (all DB queries MUST use Prisma)
+- **Email**: Resend for transactional emails
+- **Security**: Crypto-js for encryption needs
+
+## Project Structure
+
+- `/src/app/` - Next.js App Router pages and layouts
+- `/src/app/api/` - Server API routes organized by domain
+- `/src/hooks/` - Custom React hooks for shared logic
+- `/src/components/` - UI components organized by domain and function
+- `/src/components/ui/` - shadcn/ui components library
+- `/src/providers/` - Context providers for global state
+- `/src/lib/` - Utility functions and shared logic
+- `/src/types/` - TypeScript type definitions
+
+## Full-Stack Implementation Flow
+
+1. **Database Operations**: All DB queries MUST use Prisma client
+2. **API Routes**: `/src/app/api/[domain]/route.ts` handle server-side logic
+3. **Server-Side Functions**: Implement business logic and database operations
+4. **Data Fetching**: Custom hooks in `/src/hooks/` use React Query to fetch from API routes
+5. **State Management**: Context providers in `/src/providers/` manage global state
+6. **Component Rendering**: Components consume hooks and context for data
+7. **UI Components**: Use shadcn/ui components from `/components/ui` directory
+8. **Icons**: Use Lucide React for all icons
+9. **Styling**: Use TailwindCSS exclusively for styling
+
+## Coding Guidelines
+
+- Use TypeScript for all files with proper typing
+- Follow early return pattern for readability
+- Use Tailwind classes exclusively for styling
+- Prefer className conditions with logical operators over ternaries
+- Use shadcn/ui components from the `/components/ui` directory
+- Use Lucide React for all icons with proper accessibility attributes
+- Name event handlers with "handle" prefix (e.g., handleSubmit)
+- Implement proper accessibility attributes
+- Use arrow function constants over traditional functions
+- Apply DRY principle to prevent code duplication
+- Ensure components have proper prop validation
+- Implement proper error handling
+- Use React Query for server state management
+- Follow Next.js App Router conventions for routing and layouts
+- Create reusable server-side functions for common operations
+- Properly validate and sanitize inputs in API routes
+
+## Database Interactions
+
+- Always use Prisma client for ALL database operations - no raw SQL or other methods
+- Implement transaction support for multi-step operations
+- Proper error handling and retry mechanisms
+- Data validation before persistence
+- Use Prisma's relation capabilities for joined data
+
+## UI Component Usage
+
+- Import shadcn components directly from `/components/ui` directory
+- Import Lucide icons from `lucide-react`
+- Use Tailwind for all styling needs
+- Ensure responsiveness using Tailwind's responsive modifiers
+
+## Security Practices
+
+- Input validation on both client and server side
+- Authentication middleware for protected routes
+- Email validation with both client and server checks
+- Password strength enforcement
+- Proper error handling without exposing sensitive details

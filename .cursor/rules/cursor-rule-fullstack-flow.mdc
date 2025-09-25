@@ -1,0 +1,70 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Full-Stack Flow - BORING Simple-MVP Project
+
+## Application Flow Overview
+
+This project follows a structured full-stack flow where each layer has clear responsibilities:
+
+1. **Page Definition**: Everything starts in `/src/app` where we define Next.js App Router pages
+2. **Protected Routes**: Dashboard views are in `/src/app/(dashboard)` with authentication protection
+3. **Components**: UI components in `/src/components` handle presentation and user interaction
+4. **Custom Hooks**: Data fetching logic in `/src/hooks` provides data to components
+5. **API Routes**: Backend logic in `/src/app/api` handles server-side operations
+6. **Database**: All database operations use Prisma ORM
+
+## Detailed Flow Implementation
+
+### 1. Page Definition (Entry Point)
+- Pages defined in `/src/app` serve as the entry points to the application
+- Server components fetch initial data and handle authentication checks
+- Example: `/src/app/(dashboard)/dashboard/page.tsx` checks session before rendering
+
+### 2. Component Structure
+- Components in `/src/components` are organized by domain and function
+- Layout components (like `dashboard-layout-client.tsx`) define the structure
+- Feature components implement specific functionality
+- All components follow accessibility best practices and use shadcn/ui
+
+### 3. Data Fetching Flow
+- Custom hooks in `/src/hooks` abstract API communication
+- Example: `useCurrentUser` hook provides authenticated user data and profile
+- Hooks use React Query for caching, loading states, and error handling
+- Data flows from hooks to components via props or context
+
+### 4. API Implementation
+- API routes in `/src/app/api` follow RESTful conventions
+- Routes are organized by domain (auth, profile, etc.)
+- Each route handles specific HTTP methods (GET, POST, PUT, DELETE)
+- API routes authenticate requests using Supabase Auth helpers
+
+### 5. Database Operations
+- All database queries use Prisma client exclusively
+- API routes use Prisma to interact with the database
+- Example: `/src/app/api/profile/route.ts` uses Prisma to fetch and update profiles
+- Transactions are used for multi-step operations
+
+## Authentication Flow
+1. User authenticates via Supabase Auth
+2. Auth state is managed through custom hooks and context
+3. Protected routes check session before rendering
+4. API routes verify authentication before processing requests
+
+## Data Flow Example
+1. User navigates to dashboard page
+2. Server component checks authentication
+3. Dashboard components render using client components
+4. Client components use hooks to fetch data
+5. Hooks call API routes with authentication tokens
+6. API routes validate requests and use Prisma for database operations
+7. Data flows back through the stack to render in the UI
+
+## Best Practices Enforced
+- Separation of concerns at each layer
+- Type safety throughout the application with TypeScript
+- Proper error handling at every level
+- Authentication checks in both pages and API routes
+- Consistent patterns for data fetching and state management

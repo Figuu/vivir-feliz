@@ -8,19 +8,30 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// ========== USER MANAGEMENT ==========
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
   name      String?
   avatar    String?
-  role      UserRole @default(USER)
+  role      UserRole @default(PARENT)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile   Profile?
-  sessions  Session[]
-  auditLogs AuditLog[]
+  // Relations
+  profile     Profile?
+  sessions    Session[]
+  auditLogs   AuditLog[]
+  
+  // Therapy-specific relations
+  therapist   Therapist?
+  parent      Parent?
 
+  @@index([role])
+  @@index([isActive])
+  @@index([email])
   @@map("users")
 }
 
@@ -37,6 +48,790 @@ model Profile {
 
   @@map("profiles")
 }
+
+// ========== THERAPY CENTER MODELS ==========
+
+model Parent {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName    String
+  lastName     String
+  phone        String?
+  address      String?
+  city         String?
+  emergencyContact String?
+  emergencyPhone   String?
+  relationship String? // padre, madre, tutor, etc.
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  patients              Patient[]
+  consultationRequests  ConsultationRequest[]
+  payments              Payment[]
+  scheduleRequests      ScheduleRequest[]
+
+  @@index([userId])
+  @@index([firstName, lastName])
+  @@map("parents")
+}
+
+model Patient {
+  id                String       @id @default(uuid())
+  parentId          String
+  parent            Parent       @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  firstName         String
+  lastName          String
+  dateOfBirth       DateTime
+  gender            Gender
+  schoolName        String?
+  schoolGrade       String?
+  medicalHistory    Json?        // Structured medical history data
+  specialNeeds      String?      // Description of special needs
+  emergencyContact  String?
+  emergencyPhone    String?
+  isActive          Boolean      @default(true)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  // Relations
+  consultationRequests  ConsultationRequest[]
+  medicalForms          MedicalForm[]
+  therapeuticProposals  TherapeuticProposal[]
+  patientSessions       PatientSession[]
+  therapeuticPlans      TherapeuticPlan[]
+  progressReports       ProgressReport[]
+  finalReports          FinalReport[]
+  documents             PatientDocument[]
+
+  @@index([parentId])
+  @@index([firstName, lastName])
+  @@index([dateOfBirth])
+  @@index([isActive])
+  @@map("patients")
+}
+
+model Therapist {
+  id              String          @id @default(uuid())
+  userId          String          @unique
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName       String
+  lastName        String
+  phone           String?
+  licenseNumber   String?         @unique
+  isCoordinator   Boolean         @default(false)
+  canTakeConsultations Boolean    @default(true)
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  specialties           TherapistSpecialty[]
+  schedules            TherapistSchedule[]
+  consultationRequests ConsultationRequest[]
+  consultationForms    ConsultationForm[]
+  therapeuticProposals TherapeuticProposal[]
+  proposalServices     ProposalService[]   @relation("ProposalServiceTherapist")
+  serviceAssignments   ServiceAssignment[]
+  patientSessions      PatientSession[]
+  therapeuticPlans     TherapeuticPlan[]
+  progressReports      ProgressReport[]
+  finalReports         FinalReport[]
+
+  @@index([userId])
+  @@index([firstName, lastName])
+  @@index([isCoordinator])
+  @@index([canTakeConsultations])
+  @@index([isActive])
+  @@index([licenseNumber])
+  @@map("therapists")
+}
+
+model Specialty {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  therapists            TherapistSpecialty[]
+  consultationReasons   ConsultationReason[]
+  services              Service[]
+
+  @@index([name])
+  @@index([isActive])
+  @@map("specialties")
+}
+
+model TherapistSpecialty {
+  id           String    @id @default(uuid())
+  therapistId  String
+  therapist    Therapist @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  specialtyId  String
+  specialty    Specialty @relation(fields: [specialtyId], references: [id], onDelete: Cascade)
+  isPrimary    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
+  @@unique([therapistId, specialtyId])
+  @@index([therapistId])
+  @@index([specialtyId])
+  @@index([isPrimary])
+  @@map("therapist_specialties")
+}
+
+model TherapistSchedule {
+  id            String    @id @default(uuid())
+  therapistId   String
+  therapist     Therapist @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  dayOfWeek     DayOfWeek
+  startTime     String    // Format: "HH:mm"
+  endTime       String    // Format: "HH:mm"
+  breakStart    String?   // Format: "HH:mm"
+  breakEnd      String?   // Format: "HH:mm"
+  breakBetweenSessions Int @default(15) // Minutes between sessions
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([therapistId, dayOfWeek])
+  @@index([therapistId])
+  @@index([dayOfWeek])
+  @@index([isActive])
+  @@map("therapist_schedules")
+}
+
+// ========== CONSULTATION SYSTEM ==========
+
+model ConsultationRequest {
+  id              String                    @id @default(uuid())
+  parentId        String
+  parent          Parent                    @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  patientId       String
+  patient         Patient                   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  type            ConsultationType
+  status          ConsultationStatus        @default(PENDING_PAYMENT)
+  therapistId     String?
+  therapist       Therapist?                @relation(fields: [therapistId], references: [id], onDelete: SetNull)
+  scheduledDate   DateTime?
+  scheduledTime   String?                   // Format: "HH:mm"
+  duration        Int?                      // Duration in minutes
+  cost            Decimal?                  @db.Decimal(10, 2)
+  notes           String?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  // Relations
+  reasons           ConsultationRequestReason[]
+  generalForm       GeneralForm?
+  medicalForm       MedicalForm?
+  consultationForm  ConsultationForm?
+  payment           Payment?
+  therapeuticProposal TherapeuticProposal?
+
+  @@index([parentId])
+  @@index([patientId])
+  @@index([therapistId])
+  @@index([type])
+  @@index([status])
+  @@index([scheduledDate])
+  @@index([createdAt])
+  @@map("consultation_requests")
+}
+
+model ConsultationReason {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  specialtyId String
+  specialty   Specialty @relation(fields: [specialtyId], references: [id], onDelete: Cascade)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  consultationRequests ConsultationRequestReason[]
+
+  @@index([name])
+  @@index([specialtyId])
+  @@index([isActive])
+  @@map("consultation_reasons")
+}
+
+model ConsultationRequestReason {
+  id                    String              @id @default(uuid())
+  consultationRequestId String
+  consultationRequest   ConsultationRequest @relation(fields: [consultationRequestId], references: [id], onDelete: Cascade)
+  reasonId              String
+  reason                ConsultationReason  @relation(fields: [reasonId], references: [id], onDelete: Cascade)
+  createdAt             DateTime            @default(now())
+
+  @@unique([consultationRequestId, reasonId])
+  @@index([consultationRequestId])
+  @@index([reasonId])
+  @@map("consultation_request_reasons")
+}
+
+// ========== FORMS SYSTEM ==========
+
+model GeneralForm {
+  id                    String              @id @default(uuid())
+  consultationRequestId String              @unique
+  consultationRequest   ConsultationRequest @relation(fields: [consultationRequestId], references: [id], onDelete: Cascade)
+  
+  // Patient basic info (might be different from Patient model during initial registration)
+  patientFirstName      String?
+  patientLastName       String?
+  patientDateOfBirth    DateTime?
+  patientGender         Gender?
+  
+  // Parent/Guardian info
+  guardianFirstName     String?
+  guardianLastName      String?
+  guardianPhone         String?
+  guardianEmail         String?
+  guardianAddress       String?
+  guardianCity          String?
+  
+  // School info
+  schoolName            String?
+  schoolGrade           String?
+  schoolTeacher         String?
+  
+  // Availability
+  availability          Json?               // Weekly availability structure
+  
+  // Additional info
+  referralSource        String?             // How they found the center
+  previousTreatments    String?
+  currentMedications    String?
+  mainConcerns          String?
+  
+  isCompleted           Boolean             @default(false)
+  completedAt           DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([consultationRequestId])
+  @@index([isCompleted])
+  @@map("general_forms")
+}
+
+model MedicalForm {
+  id                    String              @id @default(uuid())
+  consultationRequestId String?             @unique
+  consultationRequest   ConsultationRequest? @relation(fields: [consultationRequestId], references: [id], onDelete: Cascade)
+  patientId             String?
+  patient               Patient?            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  // Medical History
+  birthComplications    String?
+  developmentalMilestones Json?             // Structured data for milestones
+  medicalConditions     String?
+  allergies             String?
+  currentMedications    String?
+  previousSurgeries     String?
+  
+  // Family History
+  familyMedicalHistory  String?
+  familyStructure       String?
+  familyDynamics        String?
+  parentalConcerns      String?
+  
+  // Behavioral Information
+  behavioralConcerns    String?
+  socialSkills          String?
+  communicationSkills   String?
+  learningDifficulties  String?
+  
+  // School Information
+  academicPerformance   String?
+  schoolBehavior        String?
+  teacherReports        String?
+  
+  // Additional Information
+  sleepPatterns         String?
+  eatingHabits          String?
+  dailyRoutines         String?
+  stressFactors         String?
+  
+  filledByParent        Boolean             @default(true)
+  filledByTherapist     Boolean             @default(false)
+  isCompleted           Boolean             @default(false)
+  completedAt           DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([consultationRequestId])
+  @@index([patientId])
+  @@index([filledByParent])
+  @@index([filledByTherapist])
+  @@index([isCompleted])
+  @@map("medical_forms")
+}
+
+model ConsultationForm {
+  id                    String              @id @default(uuid())
+  consultationRequestId String              @unique
+  consultationRequest   ConsultationRequest @relation(fields: [consultationRequestId], references: [id], onDelete: Cascade)
+  therapistId           String
+  therapist             Therapist           @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  
+  // Clinical Observations
+  clinicalObservations  String?
+  behavioralObservations String?
+  cognitiveAssessment   String?
+  emotionalState        String?
+  socialInteraction     String?
+  communicationAssessment String?
+  
+  // Assessment Results
+  diagnosticHypothesis  String?
+  recommendedTreatments String?
+  urgencyLevel          UrgencyLevel        @default(NORMAL)
+  
+  // Additional Notes
+  parentInteraction     String?
+  environmentalFactors  String?
+  riskFactors           String?
+  protectiveFactors     String?
+  
+  // Session Info
+  sessionDate           DateTime
+  sessionDuration       Int                 // Duration in minutes
+  sessionNotes          String?
+  
+  isCompleted           Boolean             @default(false)
+  completedAt           DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([consultationRequestId])
+  @@index([therapistId])
+  @@index([sessionDate])
+  @@index([isCompleted])
+  @@map("consultation_forms")
+}
+
+// ========== SERVICES AND THERAPEUTIC PROPOSALS ==========
+
+model Service {
+  id              String    @id @default(uuid())
+  code            String    @unique
+  name            String
+  description     String?
+  type            ServiceType
+  specialtyId     String
+  specialty       Specialty @relation(fields: [specialtyId], references: [id], onDelete: Cascade)
+  defaultSessions Int       @default(1)
+  costPerSession  Decimal   @db.Decimal(10, 2)
+  sessionDuration Int       // Duration in minutes
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  proposalServices  ProposalService[]
+  serviceAssignments ServiceAssignment[]
+
+  @@index([code])
+  @@index([name])
+  @@index([type])
+  @@index([specialtyId])
+  @@index([isActive])
+  @@map("services")
+}
+
+model TherapeuticProposal {
+  id                    String              @id @default(uuid())
+  consultationRequestId String              @unique
+  consultationRequest   ConsultationRequest @relation(fields: [consultationRequestId], references: [id], onDelete: Cascade)
+  patientId             String
+  patient               Patient             @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  therapistId           String
+  therapist             Therapist           @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  
+  treatmentPeriod       TreatmentPeriod
+  parentAvailability    Json                // Weekly availability structure
+  
+  status                ProposalStatus      @default(DRAFT)
+  
+  // Proposal A and B summaries
+  proposalASessions     Int?
+  proposalACost         Decimal?            @db.Decimal(10, 2)
+  proposalBSessions     Int?
+  proposalBCost         Decimal?            @db.Decimal(10, 2)
+  
+  selectedProposal      ProposalType?       // A or B
+  paymentPlan           PaymentPlan?
+  
+  notes                 String?
+  coordinatorNotes      String?
+  adminNotes            String?
+  
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  reviewedAt            DateTime?
+  approvedAt            DateTime?
+
+  // Relations
+  services              ProposalService[]
+  payments              Payment[]
+
+  @@index([consultationRequestId])
+  @@index([patientId])
+  @@index([therapistId])
+  @@index([status])
+  @@index([treatmentPeriod])
+  @@index([createdAt])
+  @@index([approvedAt])
+  @@map("therapeutic_proposals")
+}
+
+model ProposalService {
+  id                      String              @id @default(uuid())
+  therapeuticProposalId   String
+  therapeuticProposal     TherapeuticProposal @relation(fields: [therapeuticProposalId], references: [id], onDelete: Cascade)
+  serviceId               String
+  service                 Service             @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  
+  // Proposal A configuration
+  proposalASession        Int                 @default(0)
+  proposalACostPerSession Decimal?            @db.Decimal(10, 2)
+  
+  // Proposal B configuration
+  proposalBSessions       Int                 @default(0)
+  proposalBCostPerSession Decimal?            @db.Decimal(10, 2)
+  
+  assignedTherapistId     String?
+  assignedTherapist       Therapist?          @relation("ProposalServiceTherapist", fields: [assignedTherapistId], references: [id], onDelete: SetNull)
+  
+  notes                   String?
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+
+  // Relations
+  serviceAssignments      ServiceAssignment[]
+
+  @@index([therapeuticProposalId])
+  @@index([serviceId])
+  @@index([assignedTherapistId])
+  @@map("proposal_services")
+}
+
+model ServiceAssignment {
+  id                String          @id @default(uuid())
+  proposalServiceId String
+  proposalService   ProposalService @relation(fields: [proposalServiceId], references: [id], onDelete: Cascade)
+  serviceId         String
+  service           Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  therapistId       String
+  therapist         Therapist       @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  
+  totalSessions     Int
+  completedSessions Int             @default(0)
+  costPerSession    Decimal         @db.Decimal(10, 2)
+  
+  status            AssignmentStatus @default(SCHEDULED)
+  startDate         DateTime?
+  endDate           DateTime?
+  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  // Relations
+  patientSessions   PatientSession[]
+
+  @@index([proposalServiceId])
+  @@index([serviceId])
+  @@index([therapistId])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+  @@map("service_assignments")
+}
+
+// ========== SESSIONS MANAGEMENT ==========
+
+model PatientSession {
+  id                  String            @id @default(uuid())
+  serviceAssignmentId String
+  serviceAssignment   ServiceAssignment @relation(fields: [serviceAssignmentId], references: [id], onDelete: Cascade)
+  patientId           String
+  patient             Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  therapistId         String
+  therapist           Therapist         @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  
+  scheduledDate       DateTime
+  scheduledTime       String            // Format: "HH:mm"
+  duration            Int               // Duration in minutes
+  
+  status              SessionStatus     @default(SCHEDULED)
+  
+  // Session execution
+  startedAt           DateTime?
+  completedAt         DateTime?
+  actualDuration      Int?              // Actual duration in minutes
+  
+  // Session notes
+  sessionNotes        String?
+  therapistComments   String?
+  parentVisible       Boolean           @default(true) // Whether comments are visible to parents
+  
+  // Rescheduling
+  originalDate        DateTime?
+  rescheduleReason    String?
+  rescheduledBy       String?           // User ID who rescheduled
+  rescheduledAt       DateTime?
+  
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([serviceAssignmentId])
+  @@index([patientId])
+  @@index([therapistId])
+  @@index([scheduledDate])
+  @@index([status])
+  @@index([therapistId, scheduledDate])
+  @@map("patient_sessions")
+}
+
+// ========== REPORTS AND PLANS ==========
+
+model TherapeuticPlan {
+  id          String    @id @default(uuid())
+  patientId   String
+  patient     Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  therapistId String
+  therapist   Therapist @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  
+  // Plan content
+  objectives          String
+  antecedents         String
+  initialMetrics      Json              // Structured metrics data
+  recommendations     String
+  
+  // Status and approval
+  status              ReportStatus      @default(DRAFT)
+  coordinatorNotes    String?
+  adminNotes          String?
+  rejectionReason     String?
+  
+  version             Int               @default(1)
+  isActive            Boolean           @default(true)
+  
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  submittedAt         DateTime?
+  approvedAt          DateTime?
+
+  @@index([patientId])
+  @@index([therapistId])
+  @@index([status])
+  @@index([isActive])
+  @@index([createdAt])
+  @@index([approvedAt])
+  @@map("therapeutic_plans")
+}
+
+model ProgressReport {
+  id          String    @id @default(uuid())
+  patientId   String
+  patient     Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  therapistId String
+  therapist   Therapist @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  
+  // Report content
+  progressSummary     String
+  updatedMetrics      Json              // Updated metrics from therapeutic plan
+  achievements        String?
+  challenges          String?
+  recommendations     String?
+  
+  // Reference to therapeutic plan
+  therapeuticPlanId   String?
+  
+  // Status and approval
+  status              ReportStatus      @default(DRAFT)
+  coordinatorNotes    String?
+  adminNotes          String?
+  rejectionReason     String?
+  
+  reportPeriod        String?           // e.g., "Sessions 1-5", "Month 1"
+  version             Int               @default(1)
+  isActive            Boolean           @default(true)
+  
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  submittedAt         DateTime?
+  approvedAt          DateTime?
+
+  @@index([patientId])
+  @@index([therapistId])
+  @@index([status])
+  @@index([isActive])
+  @@index([createdAt])
+  @@index([approvedAt])
+  @@map("progress_reports")
+}
+
+model FinalReport {
+  id          String    @id @default(uuid())
+  patientId   String
+  patient     Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  therapistId String
+  therapist   Therapist @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  
+  // Report content
+  treatmentSummary    String
+  finalMetrics        Json              // Final metrics assessment
+  outcomes            String
+  recommendations     String
+  followUpSuggestions String?
+  
+  // Comprehensive report (for coordinators)
+  isComprehensive     Boolean           @default(false)
+  comprehensiveNotes  String?           // Coordinator's comprehensive notes
+  
+  // Status and approval
+  status              ReportStatus      @default(DRAFT)
+  coordinatorNotes    String?
+  adminNotes          String?
+  rejectionReason     String?
+  
+  version             Int               @default(1)
+  isActive            Boolean           @default(true)
+  
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  submittedAt         DateTime?
+  approvedAt          DateTime?
+
+  @@index([patientId])
+  @@index([therapistId])
+  @@index([status])
+  @@index([isActive])
+  @@index([createdAt])
+  @@index([approvedAt])
+  @@map("final_reports")
+}
+
+// ========== PAYMENTS ==========
+
+model Payment {
+  id                      String                  @id @default(uuid())
+  parentId                String
+  parent                  Parent                  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  consultationRequestId   String?                 @unique
+  consultationRequest     ConsultationRequest?    @relation(fields: [consultationRequestId], references: [id], onDelete: SetNull)
+  therapeuticProposalId   String?
+  therapeuticProposal     TherapeuticProposal?    @relation(fields: [therapeuticProposalId], references: [id], onDelete: SetNull)
+  
+  type                    PaymentType
+  amount                  Decimal                 @db.Decimal(10, 2)
+  currency                String                  @default("USD")
+  
+  status                  PaymentStatus           @default(PENDING)
+  
+  // Payment details
+  paymentMethod           String?
+  transactionId           String?
+  receiptUrl              String?                 // URL to uploaded receipt
+  
+  // Monthly payment tracking
+  isMonthlyPayment        Boolean                 @default(false)
+  monthlyPaymentNumber    Int?                    // 1, 2, 3, etc.
+  totalMonthlyPayments    Int?
+  dueDate                 DateTime?
+  
+  // Admin review
+  reviewedBy              String?                 // Admin user ID
+  reviewedAt              DateTime?
+  reviewNotes             String?
+  
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+
+  @@index([parentId])
+  @@index([consultationRequestId])
+  @@index([therapeuticProposalId])
+  @@index([type])
+  @@index([status])
+  @@index([isMonthlyPayment])
+  @@index([dueDate])
+  @@index([createdAt])
+  @@map("payments")
+}
+
+// ========== DOCUMENTS ==========
+
+model PatientDocument {
+  id          String    @id @default(uuid())
+  patientId   String
+  patient     Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  name        String
+  description String?
+  fileUrl     String
+  fileType    String    // pdf, jpg, png, etc.
+  fileSize    Int       // Size in bytes
+  
+  category    DocumentCategory @default(GENERAL)
+  
+  uploadedBy  String    // User ID who uploaded
+  isVisible   Boolean   @default(true) // Visible to parents
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([patientId])
+  @@index([category])
+  @@index([uploadedBy])
+  @@index([isVisible])
+  @@index([createdAt])
+  @@map("patient_documents")
+}
+
+// ========== SCHEDULE REQUESTS ==========
+
+model ScheduleRequest {
+  id            String            @id @default(uuid())
+  parentId      String
+  parent        Parent            @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  
+  type          ScheduleRequestType
+  reason        String
+  description   String?
+  
+  // For single session reschedule
+  sessionId     String?
+  newDate       DateTime?
+  newTime       String?           // Format: "HH:mm"
+  
+  // For multiple sessions reschedule
+  newAvailability Json?           // New weekly availability
+  frequency     Int?              // Sessions per week
+  mixServices   Boolean           @default(true)
+  
+  status        RequestStatus     @default(PENDING)
+  adminNotes    String?
+  processedBy   String?           // Admin user ID
+  processedAt   DateTime?
+  
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([parentId])
+  @@index([type])
+  @@index([status])
+  @@index([processedBy])
+  @@index([createdAt])
+  @@map("schedule_requests")
+}
+
+// ========== SYSTEM SESSION MANAGEMENT (keeping existing) ==========
 
 model Session {
   id         String    @id @default(uuid())
@@ -109,12 +904,189 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+// ========== ENUMS ==========
+
 enum UserRole {
-  USER
-  ADMIN
   SUPER_ADMIN
+  ADMIN
+  THERAPIST
+  PARENT
 
   @@map("user_roles")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+
+  @@map("genders")
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+
+  @@map("days_of_week")
+}
+
+enum ConsultationType {
+  CONSULTATION  // Paid consultation
+  INTERVIEW     // Free interview
+
+  @@map("consultation_types")
+}
+
+enum ConsultationStatus {
+  PENDING_PAYMENT
+  PAYMENT_SUBMITTED
+  PAYMENT_CONFIRMED
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+
+  @@map("consultation_statuses")
+}
+
+enum ServiceType {
+  TREATMENT
+  EVALUATION
+
+  @@map("service_types")
+}
+
+enum TreatmentPeriod {
+  TWO_MONTHS
+  THREE_MONTHS
+  FOUR_MONTHS
+  SIX_MONTHS
+  TWELVE_MONTHS
+  CUSTOM
+
+  @@map("treatment_periods")
+}
+
+enum ProposalStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  COORDINATOR_APPROVED
+  ADMIN_APPROVED
+  REJECTED
+  CONFIRMED
+
+  @@map("proposal_statuses")
+}
+
+enum ProposalType {
+  PROPOSAL_A
+  PROPOSAL_B
+
+  @@map("proposal_types")
+}
+
+enum PaymentPlan {
+  FULL_PAYMENT
+  MONTHLY
+
+  @@map("payment_plans")
+}
+
+enum AssignmentStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+
+  @@map("assignment_statuses")
+}
+
+enum SessionStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+  NO_SHOW
+
+  @@map("session_statuses")
+}
+
+enum ReportStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  REVISION_REQUIRED
+
+  @@map("report_statuses")
+}
+
+enum PaymentType {
+  CONSULTATION
+  THERAPEUTIC_PROPOSAL
+  MONTHLY_PAYMENT
+
+  @@map("payment_types")
+}
+
+enum PaymentStatus {
+  PENDING
+  SUBMITTED
+  CONFIRMED
+  REJECTED
+  REFUNDED
+
+  @@map("payment_statuses")
+}
+
+enum DocumentCategory {
+  GENERAL
+  MEDICAL
+  THERAPEUTIC_PLAN
+  PROGRESS_REPORT
+  FINAL_REPORT
+  PAYMENT_RECEIPT
+  OTHER
+
+  @@map("document_categories")
+}
+
+enum ScheduleRequestType {
+  RESCHEDULE_SESSION
+  CANCEL_SESSION
+  RESCHEDULE_ALL_REMAINING
+  CHANGE_THERAPIST
+
+  @@map("schedule_request_types")
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PROCESSED
+
+  @@map("request_statuses")
+}
+
+enum UrgencyLevel {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+
+  @@map("urgency_levels")
 }
 
 enum AuditAction {
@@ -160,6 +1132,17 @@ enum AuditAction {
   SYSTEM_CONFIGURATION_CHANGED
   AUDIT_LOG_VIEWED
   AUDIT_LOG_EXPORTED
+  
+  // Therapy-specific actions
+  CONSULTATION_SCHEDULED
+  CONSULTATION_COMPLETED
+  PAYMENT_PROCESSED
+  THERAPEUTIC_PROPOSAL_CREATED
+  THERAPEUTIC_PROPOSAL_APPROVED
+  SESSION_SCHEDULED
+  SESSION_COMPLETED
+  REPORT_SUBMITTED
+  REPORT_APPROVED
 
   @@map("audit_actions")
 }

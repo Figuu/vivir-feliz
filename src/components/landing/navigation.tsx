@@ -10,6 +10,8 @@ import { Menu, User, Settings, LogOut } from 'lucide-react'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { useAuth } from '@/hooks/use-auth'
 import { motion } from 'framer-motion'
+import { ConsultationModal } from './consultation-modal'
+import { Calendar } from 'lucide-react'
 export function Navigation() {
   const [open, setOpen] = useState(false)
   const { user, signOut } = useAuth()
@@ -21,7 +23,7 @@ export function Navigation() {
           {/* Desktop Navigation */}
           <div className="hidden md:flex md:items-center md:gap-6">
             <Link href="/" className="flex items-center space-x-2">
-              <span className="font-bold text-lg">Boring Skale</span>
+              <span className="font-bold text-lg">Vivir Feliz</span>
             </Link>
             <nav className="flex items-center space-x-6 text-sm font-medium">
               <Link
@@ -51,7 +53,7 @@ export function Navigation() {
                   className="flex items-center"
                   onClick={() => setOpen(false)}
                 >
-                  <span className="font-bold">Boring Skale</span>
+                  <span className="font-bold">Vivir Feliz</span>
                 </Link>
                 <div className="my-4 h-[calc(100vh-8rem)] pb-10 pl-6">
                   <div className="flex flex-col space-y-3">
@@ -76,6 +78,18 @@ export function Navigation() {
                     >
                       Docs
                     </Link>
+                    {!user && (
+                      <ConsultationModal>
+                        <Button 
+                          variant="outline" 
+                          className="w-full justify-start"
+                          onClick={() => setOpen(false)}
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          Book Consultation
+                        </Button>
+                      </ConsultationModal>
+                    )}
                   </div>
                 </div>
               </SheetContent>
@@ -84,12 +98,26 @@ export function Navigation() {
 
           {/* Mobile Logo */}
           <Link href="/" className="flex items-center md:hidden">
-            <span className="font-bold text-lg">Boring Skale</span>
+            <span className="font-bold text-lg">Vivir Feliz</span>
           </Link>
 
           {/* Right side actions */}
           <nav className="flex items-center gap-2">
             <ThemeToggle />
+            {!user && (
+              <ConsultationModal>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                >
+                  <Button variant="outline" size="sm" className="hidden sm:inline-flex">
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Book Consultation
+                  </Button>
+                </motion.div>
+              </ConsultationModal>
+            )}
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

@@ -743,3 +743,5 @@ export class PaymentReceiptManager {
     return uuidRegex.test(uuid)
   }
 }
+
+

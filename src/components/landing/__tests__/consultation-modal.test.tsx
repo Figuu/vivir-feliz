@@ -72,3 +72,5 @@ describe('ConsultationModal', () => {
     expect(screen.getByText('45 min')).toBeInTheDocument()
   })
 })
+
+

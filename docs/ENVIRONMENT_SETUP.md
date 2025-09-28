@@ -163,3 +163,5 @@ If you encounter issues with environment setup:
 2. Review the troubleshooting section
 3. Verify your database and service credentials
 4. Check the application logs for detailed error messages
+
+

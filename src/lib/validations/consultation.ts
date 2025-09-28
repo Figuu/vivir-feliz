@@ -294,3 +294,5 @@ export const validateCompleteConsultationForm = (data: any) => {
     return { success: false, data: null, errors: { general: ['An unexpected error occurred'] } }
   }
 }
+
+

@@ -58,3 +58,5 @@ function getContentType(fileType: string): string {
   }
   return contentTypes[fileType] || 'application/octet-stream'
 }
+
+

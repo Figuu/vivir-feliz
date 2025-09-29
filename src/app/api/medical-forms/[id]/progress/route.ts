@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { MedicalFormManager } from '@/lib/medical-form-manager'
+import { MedicalFormManager } from '@/lib/medical-form-manager-fixed'
 
 // GET - Get form progress
 export async function GET(

@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { MedicalFormManager } from '@/lib/medical-form-manager-fixed'
 import { z } from 'zod'
 
-const approveFormSchema = z.object({
-  approvedBy: z.string().uuid('Invalid user ID format'),
-  approvalNotes: z.string().max(1000, 'Approval notes cannot exceed 1000 characters').optional()
+const submitFormSchema = z.object({
+  submittedBy: z.string().uuid('Invalid user ID format'),
+  submissionNotes: z.string().max(1000, 'Submission notes cannot exceed 1000 characters').optional()
 })
 
-// POST - Approve medical form
+// POST - Submit medical form for review
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -27,7 +27,7 @@ export async function POST(
     const body = await request.json()
     
     // Validate request body
-    const validationResult = approveFormSchema.safeParse(body)
+    const validationResult = submitFormSchema.safeParse(body)
     if (!validationResult.success) {
       return NextResponse.json(
         { 
@@ -39,27 +39,25 @@ export async function POST(
       )
     }
     
-    const { approvedBy, approvalNotes } = validationResult.data
+    const { submittedBy, submissionNotes } = validationResult.data
     
-    // Approve form
-    const form = await MedicalFormManager.approveForm(id, approvedBy, approvalNotes)
+    // Submit form for review
+    const form = await MedicalFormManager.submitFormForReview(id, submittedBy)
     
     return NextResponse.json({
       success: true,
       data: form,
-      message: 'Medical form approved successfully'
+      message: 'Medical form submitted for review successfully'
     })
     
   } catch (error) {
-    console.error('Error approving medical form:', error)
+    console.error('Error submitting medical form:', error)
     return NextResponse.json(
       { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Failed to approve medical form' 
+        error: error instanceof Error ? error.message : 'Failed to submit medical form' 
       },
       { status: 500 }
     )
   }
 }
-
-

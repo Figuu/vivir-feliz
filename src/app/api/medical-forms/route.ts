@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { MedicalFormManager, FormStep } from '@/lib/medical-form-manager'
+import { MedicalFormManager, FormStep } from '@/lib/medical-form-manager-fixed'
 import { z } from 'zod'
 
 const createFormSchema = z.object({
@@ -116,56 +116,21 @@ export async function GET(request: NextRequest) {
       limit
     } = validationResult.data
     
-    // For now, return mock data since we don't have a list method in the manager
-    // In a real implementation, you would add a list method to MedicalFormManager
-    const mockForms = [
-      {
-        formId: '550e8400-e29b-41d4-a716-446655440000',
-        consultationRequestId: consultationRequestId || '550e8400-e29b-41d4-a716-446655440001',
-        status: status || 'DRAFT',
-        currentStep: 1,
-        completedSteps: [],
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    ]
-    
-    // Apply filters
-    let filteredForms = mockForms
-    
-    if (consultationRequestId) {
-      filteredForms = filteredForms.filter(form => form.consultationRequestId === consultationRequestId)
-    }
-    
-    if (status) {
-      filteredForms = filteredForms.filter(form => form.status === status)
-    }
-    
-    if (startDate && endDate) {
-      const start = new Date(startDate)
-      const end = new Date(endDate)
-      filteredForms = filteredForms.filter(form => 
-        form.createdAt >= start && form.createdAt <= end
-      )
-    }
-    
-    // Apply pagination
-    const offset = (page - 1) * limit
-    const paginatedForms = filteredForms.slice(offset, offset + limit)
+    // Get medical forms using the manager
+    const result = await MedicalFormManager.listMedicalForms({
+      consultationRequestId,
+      parentId,
+      patientId,
+      status,
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+      page,
+      limit
+    })
     
     return NextResponse.json({
       success: true,
-      data: {
-        forms: paginatedForms,
-        totalCount: filteredForms.length,
-        pagination: {
-          page,
-          limit,
-          totalPages: Math.ceil(filteredForms.length / limit),
-          hasNextPage: page < Math.ceil(filteredForms.length / limit),
-          hasPrevPage: page > 1
-        }
-      }
+      data: result
     })
     
   } catch (error) {

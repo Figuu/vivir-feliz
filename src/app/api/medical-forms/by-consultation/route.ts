@@ -2,19 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { MedicalFormManager } from '@/lib/medical-form-manager-fixed'
 import { z } from 'zod'
 
-const statisticsQuerySchema = z.object({
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional()
+const getByConsultationSchema = z.object({
+  consultationRequestId: z.string().uuid('Invalid consultation request ID format')
 })
 
-// GET - Get medical form statistics
+// GET - Get medical form by consultation request ID
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     
     // Parse and validate query parameters
     const queryParams = Object.fromEntries(searchParams.entries())
-    const validationResult = statisticsQuerySchema.safeParse(queryParams)
+    const validationResult = getByConsultationSchema.safeParse(queryParams)
     
     if (!validationResult.success) {
       return NextResponse.json(
@@ -27,32 +26,31 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    const { startDate, endDate } = validationResult.data
+    const { consultationRequestId } = validationResult.data
     
-    // Build date range
-    const dateRange = startDate && endDate ? {
-      start: new Date(startDate),
-      end: new Date(endDate)
-    } : undefined
+    // Get medical form by consultation request
+    const form = await MedicalFormManager.getMedicalFormByConsultationRequest(consultationRequestId)
     
-    // Get statistics
-    const statistics = await MedicalFormManager.getFormStatistics(dateRange)
+    if (!form) {
+      return NextResponse.json(
+        { success: false, error: 'Medical form not found for this consultation request' },
+        { status: 404 }
+      )
+    }
     
     return NextResponse.json({
       success: true,
-      data: statistics
+      data: form
     })
     
   } catch (error) {
-    console.error('Error getting medical form statistics:', error)
+    console.error('Error getting medical form by consultation request:', error)
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Failed to get medical form statistics' 
+        error: 'Failed to get medical form by consultation request' 
       },
       { status: 500 }
     )
   }
 }
-
-

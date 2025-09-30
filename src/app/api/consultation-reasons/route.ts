@@ -1,38 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
-// GET - Fetch specialties
+// GET - Fetch consultation reasons
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const includeReasons = searchParams.get('includeReasons') === 'true'
+    const specialtyId = searchParams.get('specialtyId')
 
-    const specialties = await db.specialty.findMany({
-      where: {
-        isActive: true
-      },
-      include: includeReasons ? {
-        consultationReasons: {
-          where: {
-            isActive: true
-          },
+    const where: any = {
+      isActive: true
+    }
+
+    if (specialtyId) {
+      where.specialtyId = specialtyId
+    }
+
+    const consultationReasons = await db.consultationReason.findMany({
+      where,
+      include: {
+        specialty: {
           select: {
             id: true,
-            name: true,
-            description: true
+            name: true
           }
         }
-      } : undefined,
+      },
       orderBy: {
         name: 'asc'
       }
     })
 
     return NextResponse.json({
-      specialties
+      consultationReasons
     })
   } catch (error) {
-    console.error('Error fetching specialties:', error)
+    console.error('Error fetching consultation reasons:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

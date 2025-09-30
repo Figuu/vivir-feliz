@@ -1,5 +1,6 @@
 'use client'
 
+import { useQuery } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
@@ -8,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
 import { consultationDetailsSchema, type ConsultationDetailsFormData } from '@/lib/validations/consultation'
 import { Calendar, Clock, ArrowLeft, ArrowRight, AlertTriangle, Shield, Phone } from 'lucide-react'
@@ -38,31 +40,28 @@ export function ConsultationDetailsStep({
 
   const currentTherapy = watch('currentTherapy')
 
-  const onSubmit = (data: ConsultationDetailsFormData) => {
-    onComplete(data)
-  }
+  // Fetch consultation reasons from API
+  const { data: consultationReasonsData, isLoading: reasonsLoading } = useQuery({
+    queryKey: ['consultation-reasons'],
+    queryFn: async () => {
+      const response = await fetch('/api/consultation-reasons')
+      if (!response.ok) throw new Error('Failed to fetch consultation reasons')
+      return response.json()
+    }
+  })
 
-  // Mock data - in real app, this would come from API
-  const consultationReasons = [
-    'Behavioral concerns',
-    'Anxiety and fears',
-    'Depression symptoms',
-    'Sleep disorders',
-    'Language delays',
-    'Speech difficulties',
-    'Motor skill delays',
-    'Learning difficulties',
-    'Attention problems',
-    'Social interaction issues'
-  ]
+  // Fetch specialties from API
+  const { data: specialtiesData, isLoading: specialtiesLoading } = useQuery({
+    queryKey: ['specialties'],
+    queryFn: async () => {
+      const response = await fetch('/api/specialties')
+      if (!response.ok) throw new Error('Failed to fetch specialties')
+      return response.json()
+    }
+  })
 
-  const specialties = [
-    'Psychology',
-    'Speech Therapy',
-    'Occupational Therapy',
-    'Physical Therapy',
-    'Educational Psychology'
-  ]
+  const consultationReasons = consultationReasonsData?.consultationReasons || []
+  const specialties = specialtiesData?.specialties || []
 
   const urgencyLevels = [
     { value: 'low', label: 'Low', description: 'Can wait 2-4 weeks' },
@@ -76,6 +75,12 @@ export function ConsultationDetailsStep({
     '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM'
   ]
 
+  const onSubmit = (data: ConsultationDetailsFormData) => {
+    onComplete(data)
+  }
+
+  const isLoading = reasonsLoading || specialtiesLoading
+
   return (
     <Card>
       <CardHeader>
@@ -88,6 +93,14 @@ export function ConsultationDetailsStep({
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {isLoading ? (
+          <div className="space-y-6">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Consultation Reason */}
           <div className="space-y-4">
@@ -100,9 +113,9 @@ export function ConsultationDetailsStep({
                   <SelectValue placeholder="Select the main reason for consultation" />
                 </SelectTrigger>
                 <SelectContent>
-                  {consultationReasons.map((reason) => (
-                    <SelectItem key={reason} value={reason}>
-                      {reason}
+                  {consultationReasons.map((reason: any) => (
+                    <SelectItem key={reason.id} value={reason.name}>
+                      {reason.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -151,9 +164,9 @@ export function ConsultationDetailsStep({
                   <SelectValue placeholder="Select preferred specialty" />
                 </SelectTrigger>
                 <SelectContent>
-                  {specialties.map((specialty) => (
-                    <SelectItem key={specialty} value={specialty}>
-                      {specialty}
+                  {specialties.map((specialty: any) => (
+                    <SelectItem key={specialty.id} value={specialty.name}>
+                      {specialty.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

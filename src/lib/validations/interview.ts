@@ -49,7 +49,7 @@ export const basicInfoSchema = z.object({
     .transform(formatPhoneNumber),
   
   relationshipToChild: z.enum(['parent', 'guardian', 'grandparent', 'other'], {
-    required_error: "Please select your relationship to the child"
+    message: "Please select your relationship to the child"
   }),
   
   otherRelationship: z.string().optional(),
@@ -77,7 +77,7 @@ export const basicInfoSchema = z.object({
     }, "Child must be between 0 and 18 years old"),
   
   childGender: z.enum(['male', 'female', 'other', 'prefer_not_to_say'], {
-    required_error: "Please select the child's gender"
+    message: "Please select the child's gender"
   }),
   
   // Basic Address Information
@@ -111,7 +111,7 @@ export const interviewPreferencesSchema = z.object({
   
   // Preferred time slots (more flexible than consultation)
   preferredTimeOfDay: z.enum(['morning', 'afternoon', 'evening', 'any'], {
-    required_error: "Please select your preferred time of day"
+    message: "Please select your preferred time of day"
   }),
   
   preferredDays: z.array(z.enum(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']))
@@ -120,7 +120,7 @@ export const interviewPreferencesSchema = z.object({
   
   // Contact preferences
   preferredContactMethod: z.enum(['phone', 'email', 'either'], {
-    required_error: "Please select your preferred contact method"
+    message: "Please select your preferred contact method"
   }),
   
   bestTimeToContact: z.string()
@@ -128,7 +128,7 @@ export const interviewPreferencesSchema = z.object({
   
   // Basic urgency
   urgencyLevel: z.enum(['low', 'medium', 'high'], {
-    required_error: "Please select the urgency level"
+    message: "Please select the urgency level"
   }),
   
   // Current situation

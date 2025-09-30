@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PaymentReceiptManager, ReceiptUploadRequest, ReceiptType, FileType } from '@/lib/payment-receipt-manager'
+import { PaymentReceiptManager, ReceiptUploadRequest, FileType } from '@/lib/payment-receipt-manager'
 import { z } from 'zod'
 
 const uploadReceiptSchema = z.object({
-  receiptType: z.enum(['PAYMENT_RECEIPT', 'BANK_STATEMENT', 'TRANSACTION_PROOF', 'INVOICE', 'OTHER']),
-  fileName: z.string().min(1, 'File name is required').max(255, 'File name too long'),
+  receiptNumber: z.string().min(1, 'Receipt number is required').max(100, 'Receipt number too long'),
   fileSize: z.number().positive('File size must be positive').max(10 * 1024 * 1024, 'File size cannot exceed 10MB'),
   fileType: z.enum(['PDF', 'JPG', 'JPEG', 'PNG', 'DOC', 'DOCX', 'TXT']),
   fileData: z.string().min(1, 'File data is required'),
-  description: z.string().max(500, 'Description too long').optional(),
-  metadata: z.record(z.any()).optional()
+  generatedBy: z.string().optional()
 })
 
 const getReceiptsQuerySchema = z.object({
@@ -18,9 +16,7 @@ const getReceiptsQuerySchema = z.object({
   limit: z.string().optional().transform(val => val ? Math.min(parseInt(val), 100) : 20),
   
   // Filtering
-  receiptType: z.enum(['PAYMENT_RECEIPT', 'BANK_STATEMENT', 'TRANSACTION_PROOF', 'INVOICE', 'OTHER']).optional(),
-  status: z.enum(['PENDING', 'UPLOADED', 'VERIFIED', 'REJECTED', 'EXPIRED']).optional(),
-  uploadedBy: z.string().optional(),
+  generatedBy: z.string().optional(),
   fileType: z.enum(['PDF', 'JPG', 'JPEG', 'PNG', 'DOC', 'DOCX', 'TXT']).optional(),
   searchTerm: z.string().optional(),
   startDate: z.string().datetime().optional(),
@@ -59,32 +55,25 @@ export async function POST(
     }
     
     const { 
-      receiptType, 
-      fileName, 
+      receiptNumber,
       fileSize, 
       fileType, 
       fileData, 
-      description, 
-      metadata 
+      generatedBy
     } = validationResult.data
     
     // Create receipt upload request
     const receiptRequest: ReceiptUploadRequest = {
       paymentId: id,
-      receiptType,
-      fileName,
+      receiptNumber,
       fileSize,
       fileType,
       fileData,
-      description,
-      metadata
+      generatedBy
     }
     
-    // Get uploaded by from request headers (in a real app, this would come from authentication)
-    const uploadedBy = request.headers.get('x-user-id') || 'system'
-    
     // Upload receipt
-    const receipt = await PaymentReceiptManager.uploadReceipt(receiptRequest, uploadedBy)
+    const receipt = await PaymentReceiptManager.uploadReceipt(receiptRequest)
     
     return NextResponse.json({
       success: true,
@@ -140,9 +129,7 @@ export async function GET(
     const {
       page,
       limit,
-      receiptType,
-      status,
-      uploadedBy,
+      generatedBy,
       fileType,
       searchTerm,
       startDate,
@@ -154,9 +141,7 @@ export async function GET(
       paymentId: id
     }
     
-    if (receiptType) filters.receiptType = receiptType
-    if (status) filters.status = status
-    if (uploadedBy) filters.uploadedBy = uploadedBy
+    if (generatedBy) filters.generatedBy = generatedBy
     if (fileType) filters.fileType = fileType
     if (searchTerm) filters.searchTerm = searchTerm
     

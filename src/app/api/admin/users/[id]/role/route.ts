@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 import { hasPermission, canManageUser, PERMISSIONS } from '@/lib/permissions'
 import { auditUser } from '@/lib/audit-logger'
-import { AuditAction } from '@prisma/client'
+import { AuditAction } from '@/lib/audit-types'
 
 export async function PATCH(
   request: NextRequest,
@@ -19,7 +19,7 @@ export async function PATCH(
     }
 
     // Get current user from database
-    const currentUser = await db.user.findUnique({
+    const currentUser = await db.profile.findUnique({
       where: { id: user.id },
       select: { role: true }
     })
@@ -34,7 +34,7 @@ export async function PATCH(
     }
 
     // Get target user
-    const targetUser = await db.user.findUnique({
+    const targetUser = await db.profile.findUnique({
       where: { id },
       select: { role: true, email: true }
     })
@@ -66,13 +66,14 @@ export async function PATCH(
     }
 
     // Update user role
-    const updatedUser = await db.user.update({
+    const updatedUser = await db.profile.update({
       where: { id },
       data: { role },
       select: {
         id: true,
         email: true,
-        name: true,
+        firstName: true,
+        lastName: true,
         role: true,
         updatedAt: true
       }
@@ -80,7 +81,7 @@ export async function PATCH(
 
     // Log the role change
     await auditUser({
-      action: AuditAction.USER_ROLE_CHANGED,
+      action: AuditAction.USER_ROLE_CHANGE,
       userId: user.id,
       targetUserId: id,
       oldData: { role: targetUser.role },
@@ -96,7 +97,10 @@ export async function PATCH(
 
     return NextResponse.json({
       message: 'User role updated successfully',
-      user: updatedUser
+      user: {
+        ...updatedUser,
+        name: `${updatedUser.firstName} ${updatedUser.lastName}`
+      }
     })
 
   } catch (error) {

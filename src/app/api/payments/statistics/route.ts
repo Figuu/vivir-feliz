@@ -4,10 +4,9 @@ import { z } from 'zod'
 
 const paymentStatisticsQuerySchema = z.object({
   // Filtering
-  patientId: z.string().uuid().optional(),
-  therapistId: z.string().uuid().optional(),
-  paymentMethod: z.enum(['CREDIT_CARD', 'BANK_TRANSFER', 'CASH', 'CHECK', 'DEBIT_CARD', 'PAYPAL', 'STRIPE']).optional(),
-  paymentType: z.enum(['CONSULTATION', 'SESSION', 'EVALUATION', 'TREATMENT', 'PLAN_INSTALLMENT', 'REFUND']).optional(),
+  parentId: z.string().uuid().optional(),
+  paymentMethod: z.string().optional(),
+  type: z.enum(['CONSULTATION', 'SESSION', 'EVALUATION', 'TREATMENT', 'PLAN_INSTALLMENT', 'REFUND']).optional(),
   status: z.enum(['PENDING', 'COMPLETED', 'FAILED', 'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED']).optional(),
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
@@ -36,24 +35,22 @@ export async function GET(request: NextRequest) {
     }
     
     const {
-      patientId,
-      therapistId,
+      parentId,
       paymentMethod,
-      paymentType,
+      type,
       status,
       startDate,
       endDate,
       minAmount,
       maxAmount
     } = validationResult.data
-    
+
     // Build where clause
     const whereClause: any = {}
-    
-    if (patientId) whereClause.patientId = patientId
-    if (therapistId) whereClause.therapistId = therapistId
+
+    if (parentId) whereClause.parentId = parentId
     if (paymentMethod) whereClause.paymentMethod = paymentMethod
-    if (paymentType) whereClause.paymentType = paymentType
+    if (type) whereClause.type = type
     if (status) whereClause.status = status
     
     if (startDate || endDate) {
@@ -89,8 +86,7 @@ export async function GET(request: NextRequest) {
       paymentTypes,
       statusBreakdown,
       monthlyTrends,
-      topPatients,
-      topTherapists
+      topParents
     ] = await Promise.all([
       // Total payments
       db.payment.count({ where: whereClause }),
@@ -117,9 +113,9 @@ export async function GET(request: NextRequest) {
       
       // Payment types breakdown
       db.payment.groupBy({
-        by: ['paymentType'],
+        by: ['type'],
         where: whereClause,
-        _count: { paymentType: true },
+        _count: { type: true },
         _sum: { amount: true }
       }),
       
@@ -132,29 +128,26 @@ export async function GET(request: NextRequest) {
       
       // Monthly trends (last 12 months)
       getMonthlyTrends(whereClause),
-      
-      // Top patients
-      getTopPatients(whereClause),
-      
-      // Top therapists
-      getTopTherapists(whereClause)
+
+      // Top parents
+      getTopParents(whereClause)
     ])
     
     // Format payment methods
     const paymentMethodsFormatted: Record<string, { count: number; total: number }> = {}
     paymentMethods.forEach(method => {
-      paymentMethodsFormatted[method.paymentMethod] = {
+      paymentMethodsFormatted[method.paymentMethod || 'UNKNOWN'] = {
         count: method._count.paymentMethod,
-        total: method._sum.amount || 0
+        total: method._sum.amount?.toNumber() || 0
       }
     })
-    
+
     // Format payment types
     const paymentTypesFormatted: Record<string, { count: number; total: number }> = {}
     paymentTypes.forEach(type => {
-      paymentTypesFormatted[type.paymentType] = {
-        count: type._count.paymentType,
-        total: type._sum.amount || 0
+      paymentTypesFormatted[type.type] = {
+        count: type._count.type,
+        total: type._sum.amount?.toNumber() || 0
       }
     })
     
@@ -166,14 +159,13 @@ export async function GET(request: NextRequest) {
     
     const statistics = {
       totalPayments,
-      totalAmount: totalAmount._sum.amount || 0,
-      averageAmount: averageAmount._avg.amount || 0,
+      totalAmount: totalAmount._sum.amount?.toNumber() || 0,
+      averageAmount: averageAmount._avg.amount?.toNumber() || 0,
       paymentMethods: paymentMethodsFormatted,
       paymentTypes: paymentTypesFormatted,
       statusBreakdown: statusBreakdownFormatted,
       monthlyTrends,
-      topPatients,
-      topTherapists
+      topParents
     }
     
     return NextResponse.json({
@@ -223,7 +215,7 @@ async function getMonthlyTrends(whereClause: any): Promise<Array<{
       monthlyTrends[month] = { count: 0, total: 0 }
     }
     monthlyTrends[month].count += item._count.createdAt
-    monthlyTrends[month].total += item._sum.amount || 0
+    monthlyTrends[month].total += item._sum.amount?.toNumber() || 0
   })
 
   return Object.entries(monthlyTrends).map(([month, data]) => ({
@@ -233,17 +225,17 @@ async function getMonthlyTrends(whereClause: any): Promise<Array<{
   })).sort((a, b) => a.month.localeCompare(b.month))
 }
 
-// Helper function to get top patients
-async function getTopPatients(whereClause: any): Promise<Array<{
-  patientId: string
-  patientName: string
+// Helper function to get top parents
+async function getTopParents(whereClause: any): Promise<Array<{
+  parentId: string
+  parentName: string
   totalPaid: number
   paymentCount: number
 }>> {
-  const patientData = await db.payment.groupBy({
-    by: ['patientId'],
+  const parentData = await db.payment.groupBy({
+    by: ['parentId'],
     where: whereClause,
-    _count: { patientId: true },
+    _count: { parentId: true },
     _sum: { amount: true },
     orderBy: {
       _sum: {
@@ -253,68 +245,28 @@ async function getTopPatients(whereClause: any): Promise<Array<{
     take: 10
   })
 
-  const patientIds = patientData.map(p => p.patientId)
-  const patients = await db.patient.findMany({
-    where: { id: { in: patientIds } },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true
-    }
-  })
-
-  const patientMap = new Map(patients.map(p => [p.id, p]))
-
-  return patientData.map(data => {
-    const patient = patientMap.get(data.patientId)
-    return {
-      patientId: data.patientId,
-      patientName: patient ? `${patient.firstName} ${patient.lastName}` : 'Unknown',
-      totalPaid: data._sum.amount || 0,
-      paymentCount: data._count.patientId
-    }
-  })
-}
-
-// Helper function to get top therapists
-async function getTopTherapists(whereClause: any): Promise<Array<{
-  therapistId: string
-  therapistName: string
-  totalReceived: number
-  paymentCount: number
-}>> {
-  const therapistData = await db.payment.groupBy({
-    by: ['therapistId'],
-    where: whereClause,
-    _count: { therapistId: true },
-    _sum: { amount: true },
-    orderBy: {
-      _sum: {
-        amount: 'desc'
+  const parentIds = parentData.map(p => p.parentId)
+  const parents = await db.parent.findMany({
+    where: { id: { in: parentIds } },
+    include: {
+      profile: {
+        select: {
+          firstName: true,
+          lastName: true
+        }
       }
-    },
-    take: 10
-  })
-
-  const therapistIds = therapistData.map(t => t.therapistId)
-  const therapists = await db.therapist.findMany({
-    where: { id: { in: therapistIds } },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true
     }
   })
 
-  const therapistMap = new Map(therapists.map(t => [t.id, t]))
+  const parentMap = new Map(parents.map(p => [p.id, p]))
 
-  return therapistData.map(data => {
-    const therapist = therapistMap.get(data.therapistId)
+  return parentData.map(data => {
+    const parent = parentMap.get(data.parentId)
     return {
-      therapistId: data.therapistId,
-      therapistName: therapist ? `${therapist.firstName} ${therapist.lastName}` : 'Unknown',
-      totalReceived: data._sum.amount || 0,
-      paymentCount: data._count.therapistId
+      parentId: data.parentId,
+      parentName: parent ? `${parent.profile.firstName} ${parent.profile.lastName}` : 'Unknown',
+      totalPaid: data._sum.amount?.toNumber() || 0,
+      paymentCount: data._count.parentId
     }
   })
 }

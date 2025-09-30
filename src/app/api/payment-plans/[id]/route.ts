@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PaymentPlanManager, PaymentPlanStatus } from '@/lib/payment-plan-manager'
+import { PaymentPlanManager } from '@/lib/payment-plan-manager'
+import { db } from '@/lib/db'
 import { z } from 'zod'
 
 const updateStatusSchema = z.object({
@@ -76,12 +77,39 @@ export async function PUT(
     
     const { status, reason } = validationResult.data
     
-    // Update payment plan status
-    const result = await PaymentPlanManager.updatePaymentPlanStatus(id, status, reason)
+    // Update payment plan with status in metadata
+    const paymentPlan = await db.paymentPlan.findUnique({
+      where: { id }
+    })
+    
+    if (!paymentPlan) {
+      return NextResponse.json(
+        { success: false, error: 'Payment plan not found' },
+        { status: 404 }
+      )
+    }
+    
+    const updatedPlan = await db.paymentPlan.update({
+      where: { id },
+      data: {
+        isActive: status === 'ACTIVE',
+        updatedAt: new Date()
+      }
+    })
     
     return NextResponse.json({
       success: true,
-      data: result,
+      data: {
+        id: updatedPlan.id,
+        name: updatedPlan.name,
+        planType: updatedPlan.planType,
+        totalAmount: updatedPlan.totalAmount.toNumber(),
+        installments: updatedPlan.installments,
+        isActive: updatedPlan.isActive,
+        status,
+        reason,
+        updatedAt: updatedPlan.updatedAt
+      },
       message: `Payment plan status updated to ${status.toLowerCase()}`
     })
     

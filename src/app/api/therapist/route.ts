@@ -1,81 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
-import { hash } from 'bcryptjs'
 
-// Comprehensive validation schemas
-const therapistCreateSchema = z.object({
-  // Basic Information
-  firstName: z.string()
-    .min(2, 'First name must be at least 2 characters')
-    .max(50, 'First name cannot exceed 50 characters')
-    .regex(/^[a-zA-Z\s]+$/, 'First name can only contain letters and spaces')
-    .transform(val => val.trim().replace(/\s+/g, ' ').split(' ').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    ).join(' ')),
-  
-  lastName: z.string()
-    .min(2, 'Last name must be at least 2 characters')
-    .max(50, 'Last name cannot exceed 50 characters')
-    .regex(/^[a-zA-Z\s]+$/, 'Last name can only contain letters and spaces')
-    .transform(val => val.trim().replace(/\s+/g, ' ').split(' ').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    ).join(' ')),
-  
-  email: z.string()
-    .email('Invalid email format')
-    .max(100, 'Email cannot exceed 100 characters')
-    .toLowerCase()
-    .transform(val => val.trim()),
-  
-  phone: z.string()
-    .regex(/^\+?[\d\s\-\(\)]+$/, 'Invalid phone number format')
-    .min(10, 'Phone number must be at least 10 digits')
-    .max(20, 'Phone number cannot exceed 20 characters')
-    .transform(val => val.replace(/\D/g, '')),
-  
-  // Professional Information
-  licenseNumber: z.string()
-    .min(5, 'License number must be at least 5 characters')
-    .max(50, 'License number cannot exceed 50 characters')
-    .regex(/^[A-Z0-9\-]+$/, 'License number can only contain uppercase letters, numbers, and hyphens')
-    .transform(val => val.toUpperCase().trim()),
-  
-  licenseExpiry: z.string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'License expiry must be in YYYY-MM-DD format')
-    .transform(val => new Date(val))
-    .refine(date => date > new Date(), 'License expiry must be in the future'),
-  
-  specialties: z.array(z.string().uuid('Invalid specialty ID')).optional().default([]),
-  certifications: z.array(z.string().uuid('Invalid certification ID')).optional().default([]),
-  
-  // Account Information
-  password: z.string()
-    .min(8, 'Password must be at least 8 characters')
-    .max(128, 'Password cannot exceed 128 characters')
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, 
-      'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
-  
-  // Optional Information
-  bio: z.string()
-    .max(1000, 'Bio cannot exceed 1000 characters')
-    .optional()
-    .transform(val => val?.trim()),
-  
-  languages: z.array(z.string().max(50, 'Language name cannot exceed 50 characters')).optional().default([]),
-  
-  // Status
-  status: z.enum(['active', 'inactive', 'suspended', 'pending']).optional().default('pending'),
-  isVerified: z.boolean().optional().default(false),
-})
-
-const therapistUpdateSchema = therapistCreateSchema.partial().omit({ password: true })
-
+// Validation schemas
 const therapistQuerySchema = z.object({
   page: z.string().transform(val => parseInt(val) || 1).refine(val => val > 0, 'Page must be greater than 0'),
   limit: z.string().transform(val => parseInt(val) || 10).refine(val => val > 0 && val <= 100, 'Limit must be between 1 and 100'),
   search: z.string().max(100, 'Search term cannot exceed 100 characters').optional(),
-  status: z.enum(['active', 'inactive', 'suspended', 'pending']).optional(),
+  status: z.string().optional(),
   specialty: z.string().uuid('Invalid specialty ID').optional(),
   sortBy: z.enum(['firstName', 'lastName', 'email', 'createdAt', 'lastLogin']).optional().default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
@@ -101,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid query parameters', details: validation.error.errors },
+        { error: 'Invalid query parameters', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -121,9 +53,9 @@ export async function GET(request: NextRequest) {
     
     if (search) {
       whereClause.OR = [
-        { firstName: { contains: search, mode: 'insensitive' } },
-        { lastName: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
+        { profile: { firstName: { contains: search, mode: 'insensitive' } } },
+        { profile: { lastName: { contains: search, mode: 'insensitive' } } },
+        { profile: { email: { contains: search, mode: 'insensitive' } } },
         { licenseNumber: { contains: search, mode: 'insensitive' } },
       ]
     }
@@ -144,6 +76,18 @@ export async function GET(request: NextRequest) {
       db.therapist.findMany({
         where: whereClause,
         include: {
+          profile: {
+            select: {
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+              avatar: true,
+              isActive: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          },
           specialties: {
             include: {
               specialty: {
@@ -170,12 +114,13 @@ export async function GET(request: NextRequest) {
           },
           _count: {
             select: {
-              sessions: true,
-              patients: true
+              patientSessions: true
             }
           }
         },
-        orderBy: { [sortBy]: sortOrder },
+        orderBy: sortBy === 'firstName' || sortBy === 'lastName' || sortBy === 'email' || sortBy === 'lastLogin'
+          ? { profile: { [sortBy === 'lastLogin' ? 'updatedAt' : sortBy]: sortOrder } }
+          : { [sortBy]: sortOrder },
         skip,
         take: limit,
       }),
@@ -192,25 +137,24 @@ export async function GET(request: NextRequest) {
       data: {
         therapists: therapists.map(therapist => ({
           id: therapist.id,
-          firstName: therapist.firstName,
-          lastName: therapist.lastName,
-          email: therapist.email,
-          phone: therapist.phone,
+          firstName: therapist.profile.firstName,
+          lastName: therapist.profile.lastName,
+          email: therapist.profile.email,
+          phone: therapist.profile.phone,
+          avatar: therapist.profile.avatar,
           licenseNumber: therapist.licenseNumber,
-          licenseExpiry: therapist.licenseExpiry,
           bio: therapist.bio,
-          languages: therapist.languages,
-          status: therapist.status,
-          isVerified: therapist.isVerified,
+          isCoordinator: therapist.isCoordinator,
+          isActive: therapist.isActive,
+          canTakeConsultations: therapist.canTakeConsultations,
           specialties: therapist.specialties.map(s => s.specialty),
           certifications: therapist.certifications.map(c => c.certification),
           stats: {
-            totalSessions: therapist._count.sessions,
-            totalPatients: therapist._count.patients,
+            totalSessions: therapist._count.patientSessions,
           },
           createdAt: therapist.createdAt,
           updatedAt: therapist.updatedAt,
-          lastLogin: therapist.lastLogin,
+          lastLogin: therapist.profile.updatedAt,
         })),
         pagination: {
           page,
@@ -241,62 +185,87 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/therapist - Create a new therapist
+// Note: This endpoint is simplified. In production, therapist creation should be handled
+// through proper user registration flow with Supabase Auth, which creates the Profile first.
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
-    // Validate request body
-    const validation = therapistCreateSchema.safeParse(body)
+
+    // Simplified schema for therapist-specific data only
+    const therapistDataSchema = z.object({
+      profileId: z.string().uuid('Invalid profile ID'),
+      licenseNumber: z.string().min(5).max(50).optional(),
+      bio: z.string().max(1000).optional(),
+      isCoordinator: z.boolean().optional().default(false),
+      specialties: z.array(z.string().uuid()).optional().default([]),
+      certifications: z.array(z.string().uuid()).optional().default([]),
+    })
+
+    const validation = therapistDataSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
 
     const validatedData = validation.data
 
-    // Check for duplicate email
+    // Check if profile exists
+    const profile = await db.profile.findUnique({
+      where: { id: validatedData.profileId }
+    })
+
+    if (!profile) {
+      return NextResponse.json(
+        { error: 'Profile not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check if therapist already exists for this profile
     const existingTherapist = await db.therapist.findUnique({
-      where: { email: validatedData.email }
+      where: { profileId: validatedData.profileId }
     })
 
     if (existingTherapist) {
       return NextResponse.json(
-        { error: 'Therapist with this email already exists' },
+        { error: 'Therapist profile already exists for this user' },
         { status: 409 }
       )
     }
 
-    // Check for duplicate license number
-    const existingLicense = await db.therapist.findFirst({
-      where: { licenseNumber: validatedData.licenseNumber }
-    })
+    // Check for duplicate license number if provided
+    if (validatedData.licenseNumber) {
+      const existingLicense = await db.therapist.findFirst({
+        where: { licenseNumber: validatedData.licenseNumber }
+      })
 
-    if (existingLicense) {
-      return NextResponse.json(
-        { error: 'Therapist with this license number already exists' },
-        { status: 409 }
-      )
+      if (existingLicense) {
+        return NextResponse.json(
+          { error: 'Therapist with this license number already exists' },
+          { status: 409 }
+        )
+      }
     }
-
-    // Hash password
-    const hashedPassword = await hash(validatedData.password, 12)
 
     // Create therapist
     const therapist = await db.therapist.create({
       data: {
-        firstName: validatedData.firstName,
-        lastName: validatedData.lastName,
-        email: validatedData.email,
-        phone: validatedData.phone,
+        profileId: validatedData.profileId,
         licenseNumber: validatedData.licenseNumber,
-        licenseExpiry: validatedData.licenseExpiry,
         bio: validatedData.bio,
-        languages: validatedData.languages,
-        status: validatedData.status,
-        isVerified: validatedData.isVerified,
-        password: hashedPassword,
+        isCoordinator: validatedData.isCoordinator,
+      },
+      include: {
+        profile: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true
+          }
+        }
       }
     })
 
@@ -305,16 +274,15 @@ export async function POST(request: NextRequest) {
       message: 'Therapist created successfully',
       data: {
         id: therapist.id,
-        firstName: therapist.firstName,
-        lastName: therapist.lastName,
-        email: therapist.email,
-        phone: therapist.phone,
+        profileId: therapist.profileId,
+        firstName: therapist.profile.firstName,
+        lastName: therapist.profile.lastName,
+        email: therapist.profile.email,
+        phone: therapist.profile.phone,
         licenseNumber: therapist.licenseNumber,
-        licenseExpiry: therapist.licenseExpiry,
         bio: therapist.bio,
-        languages: therapist.languages,
-        status: therapist.status,
-        isVerified: therapist.isVerified,
+        isCoordinator: therapist.isCoordinator,
+        isActive: therapist.isActive,
         createdAt: therapist.createdAt,
         updatedAt: therapist.updatedAt,
       }

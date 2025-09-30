@@ -52,7 +52,7 @@ async function handleDashboard(searchParams: URLSearchParams) {
 
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid parameters', details: validation.error.errors },
+      { error: 'Invalid parameters', details: validation.error.issues },
       { status: 400 }
     )
   }
@@ -64,21 +64,21 @@ async function handleDashboard(searchParams: URLSearchParams) {
   if (options.includeFinancial !== false) {
     const [totalRevenue, paidRevenue, pendingRevenue, overdueRevenue] = await Promise.all([
       db.payment.aggregate({ _sum: { amount: true } }),
-      db.payment.aggregate({ where: { status: 'paid' }, _sum: { amount: true } }),
-      db.payment.aggregate({ where: { status: 'pending' }, _sum: { amount: true } }),
-      db.payment.aggregate({ 
-        where: { status: 'pending', dueDate: { lt: new Date() } }, 
-        _sum: { amount: true } 
+      db.payment.aggregate({ where: { status: 'PAID' }, _sum: { amount: true } }),
+      db.payment.aggregate({ where: { status: 'PENDING' }, _sum: { amount: true } }),
+      db.payment.aggregate({
+        where: { status: 'PENDING', dueDate: { lt: new Date() } },
+        _sum: { amount: true }
       })
     ])
 
     responseData.financial = {
-      totalRevenue: totalRevenue._sum.amount || 0,
-      paidRevenue: paidRevenue._sum.amount || 0,
-      pendingRevenue: pendingRevenue._sum.amount || 0,
-      overdueRevenue: overdueRevenue._sum.amount || 0,
-      collectionRate: totalRevenue._sum.amount 
-        ? ((paidRevenue._sum.amount || 0) / totalRevenue._sum.amount * 100).toFixed(2)
+      totalRevenue: totalRevenue._sum.amount?.toNumber() || 0,
+      paidRevenue: paidRevenue._sum.amount?.toNumber() || 0,
+      pendingRevenue: pendingRevenue._sum.amount?.toNumber() || 0,
+      overdueRevenue: overdueRevenue._sum.amount?.toNumber() || 0,
+      collectionRate: totalRevenue._sum.amount
+        ? (((paidRevenue._sum.amount?.toNumber() || 0) / totalRevenue._sum.amount.toNumber()) * 100).toFixed(2)
         : 0
     }
   }
@@ -86,9 +86,9 @@ async function handleDashboard(searchParams: URLSearchParams) {
   // User data
   if (options.includeUsers !== false) {
     const [totalUsers, activeUsers, byRole] = await Promise.all([
-      db.user.count(),
-      db.user.count({ where: { status: 'active' } }),
-      db.user.groupBy({
+      db.profile.count(),
+      db.profile.count({ where: { isActive: true } }),
+      db.profile.groupBy({
         by: ['role'],
         _count: true
       })
@@ -105,8 +105,8 @@ async function handleDashboard(searchParams: URLSearchParams) {
   if (options.includeSessions !== false) {
     const [totalSessions, completedSessions, upcomingSessions, todaySessions] = await Promise.all([
       db.patientSession.count(),
-      db.patientSession.count({ where: { status: 'completed' } }),
-      db.patientSession.count({ where: { status: 'scheduled' } }),
+      db.patientSession.count({ where: { status: 'COMPLETED' } }),
+      db.patientSession.count({ where: { status: 'SCHEDULED' } }),
       db.patientSession.count({
         where: {
           scheduledDate: new Date().toISOString().split('T')[0]
@@ -159,7 +159,7 @@ async function handleQuickStats() {
     db.therapist.count(),
     db.patientSession.count(),
     db.payment.count(),
-    db.user.count({ where: { status: 'active' } })
+    db.profile.count({ where: { isActive: true } })
   ])
 
   return NextResponse.json({
@@ -182,17 +182,27 @@ async function handleRecentActivity() {
       take: 5,
       include: {
         patient: { select: { firstName: true, lastName: true } },
-        service: { select: { name: true } }
+        serviceAssignment: {
+          include: {
+            service: { select: { name: true } }
+          }
+        }
       }
     }),
     db.payment.findMany({
       orderBy: { createdAt: 'desc' },
       take: 5,
       include: {
-        patient: { select: { firstName: true, lastName: true } }
+        parent: {
+          include: {
+            profile: {
+              select: { firstName: true, lastName: true }
+            }
+          }
+        }
       }
     }),
-    db.user.findMany({
+    db.profile.findMany({
       orderBy: { createdAt: 'desc' },
       take: 5,
       select: {
@@ -212,15 +222,15 @@ async function handleRecentActivity() {
       sessions: recentSessions.map(s => ({
         id: s.id,
         patientName: `${s.patient.firstName} ${s.patient.lastName}`,
-        serviceName: s.service.name,
+        serviceName: s.serviceAssignment?.service?.name || 'N/A',
         scheduledDate: s.scheduledDate,
         status: s.status,
         createdAt: s.createdAt
       })),
       payments: recentPayments.map(p => ({
         id: p.id,
-        amount: p.amount,
-        patientName: `${p.patient.firstName} ${p.patient.lastName}`,
+        amount: p.amount.toNumber(),
+        patientName: `${p.parent?.profile?.firstName || ''} ${p.parent?.profile?.lastName || ''}`,
         status: p.status,
         createdAt: p.createdAt
       })),
@@ -236,7 +246,7 @@ async function handleAlerts() {
   // Check for overdue payments
   const overdueCount = await db.payment.count({
     where: {
-      status: 'pending',
+      status: 'PENDING',
       dueDate: { lt: new Date() }
     }
   })
@@ -252,7 +262,7 @@ async function handleAlerts() {
 
   // Check for pending consultation requests
   const pendingConsultations = await db.consultationRequest.count({
-    where: { status: 'pending' }
+    where: { status: 'PENDING' }
   })
 
   if (pendingConsultations > 10) {
@@ -267,7 +277,7 @@ async function handleAlerts() {
   // Check for unassigned sessions
   const unassignedSessions = await db.patientSession.count({
     where: {
-      status: 'scheduled',
+      status: 'SCHEDULED',
       therapistId: null
     }
   })
@@ -282,8 +292,8 @@ async function handleAlerts() {
   }
 
   // Check for inactive users
-  const inactiveUsers = await db.user.count({
-    where: { status: 'inactive' }
+  const inactiveUsers = await db.profile.count({
+    where: { isActive: false }
   })
 
   if (inactiveUsers > 50) {

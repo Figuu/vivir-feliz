@@ -1,17 +1,13 @@
 import { db } from './db'
-
-export type PaymentMethod = 'CREDIT_CARD' | 'BANK_TRANSFER' | 'CASH' | 'CHECK' | 'DEBIT_CARD' | 'PAYPAL' | 'STRIPE'
-export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'REFUNDED' | 'PARTIALLY_REFUNDED'
-export type PaymentType = 'CONSULTATION' | 'SESSION' | 'EVALUATION' | 'TREATMENT' | 'PLAN_INSTALLMENT' | 'REFUND'
+import { PaymentType, PaymentStatus } from '@prisma/client'
 
 export interface PaymentRequest {
-  patientId: string
-  therapistId: string
+  parentId: string
   consultationRequestId?: string
   paymentPlanId?: string
   amount: number
-  paymentMethod: PaymentMethod
-  paymentType: PaymentType
+  paymentMethod: string
+  type: PaymentType
   description?: string
   reference?: string
   metadata?: Record<string, any>
@@ -21,13 +17,12 @@ export interface PaymentRequest {
 
 export interface PaymentResponse {
   id: string
-  patientId: string
-  therapistId: string
+  parentId: string
   consultationRequestId?: string
   paymentPlanId?: string
   amount: number
-  paymentMethod: PaymentMethod
-  paymentType: PaymentType
+  paymentMethod: string | null
+  type: PaymentType
   status: PaymentStatus
   description?: string
   reference?: string
@@ -64,16 +59,10 @@ export class PaymentApiManager {
 
     try {
       // Validate required fields
-      if (!request.patientId) {
-        errors.push('Patient ID is required')
-      } else if (!this.isValidUUID(request.patientId)) {
-        errors.push('Invalid patient ID format')
-      }
-
-      if (!request.therapistId) {
-        errors.push('Therapist ID is required')
-      } else if (!this.isValidUUID(request.therapistId)) {
-        errors.push('Invalid therapist ID format')
+      if (!request.parentId) {
+        errors.push('Parent ID is required')
+      } else if (!this.isValidUUID(request.parentId)) {
+        errors.push('Invalid parent ID format')
       }
 
       if (!request.amount || request.amount <= 0) {
@@ -84,14 +73,10 @@ export class PaymentApiManager {
 
       if (!request.paymentMethod) {
         errors.push('Payment method is required')
-      } else if (!Object.values(['CREDIT_CARD', 'BANK_TRANSFER', 'CASH', 'CHECK', 'DEBIT_CARD', 'PAYPAL', 'STRIPE']).includes(request.paymentMethod)) {
-        errors.push('Invalid payment method')
       }
 
-      if (!request.paymentType) {
+      if (!request.type) {
         errors.push('Payment type is required')
-      } else if (!Object.values(['CONSULTATION', 'SESSION', 'EVALUATION', 'TREATMENT', 'PLAN_INSTALLMENT', 'REFUND']).includes(request.paymentType)) {
-        errors.push('Invalid payment type')
       }
 
       // Validate optional fields
@@ -115,34 +100,14 @@ export class PaymentApiManager {
         warnings.push('Due date is in the past')
       }
 
-      // Validate business rules
-      if (request.paymentType === 'PLAN_INSTALLMENT' && !request.paymentPlanId) {
-        errors.push('Payment plan ID is required for plan installment payments')
-      }
-
-      if (request.paymentType === 'CONSULTATION' && !request.consultationRequestId) {
-        errors.push('Consultation request ID is required for consultation payments')
-      }
-
-      // Check if patient exists
-      if (request.patientId) {
-        const patient = await db.patient.findUnique({
-          where: { id: request.patientId },
-          select: { id: true, firstName: true, lastName: true }
+      // Check if parent exists
+      if (request.parentId) {
+        const parent = await db.parent.findUnique({
+          where: { id: request.parentId },
+          select: { id: true }
         })
-        if (!patient) {
-          errors.push('Patient not found')
-        }
-      }
-
-      // Check if therapist exists
-      if (request.therapistId) {
-        const therapist = await db.therapist.findUnique({
-          where: { id: request.therapistId },
-          select: { id: true, firstName: true, lastName: true }
-        })
-        if (!therapist) {
-          errors.push('Therapist not found')
+        if (!parent) {
+          errors.push('Parent not found')
         }
       }
 
@@ -163,14 +128,12 @@ export class PaymentApiManager {
       if (request.paymentPlanId) {
         const paymentPlan = await db.paymentPlan.findUnique({
           where: { id: request.paymentPlanId },
-          select: { id: true, status: true, totalAmount: true, paidInstallments: true, totalInstallments: true }
+          select: { id: true, isActive: true }
         })
         if (!paymentPlan) {
           errors.push('Payment plan not found')
-        } else if (paymentPlan.status === 'CANCELLED') {
-          errors.push('Cannot process payment for cancelled payment plan')
-        } else if (paymentPlan.paidInstallments >= paymentPlan.totalInstallments) {
-          errors.push('Payment plan is already fully paid')
+        } else if (!paymentPlan.isActive) {
+          errors.push('Cannot process payment for inactive payment plan')
         }
       }
 
@@ -179,7 +142,7 @@ export class PaymentApiManager {
         const existingPayment = await db.payment.findFirst({
           where: {
             consultationRequestId: request.consultationRequestId,
-            status: { in: ['PENDING', 'COMPLETED'] }
+            status: { in: ['PENDING', 'CONFIRMED'] }
           }
         })
         if (existingPayment) {
@@ -187,7 +150,7 @@ export class PaymentApiManager {
         }
       }
 
-      // Validate payment method specific rules
+      // Payment method specific validations
       if (request.paymentMethod === 'CASH' && request.amount > 1000) {
         warnings.push('Large cash payments may require additional documentation')
       }
@@ -229,53 +192,18 @@ export class PaymentApiManager {
       // Create payment record
       const payment = await db.payment.create({
         data: {
-          patientId: request.patientId,
-          therapistId: request.therapistId,
+          parentId: request.parentId,
           consultationRequestId: request.consultationRequestId,
           paymentPlanId: request.paymentPlanId,
           amount: request.amount,
           paymentMethod: request.paymentMethod,
-          paymentType: request.paymentType,
+          type: request.type,
           status: 'PENDING',
           description: request.description,
           reference: request.reference,
           transactionId,
           dueDate: request.dueDate,
-          metadata: request.metadata ? JSON.stringify(request.metadata) : null
-        },
-        include: {
-          patient: {
-            select: {
-              firstName: true,
-              lastName: true,
-              dateOfBirth: true
-            }
-          },
-          therapist: {
-            select: {
-              firstName: true,
-              lastName: true,
-              user: {
-                select: {
-                  name: true
-                }
-              }
-            }
-          },
-          consultationRequest: {
-            select: {
-              id: true,
-              reason: true,
-              urgency: true
-            }
-          },
-          paymentPlan: {
-            select: {
-              id: true,
-              planName: true,
-              totalAmount: true
-            }
-          }
+          metadata: request.metadata ? request.metadata : null
         }
       })
 
@@ -286,20 +214,19 @@ export class PaymentApiManager {
 
       return {
         id: payment.id,
-        patientId: payment.patientId,
-        therapistId: payment.therapistId,
+        parentId: payment.parentId,
         consultationRequestId: payment.consultationRequestId || undefined,
         paymentPlanId: payment.paymentPlanId || undefined,
-        amount: payment.amount,
-        paymentMethod: payment.paymentMethod as PaymentMethod,
-        paymentType: payment.paymentType as PaymentType,
-        status: payment.status as PaymentStatus,
+        amount: payment.amount.toNumber(),
+        paymentMethod: payment.paymentMethod,
+        type: payment.type,
+        status: payment.status,
         description: payment.description || undefined,
         reference: payment.reference || undefined,
         transactionId: payment.transactionId || undefined,
         processedAt: payment.processedAt || undefined,
         dueDate: payment.dueDate || undefined,
-        metadata: payment.metadata ? JSON.parse(payment.metadata) : undefined,
+        metadata: payment.metadata ? (payment.metadata as Record<string, any>) : undefined,
         createdAt: payment.createdAt,
         updatedAt: payment.updatedAt
       }
@@ -318,16 +245,14 @@ export class PaymentApiManager {
       const payment = await db.payment.findUnique({
         where: { id: paymentId },
         include: {
-          patient: {
+          parent: {
             select: {
-              firstName: true,
-              lastName: true
-            }
-          },
-          therapist: {
-            select: {
-              firstName: true,
-              lastName: true
+              profile: {
+                select: {
+                  firstName: true,
+                  lastName: true
+                }
+              }
             }
           }
         }
@@ -345,7 +270,7 @@ export class PaymentApiManager {
       if (payment.status !== 'PENDING') {
         return {
           success: false,
-          status: payment.status as PaymentStatus,
+          status: payment.status,
           message: `Payment is already ${payment.status.toLowerCase()}`,
           errors: [`Payment is already ${payment.status.toLowerCase()}`]
         }
@@ -397,20 +322,13 @@ export class PaymentApiManager {
       const payment = await db.payment.findUnique({
         where: { id: paymentId },
         include: {
-          patient: {
+          parent: {
             select: {
-              firstName: true,
-              lastName: true,
-              dateOfBirth: true
-            }
-          },
-          therapist: {
-            select: {
-              firstName: true,
-              lastName: true,
-              user: {
+              profile: {
                 select: {
-                  name: true
+                  firstName: true,
+                  lastName: true,
+                  email: true
                 }
               }
             }
@@ -418,14 +336,18 @@ export class PaymentApiManager {
           consultationRequest: {
             select: {
               id: true,
-              reason: true,
-              urgency: true
+              patient: {
+                select: {
+                  firstName: true,
+                  lastName: true
+                }
+              }
             }
           },
           paymentPlan: {
             select: {
               id: true,
-              planName: true,
+              name: true,
               totalAmount: true
             }
           }
@@ -438,20 +360,19 @@ export class PaymentApiManager {
 
       return {
         id: payment.id,
-        patientId: payment.patientId,
-        therapistId: payment.therapistId,
+        parentId: payment.parentId,
         consultationRequestId: payment.consultationRequestId || undefined,
         paymentPlanId: payment.paymentPlanId || undefined,
-        amount: payment.amount,
-        paymentMethod: payment.paymentMethod as PaymentMethod,
-        paymentType: payment.paymentType as PaymentType,
-        status: payment.status as PaymentStatus,
+        amount: payment.amount.toNumber(),
+        paymentMethod: payment.paymentMethod,
+        type: payment.type,
+        status: payment.status,
         description: payment.description || undefined,
         reference: payment.reference || undefined,
         transactionId: payment.transactionId || undefined,
         processedAt: payment.processedAt || undefined,
         dueDate: payment.dueDate || undefined,
-        metadata: payment.metadata ? JSON.parse(payment.metadata) : undefined,
+        metadata: payment.metadata ? (payment.metadata as Record<string, any>) : undefined,
         createdAt: payment.createdAt,
         updatedAt: payment.updatedAt
       }
@@ -479,63 +400,42 @@ export class PaymentApiManager {
         throw new Error('Payment not found')
       }
 
-      if (existingPayment.status === 'COMPLETED') {
-        throw new Error('Cannot update completed payment')
+      if (existingPayment.status === 'CONFIRMED') {
+        throw new Error('Cannot update confirmed payment')
       }
 
       // Build update data
       const updateData: any = {}
-      
+
       if (updates.amount !== undefined) updateData.amount = updates.amount
       if (updates.paymentMethod !== undefined) updateData.paymentMethod = updates.paymentMethod
-      if (updates.paymentType !== undefined) updateData.paymentType = updates.paymentType
+      if (updates.type !== undefined) updateData.type = updates.type
       if (updates.description !== undefined) updateData.description = updates.description
       if (updates.reference !== undefined) updateData.reference = updates.reference
       if (updates.dueDate !== undefined) updateData.dueDate = updates.dueDate
-      if (updates.metadata !== undefined) updateData.metadata = updates.metadata ? JSON.stringify(updates.metadata) : null
+      if (updates.metadata !== undefined) updateData.metadata = updates.metadata || null
 
       // Update payment
       const updatedPayment = await db.payment.update({
         where: { id: paymentId },
-        data: updateData,
-        include: {
-          patient: {
-            select: {
-              firstName: true,
-              lastName: true,
-              dateOfBirth: true
-            }
-          },
-          therapist: {
-            select: {
-              firstName: true,
-              lastName: true,
-              user: {
-                select: {
-                  name: true
-                }
-              }
-            }
-          }
-        }
+        data: updateData
       })
 
       return {
         id: updatedPayment.id,
-        patientId: updatedPayment.patientId,
-        therapistId: updatedPayment.therapistId,
+        parentId: updatedPayment.parentId,
         consultationRequestId: updatedPayment.consultationRequestId || undefined,
         paymentPlanId: updatedPayment.paymentPlanId || undefined,
-        amount: updatedPayment.amount,
-        paymentMethod: updatedPayment.paymentMethod as PaymentMethod,
-        paymentType: updatedPayment.paymentType as PaymentType,
-        status: updatedPayment.status as PaymentStatus,
+        amount: updatedPayment.amount.toNumber(),
+        paymentMethod: updatedPayment.paymentMethod,
+        type: updatedPayment.type,
+        status: updatedPayment.status,
         description: updatedPayment.description || undefined,
         reference: updatedPayment.reference || undefined,
         transactionId: updatedPayment.transactionId || undefined,
         processedAt: updatedPayment.processedAt || undefined,
         dueDate: updatedPayment.dueDate || undefined,
-        metadata: updatedPayment.metadata ? JSON.parse(updatedPayment.metadata) : undefined,
+        metadata: updatedPayment.metadata ? (updatedPayment.metadata as Record<string, any>) : undefined,
         createdAt: updatedPayment.createdAt,
         updatedAt: updatedPayment.updatedAt
       }
@@ -564,19 +464,19 @@ export class PaymentApiManager {
         }
       }
 
-      if (payment.status === 'COMPLETED') {
+      if (payment.status === 'CONFIRMED') {
         return {
           success: false,
-          status: payment.status as PaymentStatus,
-          message: 'Cannot cancel completed payment',
-          errors: ['Cannot cancel completed payment']
+          status: payment.status,
+          message: 'Cannot cancel confirmed payment',
+          errors: ['Cannot cancel confirmed payment']
         }
       }
 
       if (payment.status === 'CANCELLED') {
         return {
           success: false,
-          status: payment.status as PaymentStatus,
+          status: payment.status,
           message: 'Payment is already cancelled',
           errors: ['Payment is already cancelled']
         }
@@ -623,7 +523,7 @@ export class PaymentApiManager {
     await new Promise(resolve => setTimeout(resolve, 1000))
 
     // Simulate different success rates based on payment method
-    const successRates = {
+    const successRates: Record<string, number> = {
       'CREDIT_CARD': 0.95,
       'DEBIT_CARD': 0.98,
       'BANK_TRANSFER': 0.99,
@@ -633,13 +533,13 @@ export class PaymentApiManager {
       'CHECK': 0.85
     }
 
-    const successRate = successRates[payment.paymentMethod as keyof typeof successRates] || 0.95
+    const successRate = successRates[payment.paymentMethod || 'CASH'] || 0.95
     const isSuccess = Math.random() < successRate
 
     if (isSuccess) {
       return {
         success: true,
-        status: 'COMPLETED',
+        status: 'CONFIRMED',
         transactionId: `TXN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         message: 'Payment processed successfully'
       }
@@ -662,21 +562,11 @@ export class PaymentApiManager {
       if (payment.consultationRequestId) {
         await db.consultationRequest.update({
           where: { id: payment.consultationRequestId },
-          data: { status: 'PAID' }
+          data: { paymentStatus: 'PAID' }
         })
       }
 
-      // Update payment plan if applicable
-      if (payment.paymentPlanId) {
-        await db.paymentPlan.update({
-          where: { id: payment.paymentPlanId },
-          data: {
-            paidInstallments: { increment: 1 },
-            remainingInstallments: { decrement: 1 }
-          }
-        })
-      }
-
+      // Payment plan updates are handled separately
     } catch (error) {
       console.error('Error updating related records:', error)
       // Don't throw error as payment is already processed
@@ -686,8 +576,8 @@ export class PaymentApiManager {
   /**
    * Generate transaction ID
    */
-  private static generateTransactionId(paymentMethod: PaymentMethod): string {
-    const prefix = paymentMethod.substring(0, 3).toUpperCase()
+  private static generateTransactionId(paymentMethod: string): string {
+    const prefix = (paymentMethod || 'PAY').substring(0, 3).toUpperCase()
     const timestamp = Date.now().toString(36)
     const random = Math.random().toString(36).substr(2, 6)
     return `${prefix}_${timestamp}_${random}`

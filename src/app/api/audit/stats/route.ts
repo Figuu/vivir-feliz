@@ -14,9 +14,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get current user from database
-    const currentUser = await db.user.findUnique({
+    const currentUser = await db.profile.findUnique({
       where: { id: user.id },
-      select: { role: true, email: true, name: true }
+      select: { role: true, email: true, firstName: true, lastName: true }
     })
 
     if (!currentUser) {
@@ -32,13 +32,13 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const startDate = searchParams.get('startDate') ? new Date(searchParams.get('startDate')!) : undefined
     const endDate = searchParams.get('endDate') ? new Date(searchParams.get('endDate')!) : undefined
-    const userId = searchParams.get('userId') || undefined
+    const profileId = searchParams.get('profileId') || undefined
 
     // Get audit statistics
     const stats = await AuditLogger.getStats({
       startDate,
       endDate,
-      userId,
+      userId: profileId,
     })
 
     return NextResponse.json(stats)

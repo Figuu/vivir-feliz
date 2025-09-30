@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid query parameters', details: validation.error.errors },
+        { error: 'Invalid query parameters', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -250,7 +250,7 @@ export async function POST(request: NextRequest) {
     const validation = userCreateSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -356,7 +356,7 @@ export async function PUT(request: NextRequest) {
     const validation = userUpdateSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -498,7 +498,7 @@ export async function PATCH(request: NextRequest) {
     const validation = passwordUpdateSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }

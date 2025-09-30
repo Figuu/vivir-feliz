@@ -12,8 +12,8 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Get user from Prisma to check role
-  const dbUser = await db.user.findUnique({
+  // Get profile from Prisma to check role
+  const dbUser = await db.profile.findUnique({
     where: { id: user.id },
     select: { role: true }
   })
@@ -22,10 +22,12 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // Fetch users from database with their profiles
-  const users = await db.user.findMany({
+  // Fetch profiles from database
+  const profiles = await db.profile.findMany({
     include: {
-      profile: true,
+      therapist: true,
+      parent: true,
+      admin: true,
     },
     orderBy: {
       createdAt: 'desc'
@@ -33,15 +35,22 @@ export async function GET() {
   })
 
   return NextResponse.json({ 
-    users: users.map(user => ({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      avatar: user.avatar,
-      role: user.role,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-      profile: user.profile
+    users: profiles.map(profile => ({
+      id: profile.id,
+      email: profile.email,
+      name: `${profile.firstName} ${profile.lastName}`,
+      avatar: profile.avatar,
+      role: profile.role,
+      createdAt: profile.createdAt,
+      updatedAt: profile.updatedAt,
+      profile: {
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        phone: profile.phone,
+        therapist: profile.therapist,
+        parent: profile.parent,
+        admin: profile.admin,
+      }
     }))
   })
 }

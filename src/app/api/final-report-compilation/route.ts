@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 
+// NOTE: This route requires FinalReportCompilation, ReportSubmission, and CompilationIncludedReport models to be added to the Prisma schema
+// These models are currently missing and need to be defined before this API can work properly
+
 // Comprehensive validation schemas
 const compilationCreateSchema = z.object({
   // Basic Information
@@ -109,7 +112,7 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      const approvedReports = await db.reportSubmission.findMany({
+      const approvedReports = await (db as any).reportSubmission.findMany({
         where: {
           patientId,
           status: 'approved'
@@ -148,7 +151,7 @@ export async function GET(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid query parameters', details: validation.error.errors },
+        { error: 'Invalid query parameters', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -193,7 +196,7 @@ export async function GET(request: NextRequest) {
 
     // Get compilations with related data
     const [compilations, totalCount] = await Promise.all([
-      db.finalReportCompilation.findMany({
+      (db as any).finalReportCompilation.findMany({
         where: whereClause,
         include: {
           patient: {
@@ -235,7 +238,7 @@ export async function GET(request: NextRequest) {
         skip,
         take: limit,
       }),
-      db.finalReportCompilation.count({ where: whereClause })
+      (db as any).finalReportCompilation.count({ where: whereClause })
     ])
 
     // Calculate pagination metadata
@@ -276,7 +279,7 @@ export async function POST(request: NextRequest) {
     const validation = compilationCreateSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -296,7 +299,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if coordinator exists
-    const coordinator = await db.user.findUnique({
+    const coordinator = await db.profile.findUnique({
       where: { id: validatedData.coordinatorId }
     })
 
@@ -309,7 +312,7 @@ export async function POST(request: NextRequest) {
 
     // Verify all included reports exist and are approved
     const reportIds = validatedData.includedReports.map(r => r.submissionId)
-    const submissions = await db.reportSubmission.findMany({
+    const submissions = await (db as any).reportSubmission.findMany({
       where: {
         id: { in: reportIds },
         status: 'approved',
@@ -325,7 +328,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create compilation with included reports
-    const compilation = await db.finalReportCompilation.create({
+    const compilation = await (db as any).finalReportCompilation.create({
       data: {
         patientId: validatedData.patientId,
         coordinatorId: validatedData.coordinatorId,
@@ -406,7 +409,7 @@ export async function PUT(request: NextRequest) {
     const validation = compilationUpdateSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -414,7 +417,7 @@ export async function PUT(request: NextRequest) {
     const validatedData = validation.data
 
     // Check if compilation exists
-    const existingCompilation = await db.finalReportCompilation.findUnique({
+    const existingCompilation = await (db as any).finalReportCompilation.findUnique({
       where: { id: validatedData.id }
     })
 
@@ -451,7 +454,7 @@ export async function PUT(request: NextRequest) {
     // Handle included reports update if provided
     if (validatedData.includedReports) {
       // Delete existing included reports
-      await db.compilationIncludedReport.deleteMany({
+      await (db as any).compilationIncludedReport.deleteMany({
         where: { compilationId: validatedData.id }
       })
       
@@ -468,7 +471,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update compilation
-    const updatedCompilation = await db.finalReportCompilation.update({
+    const updatedCompilation = await (db as any).finalReportCompilation.update({
       where: { id: validatedData.id },
       data: updateData,
       include: {
@@ -531,7 +534,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check if compilation exists
-    const compilation = await db.finalReportCompilation.findUnique({
+    const compilation = await (db as any).finalReportCompilation.findUnique({
       where: { id }
     })
 
@@ -551,7 +554,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Delete compilation (included reports will be cascade deleted)
-    await db.finalReportCompilation.delete({
+    await (db as any).finalReportCompilation.delete({
       where: { id }
     })
 

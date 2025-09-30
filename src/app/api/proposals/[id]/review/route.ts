@@ -12,7 +12,7 @@ async function getCurrentUser(request: NextRequest) {
     return null
   }
   
-  const dbUser = await db.user.findUnique({
+  const dbUser = await db.profile.findUnique({
     where: { id: user.id },
     select: {
       id: true,
@@ -165,7 +165,7 @@ export async function GET(
       include: {
         services: { include: { service: true } },
         patient: true,
-        therapist: true
+        therapist: { include: { profile: true } }
       }
     })
     if (!proposal) {
@@ -274,7 +274,7 @@ export async function POST(
     const validation = validateProposalReview(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid review data', details: validation.error.errors },
+        { error: 'Invalid review data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -320,7 +320,7 @@ export async function POST(
       where: { id: proposalId },
       data: updatedProposal,
       include: {
-        therapist: true,
+        therapist: { include: { profile: true } },
         patient: true
       }
     })

@@ -153,8 +153,8 @@ export async function GET(request: NextRequest) {
       payments: payments.slice((page - 1) * limit, page * limit)
     }]
     
-    // Apply filters
-    let filteredReports = mockReports
+    // Apply filters to real reports from database
+    let filteredReports = reports
     
     if (reportType) {
       filteredReports = filteredReports.filter(report => report.reportType === reportType)

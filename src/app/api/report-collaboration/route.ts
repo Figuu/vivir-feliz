@@ -225,7 +225,7 @@ export async function GET(request: NextRequest) {
 
       if (!validation.success) {
         return NextResponse.json(
-          { error: 'Invalid query parameters', details: validation.error.errors },
+          { error: 'Invalid query parameters', details: validation.error.issues },
           { status: 400 }
         )
       }
@@ -377,7 +377,7 @@ export async function POST(request: NextRequest) {
       const validation = commentCreateSchema.safeParse(body)
       if (!validation.success) {
         return NextResponse.json(
-          { error: 'Invalid comment data', details: validation.error.errors },
+          { error: 'Invalid comment data', details: validation.error.issues },
           { status: 400 }
         )
       }
@@ -453,7 +453,7 @@ export async function POST(request: NextRequest) {
       const validation = approvalCreateSchema.safeParse(body)
       if (!validation.success) {
         return NextResponse.json(
-          { error: 'Invalid approval data', details: validation.error.errors },
+          { error: 'Invalid approval data', details: validation.error.issues },
           { status: 400 }
         )
       }
@@ -538,7 +538,7 @@ export async function POST(request: NextRequest) {
       const validation = collaborationCreateSchema.safeParse(body)
       if (!validation.success) {
         return NextResponse.json(
-          { error: 'Invalid collaboration data', details: validation.error.errors },
+          { error: 'Invalid collaboration data', details: validation.error.issues },
           { status: 400 }
         )
       }

@@ -1,6 +1,6 @@
 import { LRUCache } from 'lru-cache'
 import { auditSecurity } from '@/lib/audit-logger'
-import { AuditAction, AuditSeverity } from '@prisma/client'
+import { AuditAction, AuditSeverity } from '@/lib/audit-types'
 import { NextRequest } from 'next/server'
 
 export interface RateLimitConfig {
@@ -160,7 +160,7 @@ export class RateLimiter {
       await auditSecurity({
         action: AuditAction.RATE_LIMIT_EXCEEDED,
         userId,
-        severity: AuditSeverity.WARNING,
+        severity: AuditSeverity.MEDIUM,
         request,
         metadata: {
           identifier,

@@ -1,7 +1,6 @@
 import { db } from './db'
+import { PaymentStatus } from '@prisma/client'
 
-export type PaymentStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'REFUNDED'
-export type PaymentMethod = 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CHECK' | 'OTHER'
 export type ReportType = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | 'CUSTOM'
 export type AnalyticsPeriod = 'TODAY' | 'YESTERDAY' | 'LAST_7_DAYS' | 'LAST_30_DAYS' | 'LAST_90_DAYS' | 'THIS_MONTH' | 'LAST_MONTH' | 'THIS_YEAR' | 'LAST_YEAR' | 'CUSTOM'
 
@@ -9,28 +8,23 @@ export interface PaymentAnalyticsFilters {
   startDate?: Date
   endDate?: Date
   paymentStatus?: PaymentStatus[]
-  paymentMethod?: PaymentMethod[]
-  therapistId?: string
-  patientId?: string
+  paymentMethod?: string[]
+  parentId?: string
   minAmount?: number
   maxAmount?: number
-  specialtyId?: string
-  serviceId?: string
 }
 
 export interface PaymentAnalytics {
   totalPayments: number
   totalAmount: number
   averageAmount: number
-  medianAmount: number
-  statusBreakdown: Record<PaymentStatus, number>
-  methodBreakdown: Record<PaymentMethod, number>
-  amountBreakdown: Record<PaymentStatus, number>
+  statusBreakdown: Record<string, number>
+  methodBreakdown: Record<string, number>
+  amountBreakdown: Record<string, number>
   dailyTrends: Array<{
     date: string
     count: number
     amount: number
-    status: PaymentStatus
   }>
   monthlyTrends: Array<{
     month: string
@@ -38,34 +32,11 @@ export interface PaymentAnalytics {
     amount: number
     growth: number
   }>
-  topTherapists: Array<{
-    therapistId: string
-    therapistName: string
-    paymentCount: number
-    totalAmount: number
-    averageAmount: number
-  }>
-  topServices: Array<{
-    serviceId: string
-    serviceName: string
-    paymentCount: number
-    totalAmount: number
-    averageAmount: number
-  }>
-  paymentVelocity: {
-    averageProcessingTime: number
-    completionRate: number
-    failureRate: number
-    cancellationRate: number
-  }
   revenueMetrics: {
     grossRevenue: number
     netRevenue: number
-    refundedAmount: number
     pendingAmount: number
     revenueGrowth: number
-    revenuePerPatient: number
-    revenuePerTherapist: number
   }
 }
 
@@ -83,66 +54,18 @@ export interface FinancialReport {
     totalPayments: number
     averagePayment: number
     growthRate: number
-    topPerformingTherapist: string
-    topService: string
   }
   revenueBreakdown: {
-    byStatus: Record<PaymentStatus, number>
-    byMethod: Record<PaymentMethod, number>
-    byTherapist: Array<{
-      therapistId: string
-      therapistName: string
-      revenue: number
-      percentage: number
-    }>
-    byService: Array<{
-      serviceId: string
-      serviceName: string
-      revenue: number
-      percentage: number
-    }>
+    byStatus: Record<string, number>
+    byMethod: Record<string, number>
     byMonth: Array<{
       month: string
       revenue: number
       growth: number
     }>
   }
-  performanceMetrics: {
-    paymentCompletionRate: number
-    averageProcessingTime: number
-    refundRate: number
-    cancellationRate: number
-    patientRetentionRate: number
-    therapistUtilizationRate: number
-  }
-  trends: {
-    revenueTrend: 'INCREASING' | 'DECREASING' | 'STABLE'
-    paymentVolumeTrend: 'INCREASING' | 'DECREASING' | 'STABLE'
-    averagePaymentTrend: 'INCREASING' | 'DECREASING' | 'STABLE'
-    growthProjection: number
-  }
   insights: string[]
   recommendations: string[]
-}
-
-export interface PaymentForecast {
-  period: {
-    start: Date
-    end: Date
-  }
-  forecastedRevenue: number
-  forecastedPayments: number
-  confidenceLevel: number
-  factors: Array<{
-    factor: string
-    impact: number
-    description: string
-  }>
-  scenarios: {
-    optimistic: number
-    realistic: number
-    pessimistic: number
-  }
 }
 
 export class PaymentAnalyticsManager {
@@ -152,7 +75,7 @@ export class PaymentAnalyticsManager {
   static async getPaymentAnalytics(filters?: PaymentAnalyticsFilters): Promise<PaymentAnalytics> {
     try {
       const whereClause = this.buildWhereClause(filters)
-      
+
       const [
         totalPayments,
         totalAmount,
@@ -161,9 +84,6 @@ export class PaymentAnalyticsManager {
         amountBreakdown,
         dailyTrends,
         monthlyTrends,
-        topTherapists,
-        topServices,
-        paymentVelocity,
         revenueMetrics
       ] = await Promise.all([
         this.getTotalPayments(whereClause),
@@ -173,28 +93,20 @@ export class PaymentAnalyticsManager {
         this.getAmountBreakdown(whereClause),
         this.getDailyTrends(whereClause),
         this.getMonthlyTrends(whereClause),
-        this.getTopTherapists(whereClause),
-        this.getTopServices(whereClause),
-        this.getPaymentVelocity(whereClause),
         this.getRevenueMetrics(whereClause)
       ])
 
       const averageAmount = totalPayments > 0 ? totalAmount / totalPayments : 0
-      const medianAmount = await this.getMedianAmount(whereClause)
 
       return {
         totalPayments,
         totalAmount,
         averageAmount,
-        medianAmount,
         statusBreakdown,
         methodBreakdown,
         amountBreakdown,
         dailyTrends,
         monthlyTrends,
-        topTherapists,
-        topServices,
-        paymentVelocity,
         revenueMetrics
       }
 
@@ -219,13 +131,10 @@ export class PaymentAnalyticsManager {
       }
 
       const analytics = await this.getPaymentAnalytics(filters)
-      
+
       // Generate insights and recommendations
       const insights = await this.generateInsights(analytics, period)
       const recommendations = await this.generateRecommendations(analytics, period)
-
-      // Calculate trends
-      const trends = await this.calculateTrends(analytics, period)
 
       const report: FinancialReport = {
         id: `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -237,36 +146,13 @@ export class PaymentAnalyticsManager {
           totalRevenue: analytics.totalAmount,
           totalPayments: analytics.totalPayments,
           averagePayment: analytics.averageAmount,
-          growthRate: trends.revenueTrend === 'INCREASING' ? analytics.revenueMetrics.revenueGrowth : 0,
-          topPerformingTherapist: analytics.topTherapists[0]?.therapistName || 'N/A',
-          topService: analytics.topServices[0]?.serviceName || 'N/A'
+          growthRate: analytics.revenueMetrics.revenueGrowth
         },
         revenueBreakdown: {
           byStatus: analytics.amountBreakdown,
           byMethod: analytics.methodBreakdown,
-          byTherapist: analytics.topTherapists.map(t => ({
-            therapistId: t.therapistId,
-            therapistName: t.therapistName,
-            revenue: t.totalAmount,
-            percentage: analytics.totalAmount > 0 ? (t.totalAmount / analytics.totalAmount) * 100 : 0
-          })),
-          byService: analytics.topServices.map(s => ({
-            serviceId: s.serviceId,
-            serviceName: s.serviceName,
-            revenue: s.totalAmount,
-            percentage: analytics.totalAmount > 0 ? (s.totalAmount / analytics.totalAmount) * 100 : 0
-          })),
           byMonth: analytics.monthlyTrends
         },
-        performanceMetrics: {
-          paymentCompletionRate: analytics.paymentVelocity.completionRate,
-          averageProcessingTime: analytics.paymentVelocity.averageProcessingTime,
-          refundRate: analytics.paymentVelocity.failureRate,
-          cancellationRate: analytics.paymentVelocity.cancellationRate,
-          patientRetentionRate: await this.getPatientRetentionRate(filters),
-          therapistUtilizationRate: await this.getTherapistUtilizationRate(filters)
-        },
-        trends,
         insights,
         recommendations
       }
@@ -275,53 +161,6 @@ export class PaymentAnalyticsManager {
 
     } catch (error) {
       console.error('Error generating financial report:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Generate payment forecast
-   */
-  static async generatePaymentForecast(
-    period: { start: Date; end: Date },
-    historicalMonths: number = 12
-  ): Promise<PaymentForecast> {
-    try {
-      const historicalStart = new Date(period.start)
-      historicalStart.setMonth(historicalStart.getMonth() - historicalMonths)
-
-      const historicalFilters: PaymentAnalyticsFilters = {
-        startDate: historicalStart,
-        endDate: new Date(period.start)
-      }
-
-      const historicalAnalytics = await this.getPaymentAnalytics(historicalFilters)
-      
-      // Calculate forecast based on historical trends
-      const monthlyGrowth = this.calculateMonthlyGrowth(historicalAnalytics.monthlyTrends)
-      const forecastedRevenue = this.calculateForecastedRevenue(historicalAnalytics, monthlyGrowth, period)
-      const forecastedPayments = this.calculateForecastedPayments(historicalAnalytics, monthlyGrowth, period)
-
-      // Calculate confidence level based on data consistency
-      const confidenceLevel = this.calculateConfidenceLevel(historicalAnalytics)
-
-      // Identify key factors
-      const factors = this.identifyForecastFactors(historicalAnalytics)
-
-      // Generate scenarios
-      const scenarios = this.generateScenarios(forecastedRevenue, confidenceLevel)
-
-      return {
-        period,
-        forecastedRevenue,
-        forecastedPayments,
-        confidenceLevel,
-        factors,
-        scenarios
-      }
-
-    } catch (error) {
-      console.error('Error generating payment forecast:', error)
       throw error
     }
   }
@@ -353,14 +192,14 @@ export class PaymentAnalyticsManager {
       ])
 
       const comparison = {
-        revenueChange: previousAnalytics.totalAmount > 0 
-          ? ((currentAnalytics.totalAmount - previousAnalytics.totalAmount) / previousAnalytics.totalAmount) * 100 
+        revenueChange: previousAnalytics.totalAmount > 0
+          ? ((currentAnalytics.totalAmount - previousAnalytics.totalAmount) / previousAnalytics.totalAmount) * 100
           : 0,
-        paymentCountChange: previousAnalytics.totalPayments > 0 
-          ? ((currentAnalytics.totalPayments - previousAnalytics.totalPayments) / previousAnalytics.totalPayments) * 100 
+        paymentCountChange: previousAnalytics.totalPayments > 0
+          ? ((currentAnalytics.totalPayments - previousAnalytics.totalPayments) / previousAnalytics.totalPayments) * 100
           : 0,
-        averagePaymentChange: previousAnalytics.averageAmount > 0 
-          ? ((currentAnalytics.averageAmount - previousAnalytics.averageAmount) / previousAnalytics.averageAmount) * 100 
+        averagePaymentChange: previousAnalytics.averageAmount > 0
+          ? ((currentAnalytics.averageAmount - previousAnalytics.averageAmount) / previousAnalytics.averageAmount) * 100
           : 0,
         growthRate: currentAnalytics.revenueMetrics.revenueGrowth
       }
@@ -423,8 +262,8 @@ export class PaymentAnalyticsManager {
         today: {
           payments: todayData.totalPayments,
           revenue: todayData.totalAmount,
-          pending: todayData.statusBreakdown.PENDING || 0,
-          completed: todayData.statusBreakdown.COMPLETED || 0
+          pending: todayData.statusBreakdown['PENDING'] || 0,
+          completed: todayData.statusBreakdown['CONFIRMED'] || 0
         },
         thisWeek: {
           payments: thisWeekData.totalPayments,
@@ -463,12 +302,8 @@ export class PaymentAnalyticsManager {
       whereClause.paymentMethod = { in: filters.paymentMethod }
     }
 
-    if (filters?.therapistId) {
-      whereClause.therapistId = filters.therapistId
-    }
-
-    if (filters?.patientId) {
-      whereClause.patientId = filters.patientId
+    if (filters?.parentId) {
+      whereClause.parentId = filters.parentId
     }
 
     if (filters?.minAmount || filters?.maxAmount) {
@@ -489,72 +324,51 @@ export class PaymentAnalyticsManager {
       where: whereClause,
       _sum: { amount: true }
     })
-    return result._sum.amount || 0
+    return result._sum.amount?.toNumber() || 0
   }
 
-  private static async getStatusBreakdown(whereClause: any): Promise<Record<PaymentStatus, number>> {
+  private static async getStatusBreakdown(whereClause: any): Promise<Record<string, number>> {
     const breakdown = await db.payment.groupBy({
       by: ['status'],
       where: whereClause,
       _count: { status: true }
     })
 
-    const result: Record<PaymentStatus, number> = {
-      PENDING: 0,
-      PROCESSING: 0,
-      COMPLETED: 0,
-      FAILED: 0,
-      CANCELLED: 0,
-      REFUNDED: 0
-    }
-
+    const result: Record<string, number> = {}
     breakdown.forEach(item => {
-      result[item.status as PaymentStatus] = item._count.status
+      result[item.status] = item._count.status
     })
 
     return result
   }
 
-  private static async getMethodBreakdown(whereClause: any): Promise<Record<PaymentMethod, number>> {
+  private static async getMethodBreakdown(whereClause: any): Promise<Record<string, number>> {
     const breakdown = await db.payment.groupBy({
       by: ['paymentMethod'],
       where: whereClause,
       _count: { paymentMethod: true }
     })
 
-    const result: Record<PaymentMethod, number> = {
-      CASH: 0,
-      CARD: 0,
-      BANK_TRANSFER: 0,
-      CHECK: 0,
-      OTHER: 0
-    }
-
+    const result: Record<string, number> = {}
     breakdown.forEach(item => {
-      result[item.paymentMethod as PaymentMethod] = item._count.paymentMethod
+      if (item.paymentMethod) {
+        result[item.paymentMethod] = item._count.paymentMethod
+      }
     })
 
     return result
   }
 
-  private static async getAmountBreakdown(whereClause: any): Promise<Record<PaymentStatus, number>> {
+  private static async getAmountBreakdown(whereClause: any): Promise<Record<string, number>> {
     const breakdown = await db.payment.groupBy({
       by: ['status'],
       where: whereClause,
       _sum: { amount: true }
     })
 
-    const result: Record<PaymentStatus, number> = {
-      PENDING: 0,
-      PROCESSING: 0,
-      COMPLETED: 0,
-      FAILED: 0,
-      CANCELLED: 0,
-      REFUNDED: 0
-    }
-
+    const result: Record<string, number> = {}
     breakdown.forEach(item => {
-      result[item.status as PaymentStatus] = item._sum.amount || 0
+      result[item.status] = item._sum.amount?.toNumber() || 0
     })
 
     return result
@@ -564,28 +378,25 @@ export class PaymentAnalyticsManager {
     date: string
     count: number
     amount: number
-    status: PaymentStatus
   }>> {
-    // Simplified implementation - in a real system, you'd use proper date aggregation
     const payments = await db.payment.findMany({
       where: whereClause,
       select: {
         createdAt: true,
-        amount: true,
-        status: true
+        amount: true
       },
       orderBy: { createdAt: 'asc' }
     })
 
-    const trends: Record<string, { count: number; amount: number; status: PaymentStatus }> = {}
-    
+    const trends: Record<string, { count: number; amount: number }> = {}
+
     payments.forEach(payment => {
       const date = payment.createdAt.toISOString().split('T')[0]
       if (!trends[date]) {
-        trends[date] = { count: 0, amount: 0, status: payment.status as PaymentStatus }
+        trends[date] = { count: 0, amount: 0 }
       }
       trends[date].count++
-      trends[date].amount += payment.amount
+      trends[date].amount += payment.amount.toNumber()
     })
 
     return Object.entries(trends).map(([date, data]) => ({
@@ -600,7 +411,6 @@ export class PaymentAnalyticsManager {
     amount: number
     growth: number
   }>> {
-    // Simplified implementation - in a real system, you'd use proper date aggregation
     const payments = await db.payment.findMany({
       where: whereClause,
       select: {
@@ -611,22 +421,22 @@ export class PaymentAnalyticsManager {
     })
 
     const trends: Record<string, { count: number; amount: number }> = {}
-    
+
     payments.forEach(payment => {
       const month = payment.createdAt.toISOString().substring(0, 7) // YYYY-MM
       if (!trends[month]) {
         trends[month] = { count: 0, amount: 0 }
       }
       trends[month].count++
-      trends[month].amount += payment.amount
+      trends[month].amount += payment.amount.toNumber()
     })
 
     const sortedMonths = Object.keys(trends).sort()
     return sortedMonths.map((month, index) => {
       const current = trends[month]
       const previous = index > 0 ? trends[sortedMonths[index - 1]] : null
-      const growth = previous && previous.amount > 0 
-        ? ((current.amount - previous.amount) / previous.amount) * 100 
+      const growth = previous && previous.amount > 0
+        ? ((current.amount - previous.amount) / previous.amount) * 100
         : 0
 
       return {
@@ -638,125 +448,26 @@ export class PaymentAnalyticsManager {
     })
   }
 
-  private static async getTopTherapists(whereClause: any): Promise<Array<{
-    therapistId: string
-    therapistName: string
-    paymentCount: number
-    totalAmount: number
-    averageAmount: number
-  }>> {
-    const breakdown = await db.payment.groupBy({
-      by: ['therapistId'],
-      where: whereClause,
-      _count: { therapistId: true },
-      _sum: { amount: true }
-    })
-
-    // Get therapist names
-    const therapistIds = breakdown.map(item => item.therapistId)
-    const therapists = await db.therapist.findMany({
-      where: { id: { in: therapistIds } },
-      select: { id: true, firstName: true, lastName: true }
-    })
-
-    const therapistMap = new Map(therapists.map(t => [t.id, `${t.firstName} ${t.lastName}`]))
-
-    return breakdown
-      .map(item => ({
-        therapistId: item.therapistId,
-        therapistName: therapistMap.get(item.therapistId) || 'Unknown',
-        paymentCount: item._count.therapistId,
-        totalAmount: item._sum.amount || 0,
-        averageAmount: item._count.therapistId > 0 ? (item._sum.amount || 0) / item._count.therapistId : 0
-      }))
-      .sort((a, b) => b.totalAmount - a.totalAmount)
-      .slice(0, 10)
-  }
-
-  private static async getTopServices(whereClause: any): Promise<Array<{
-    serviceId: string
-    serviceName: string
-    paymentCount: number
-    totalAmount: number
-    averageAmount: number
-  }>> {
-    // This would require joining with services table
-    // For now, return empty array
-    return []
-  }
-
-  private static async getPaymentVelocity(whereClause: any): Promise<{
-    averageProcessingTime: number
-    completionRate: number
-    failureRate: number
-    cancellationRate: number
-  }> {
-    const statusBreakdown = await this.getStatusBreakdown(whereClause)
-    const totalPayments = Object.values(statusBreakdown).reduce((sum, count) => sum + count, 0)
-
-    return {
-      averageProcessingTime: 0, // Would need to calculate from timestamps
-      completionRate: totalPayments > 0 ? (statusBreakdown.COMPLETED / totalPayments) * 100 : 0,
-      failureRate: totalPayments > 0 ? (statusBreakdown.FAILED / totalPayments) * 100 : 0,
-      cancellationRate: totalPayments > 0 ? (statusBreakdown.CANCELLED / totalPayments) * 100 : 0
-    }
-  }
-
   private static async getRevenueMetrics(whereClause: any): Promise<{
     grossRevenue: number
     netRevenue: number
-    refundedAmount: number
     pendingAmount: number
     revenueGrowth: number
-    revenuePerPatient: number
-    revenuePerTherapist: number
   }> {
     const amountBreakdown = await this.getAmountBreakdown(whereClause)
-    const grossRevenue = amountBreakdown.COMPLETED
-    const refundedAmount = amountBreakdown.REFUNDED
-    const pendingAmount = amountBreakdown.PENDING
-    const netRevenue = grossRevenue - refundedAmount
+    const grossRevenue = amountBreakdown['CONFIRMED'] || 0
+    const pendingAmount = amountBreakdown['PENDING'] || 0
+    const netRevenue = grossRevenue
 
-    // Calculate revenue growth (simplified)
-    const revenueGrowth = 0 // Would need historical data
-
-    // Calculate per-patient and per-therapist revenue
-    const uniquePatients = await db.payment.findMany({
-      where: whereClause,
-      select: { patientId: true },
-      distinct: ['patientId']
-    })
-
-    const uniqueTherapists = await db.payment.findMany({
-      where: whereClause,
-      select: { therapistId: true },
-      distinct: ['therapistId']
-    })
+    // Simplified revenue growth calculation
+    const revenueGrowth = 0
 
     return {
       grossRevenue,
       netRevenue,
-      refundedAmount,
       pendingAmount,
-      revenueGrowth,
-      revenuePerPatient: uniquePatients.length > 0 ? netRevenue / uniquePatients.length : 0,
-      revenuePerTherapist: uniqueTherapists.length > 0 ? netRevenue / uniqueTherapists.length : 0
+      revenueGrowth
     }
-  }
-
-  private static async getMedianAmount(whereClause: any): Promise<number> {
-    const payments = await db.payment.findMany({
-      where: whereClause,
-      select: { amount: true },
-      orderBy: { amount: 'asc' }
-    })
-
-    if (payments.length === 0) return 0
-
-    const middle = Math.floor(payments.length / 2)
-    return payments.length % 2 === 0
-      ? (payments[middle - 1].amount + payments[middle].amount) / 2
-      : payments[middle].amount
   }
 
   private static async generateInsights(analytics: PaymentAnalytics, period: { start: Date; end: Date }): Promise<string[]> {
@@ -769,16 +480,13 @@ export class PaymentAnalyticsManager {
       insights.push(`Revenue decline of ${Math.abs(analytics.revenueMetrics.revenueGrowth).toFixed(1)}% requires attention`)
     }
 
-    // Payment method insights
-    const cardPayments = analytics.methodBreakdown.CARD
+    // Payment completion insights
     const totalPayments = analytics.totalPayments
-    if (totalPayments > 0 && (cardPayments / totalPayments) > 0.7) {
-      insights.push('Card payments dominate with over 70% of transactions')
-    }
+    const completedPayments = analytics.statusBreakdown['CONFIRMED'] || 0
+    const completionRate = totalPayments > 0 ? (completedPayments / totalPayments) * 100 : 0
 
-    // Completion rate insights
-    if (analytics.paymentVelocity.completionRate < 80) {
-      insights.push(`Low completion rate of ${analytics.paymentVelocity.completionRate.toFixed(1)}% indicates potential issues`)
+    if (completionRate < 80) {
+      insights.push(`Low completion rate of ${completionRate.toFixed(1)}% indicates potential issues`)
     }
 
     return insights
@@ -792,112 +500,16 @@ export class PaymentAnalyticsManager {
       recommendations.push('Consider implementing promotional campaigns to boost revenue')
     }
 
-    // Payment method recommendations
-    if (analytics.methodBreakdown.CASH > analytics.methodBreakdown.CARD) {
-      recommendations.push('Encourage card payments to reduce cash handling and improve tracking')
-    }
-
     // Completion rate recommendations
-    if (analytics.paymentVelocity.completionRate < 85) {
+    const totalPayments = analytics.totalPayments
+    const completedPayments = analytics.statusBreakdown['CONFIRMED'] || 0
+    const completionRate = totalPayments > 0 ? (completedPayments / totalPayments) * 100 : 0
+
+    if (completionRate < 85) {
       recommendations.push('Review payment process to identify and resolve completion issues')
     }
 
     return recommendations
-  }
-
-  private static async calculateTrends(analytics: PaymentAnalytics, period: { start: Date; end: Date }): Promise<{
-    revenueTrend: 'INCREASING' | 'DECREASING' | 'STABLE'
-    paymentVolumeTrend: 'INCREASING' | 'DECREASING' | 'STABLE'
-    averagePaymentTrend: 'INCREASING' | 'DECREASING' | 'STABLE'
-    growthProjection: number
-  }> {
-    // Simplified trend calculation
-    const revenueTrend = analytics.revenueMetrics.revenueGrowth > 5 ? 'INCREASING' : 
-                        analytics.revenueMetrics.revenueGrowth < -5 ? 'DECREASING' : 'STABLE'
-    
-    const paymentVolumeTrend = 'STABLE' // Would need historical data
-    const averagePaymentTrend = 'STABLE' // Would need historical data
-    const growthProjection = analytics.revenueMetrics.revenueGrowth
-
-    return {
-      revenueTrend,
-      paymentVolumeTrend,
-      averagePaymentTrend,
-      growthProjection
-    }
-  }
-
-  private static async getPatientRetentionRate(filters: PaymentAnalyticsFilters): Promise<number> {
-    // Simplified implementation
-    return 75 // Would need to calculate based on repeat patients
-  }
-
-  private static async getTherapistUtilizationRate(filters: PaymentAnalyticsFilters): Promise<number> {
-    // Simplified implementation
-    return 80 // Would need to calculate based on therapist schedules
-  }
-
-  private static calculateMonthlyGrowth(monthlyTrends: Array<{ month: string; count: number; amount: number; growth: number }>): number {
-    if (monthlyTrends.length < 2) return 0
-    
-    const recentGrowth = monthlyTrends.slice(-3).reduce((sum, trend) => sum + trend.growth, 0)
-    return recentGrowth / Math.min(3, monthlyTrends.length)
-  }
-
-  private static calculateForecastedRevenue(analytics: PaymentAnalytics, monthlyGrowth: number, period: { start: Date; end: Date }): number {
-    const months = (period.end.getTime() - period.start.getTime()) / (1000 * 60 * 60 * 24 * 30)
-    const currentMonthlyRevenue = analytics.totalAmount / 12 // Assuming 12 months of data
-    return currentMonthlyRevenue * months * (1 + monthlyGrowth / 100)
-  }
-
-  private static calculateForecastedPayments(analytics: PaymentAnalytics, monthlyGrowth: number, period: { start: Date; end: Date }): number {
-    const months = (period.end.getTime() - period.start.getTime()) / (1000 * 60 * 60 * 24 * 30)
-    const currentMonthlyPayments = analytics.totalPayments / 12 // Assuming 12 months of data
-    return currentMonthlyPayments * months * (1 + monthlyGrowth / 100)
-  }
-
-  private static calculateConfidenceLevel(analytics: PaymentAnalytics): number {
-    // Simplified confidence calculation based on data consistency
-    const completionRate = analytics.paymentVelocity.completionRate
-    const dataConsistency = Math.min(100, completionRate + (100 - analytics.paymentVelocity.failureRate))
-    return Math.max(50, dataConsistency)
-  }
-
-  private static identifyForecastFactors(analytics: PaymentAnalytics): Array<{
-    factor: string
-    impact: number
-    description: string
-  }> {
-    return [
-      {
-        factor: 'Payment Completion Rate',
-        impact: analytics.paymentVelocity.completionRate,
-        description: 'Higher completion rates lead to more accurate forecasts'
-      },
-      {
-        factor: 'Revenue Growth',
-        impact: analytics.revenueMetrics.revenueGrowth,
-        description: 'Historical growth patterns influence future projections'
-      },
-      {
-        factor: 'Payment Method Distribution',
-        impact: 75, // Simplified
-        description: 'Card payments tend to be more predictable than cash'
-      }
-    ]
-  }
-
-  private static generateScenarios(forecastedRevenue: number, confidenceLevel: number): {
-    optimistic: number
-    realistic: number
-    pessimistic: number
-  } {
-    const confidenceFactor = confidenceLevel / 100
-    const optimistic = forecastedRevenue * (1 + (1 - confidenceFactor) * 0.2)
-    const realistic = forecastedRevenue
-    const pessimistic = forecastedRevenue * (1 - (1 - confidenceFactor) * 0.2)
-
-    return { optimistic, realistic, pessimistic }
   }
 
   private static getPeriodDates(period: AnalyticsPeriod, customPeriod?: { start: Date; end: Date }): { start: Date; end: Date } {
@@ -974,28 +586,24 @@ export class PaymentAnalyticsManager {
     }> = []
 
     // High pending payments
-    if (todayData.statusBreakdown.PENDING > 10) {
+    const pendingCount = todayData.statusBreakdown['PENDING'] || 0
+    if (pendingCount > 10) {
       alerts.push({
         type: 'HIGH_PENDING',
-        message: `${todayData.statusBreakdown.PENDING} payments are pending`,
+        message: `${pendingCount} payments are pending`,
         severity: 'MEDIUM'
       })
     }
 
     // Low completion rate
-    if (todayData.paymentVelocity.completionRate < 70) {
+    const totalPayments = todayData.totalPayments
+    const completedPayments = todayData.statusBreakdown['CONFIRMED'] || 0
+    const completionRate = totalPayments > 0 ? (completedPayments / totalPayments) * 100 : 100
+
+    if (completionRate < 70 && totalPayments > 0) {
       alerts.push({
         type: 'LOW_COMPLETION',
-        message: `Low completion rate: ${todayData.paymentVelocity.completionRate.toFixed(1)}%`,
-        severity: 'HIGH'
-      })
-    }
-
-    // High refund rate
-    if (todayData.paymentVelocity.failureRate > 15) {
-      alerts.push({
-        type: 'HIGH_REFUND',
-        message: `High refund rate: ${todayData.paymentVelocity.failureRate.toFixed(1)}%`,
+        message: `Low completion rate: ${completionRate.toFixed(1)}%`,
         severity: 'HIGH'
       })
     }
@@ -1003,5 +611,3 @@ export class PaymentAnalyticsManager {
     return alerts
   }
 }
-
-

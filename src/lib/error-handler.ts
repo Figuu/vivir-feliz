@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { AuditLogger } from './audit-logger'
-import { AuditAction, AuditSeverity } from '@prisma/client'
+import { AuditAction, AuditSeverity } from '@/lib/audit-types'
 import { createLogger } from './monitoring-config'
 
 const logger = createLogger('ErrorHandler')

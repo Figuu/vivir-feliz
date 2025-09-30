@@ -76,46 +76,53 @@ export async function GET(request: NextRequest) {
       const [
         pendingConsultations,
         pendingPayments,
-        confirmedToday,
-        overdueConfirmations
+        confirmedConsultationsToday,
+        confirmedPaymentsToday,
+        overdueConsultations,
+        overduePayments
       ] = await Promise.all([
         db.consultationRequest.count({
-          where: { status: 'pending' }
+          where: { status: 'PENDING' }
         }),
         db.payment.count({
-          where: { status: 'pending' }
+          where: { status: 'PENDING' }
         }),
         db.consultationRequest.count({
           where: {
-            status: 'confirmed',
-            updatedAt: {
-              gte: new Date(new Date().setHours(0, 0, 0, 0))
-            }
-          }
-        }) + db.payment.count({
-          where: {
-            status: 'confirmed',
+            status: 'CONFIRMED',
             updatedAt: {
               gte: new Date(new Date().setHours(0, 0, 0, 0))
             }
           }
         }),
+        db.payment.count({
+          where: {
+            status: 'CONFIRMED',
+            updatedAt: {
+              gte: new Date(new Date().setHours(0, 0, 0, 0))
+            }
+          }
+        }),
         db.consultationRequest.count({
           where: {
-            status: 'pending',
+            status: 'PENDING',
             createdAt: {
               lte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Over 24 hours old
             }
           }
-        }) + db.payment.count({
+        }),
+        db.payment.count({
           where: {
-            status: 'pending',
+            status: 'PENDING',
             createdAt: {
               lte: new Date(Date.now() - 24 * 60 * 60 * 1000)
             }
           }
         })
       ])
+
+      const confirmedToday = confirmedConsultationsToday + confirmedPaymentsToday
+      const overdueConfirmations = overdueConsultations + overduePayments
 
       return NextResponse.json({
         success: true,
@@ -143,7 +150,7 @@ export async function GET(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid query parameters', details: validation.error.errors },
+        { error: 'Invalid query parameters', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -179,14 +186,17 @@ export async function GET(request: NextRequest) {
             patient: {
               select: {
                 firstName: true,
-                lastName: true,
-                email: true
+                lastName: true
               }
             },
             therapist: {
-              select: {
-                firstName: true,
-                lastName: true
+              include: {
+                profile: {
+                  select: {
+                    firstName: true,
+                    lastName: true
+                  }
+                }
               }
             }
           },
@@ -221,11 +231,15 @@ export async function GET(request: NextRequest) {
         db.payment.findMany({
           where: whereClause,
           include: {
-            patient: {
-              select: {
-                firstName: true,
-                lastName: true,
-                email: true
+            parent: {
+              include: {
+                profile: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                    email: true
+                  }
+                }
               }
             }
           },
@@ -276,7 +290,7 @@ export async function POST(request: NextRequest) {
       const validation = consultationConfirmationSchema.safeParse(body)
       if (!validation.success) {
         return NextResponse.json(
-          { error: 'Invalid request data', details: validation.error.errors },
+          { error: 'Invalid request data', details: validation.error.issues },
           { status: 400 }
         )
       }
@@ -299,7 +313,7 @@ export async function POST(request: NextRequest) {
       switch (validatedData.action) {
         case 'confirm':
           updateData = {
-            status: 'confirmed',
+            status: 'CONFIRMED',
             confirmedAt: new Date(),
             confirmedBy: validatedData.confirmedBy
           }
@@ -314,7 +328,7 @@ export async function POST(request: NextRequest) {
           }
           
           updateData = {
-            status: 'rescheduled',
+            status: 'SCHEDULED',
             scheduledDate: validatedData.newDate,
             scheduledTime: validatedData.newTime,
             rescheduledAt: new Date(),
@@ -331,7 +345,7 @@ export async function POST(request: NextRequest) {
           }
           
           updateData = {
-            status: 'cancelled',
+            status: 'CANCELLED',
             cancellationReason: validatedData.cancellationReason,
             cancelledAt: new Date(),
             cancelledBy: validatedData.confirmedBy
@@ -343,8 +357,12 @@ export async function POST(request: NextRequest) {
         where: { id: validatedData.consultationId },
         data: updateData,
         include: {
-          patient: { select: { firstName: true, lastName: true, email: true } },
-          therapist: { select: { firstName: true, lastName: true } }
+          patient: { select: { firstName: true, lastName: true } },
+          therapist: { 
+            include: { 
+              profile: { select: { firstName: true, lastName: true } } 
+            } 
+          }
         }
       })
 
@@ -357,7 +375,7 @@ export async function POST(request: NextRequest) {
       const validation = paymentConfirmationSchema.safeParse(body)
       if (!validation.success) {
         return NextResponse.json(
-          { error: 'Invalid request data', details: validation.error.errors },
+          { error: 'Invalid request data', details: validation.error.issues },
           { status: 400 }
         )
       }
@@ -380,11 +398,9 @@ export async function POST(request: NextRequest) {
       switch (validatedData.action) {
         case 'confirm':
           updateData = {
-            status: 'confirmed',
-            confirmedAmount: validatedData.confirmedAmount || payment.amount,
-            transactionReference: validatedData.transactionReference,
-            confirmedAt: new Date(),
-            confirmedBy: validatedData.confirmedBy
+            status: 'CONFIRMED',
+            confirmedBy: validatedData.confirmedBy,
+            confirmedAt: new Date()
           }
           break
           
@@ -397,10 +413,8 @@ export async function POST(request: NextRequest) {
           }
           
           updateData = {
-            status: 'rejected',
-            rejectionReason: validatedData.rejectionReason,
-            rejectedAt: new Date(),
-            rejectedBy: validatedData.confirmedBy
+            status: 'REJECTED',
+            notes: validatedData.rejectionReason
           }
           break
           
@@ -413,10 +427,8 @@ export async function POST(request: NextRequest) {
           }
           
           updateData = {
-            status: 'correction_requested',
-            correctionNotes: validatedData.correctionNotes,
-            correctionRequestedAt: new Date(),
-            correctionRequestedBy: validatedData.confirmedBy
+            status: 'PENDING',
+            notes: validatedData.correctionNotes
           }
           break
       }
@@ -425,7 +437,11 @@ export async function POST(request: NextRequest) {
         where: { id: validatedData.paymentId },
         data: updateData,
         include: {
-          patient: { select: { firstName: true, lastName: true, email: true } }
+          parent: { 
+            include: { 
+              profile: { select: { firstName: true, lastName: true, email: true } } 
+            } 
+          }
         }
       })
 

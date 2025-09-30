@@ -281,7 +281,7 @@ async function handleSetCapacityConfig(body: any) {
   const validation = capacityConfigSchema.safeParse(body)
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid request data', details: validation.error.errors },
+      { error: 'Invalid request data', details: validation.error.issues },
       { status: 400 }
     )
   }
@@ -354,7 +354,7 @@ async function handleAnalyzeWorkload(body: any) {
   const validation = workloadAnalysisSchema.safeParse(body)
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid request data', details: validation.error.errors },
+      { error: 'Invalid request data', details: validation.error.issues },
       { status: 400 }
     )
   }
@@ -383,7 +383,7 @@ async function handleSetCapacityAlert(body: any) {
   const validation = capacityAlertSchema.safeParse(body)
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid request data', details: validation.error.errors },
+      { error: 'Invalid request data', details: validation.error.issues },
       { status: 400 }
     )
   }

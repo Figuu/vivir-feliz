@@ -1,85 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
-import { hash, compare } from 'bcryptjs'
 
 // Validation schemas
 const therapistUpdateSchema = z.object({
-  firstName: z.string()
-    .min(2, 'First name must be at least 2 characters')
-    .max(50, 'First name cannot exceed 50 characters')
-    .regex(/^[a-zA-Z\s]+$/, 'First name can only contain letters and spaces')
-    .transform(val => val.trim().replace(/\s+/g, ' ').split(' ').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    ).join(' '))
-    .optional(),
-  
-  lastName: z.string()
-    .min(2, 'Last name must be at least 2 characters')
-    .max(50, 'Last name cannot exceed 50 characters')
-    .regex(/^[a-zA-Z\s]+$/, 'Last name can only contain letters and spaces')
-    .transform(val => val.trim().replace(/\s+/g, ' ').split(' ').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    ).join(' '))
-    .optional(),
-  
-  email: z.string()
-    .email('Invalid email format')
-    .max(100, 'Email cannot exceed 100 characters')
-    .toLowerCase()
-    .transform(val => val.trim())
-    .optional(),
-  
-  phone: z.string()
-    .regex(/^\+?[\d\s\-\(\)]+$/, 'Invalid phone number format')
-    .min(10, 'Phone number must be at least 10 digits')
-    .max(20, 'Phone number cannot exceed 20 characters')
-    .transform(val => val.replace(/\D/g, ''))
-    .optional(),
-  
   licenseNumber: z.string()
     .min(5, 'License number must be at least 5 characters')
     .max(50, 'License number cannot exceed 50 characters')
-    .regex(/^[A-Z0-9\-]+$/, 'License number can only contain uppercase letters, numbers, and hyphens')
-    .transform(val => val.toUpperCase().trim())
     .optional(),
-  
-  licenseExpiry: z.string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'License expiry must be in YYYY-MM-DD format')
-    .transform(val => new Date(val))
-    .refine(date => date > new Date(), 'License expiry must be in the future')
-    .optional(),
-  
+
   bio: z.string()
     .max(1000, 'Bio cannot exceed 1000 characters')
-    .optional()
-    .transform(val => val?.trim()),
-  
-  languages: z.array(z.string().max(50, 'Language name cannot exceed 50 characters')).optional(),
-  
-  status: z.enum(['active', 'inactive', 'suspended', 'pending']).optional(),
-  isVerified: z.boolean().optional(),
-})
+    .optional(),
 
-const passwordChangeSchema = z.object({
-  currentPassword: z.string().min(1, 'Current password is required'),
-  newPassword: z.string()
-    .min(8, 'Password must be at least 8 characters')
-    .max(128, 'Password cannot exceed 128 characters')
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, 
-      'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
-  confirmPassword: z.string().min(1, 'Password confirmation is required'),
-}).refine(data => data.newPassword === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-})
-
-const specialtyUpdateSchema = z.object({
-  specialtyIds: z.array(z.string().uuid('Invalid specialty ID')),
-})
-
-const certificationUpdateSchema = z.object({
-  certificationIds: z.array(z.string().uuid('Invalid certification ID')),
+  isCoordinator: z.boolean().optional(),
+  canTakeConsultations: z.boolean().optional(),
+  isActive: z.boolean().optional(),
 })
 
 // GET /api/therapist/[id] - Get specific therapist
@@ -102,6 +38,18 @@ export async function GET(
     const therapist = await db.therapist.findUnique({
       where: { id: therapistId },
       include: {
+        profile: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            avatar: true,
+            isActive: true,
+            createdAt: true,
+            updatedAt: true
+          }
+        },
         specialties: {
           include: {
             specialty: {
@@ -139,8 +87,7 @@ export async function GET(
         },
         _count: {
           select: {
-            sessions: true,
-            patients: true
+            patientSessions: true
           }
         }
       }
@@ -153,31 +100,31 @@ export async function GET(
       )
     }
 
-    // Return therapist data (without password)
+    // Return therapist data
     return NextResponse.json({
       success: true,
       data: {
         id: therapist.id,
-        firstName: therapist.firstName,
-        lastName: therapist.lastName,
-        email: therapist.email,
-        phone: therapist.phone,
+        profileId: therapist.profileId,
+        firstName: therapist.profile.firstName,
+        lastName: therapist.profile.lastName,
+        email: therapist.profile.email,
+        phone: therapist.profile.phone,
+        avatar: therapist.profile.avatar,
         licenseNumber: therapist.licenseNumber,
-        licenseExpiry: therapist.licenseExpiry,
         bio: therapist.bio,
-        languages: therapist.languages,
-        status: therapist.status,
-        isVerified: therapist.isVerified,
+        isCoordinator: therapist.isCoordinator,
+        isActive: therapist.isActive,
+        canTakeConsultations: therapist.canTakeConsultations,
         specialties: therapist.specialties.map(s => s.specialty),
         certifications: therapist.certifications.map(c => c.certification),
         schedules: therapist.schedules,
         stats: {
-          totalSessions: therapist._count.sessions,
-          totalPatients: therapist._count.patients,
+          totalSessions: therapist._count.patientSessions,
         },
         createdAt: therapist.createdAt,
         updatedAt: therapist.updatedAt,
-        lastLogin: therapist.lastLogin,
+        lastLogin: therapist.profile.updatedAt,
       }
     })
 
@@ -212,7 +159,7 @@ export async function PATCH(
     const validation = therapistUpdateSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -273,6 +220,15 @@ export async function PATCH(
         updatedAt: new Date(),
       },
       include: {
+        profile: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            avatar: true
+          }
+        },
         specialties: {
           include: {
             specialty: {
@@ -305,16 +261,17 @@ export async function PATCH(
       message: 'Therapist updated successfully',
       data: {
         id: updatedTherapist.id,
-        firstName: updatedTherapist.firstName,
-        lastName: updatedTherapist.lastName,
-        email: updatedTherapist.email,
-        phone: updatedTherapist.phone,
+        profileId: updatedTherapist.profileId,
+        firstName: updatedTherapist.profile.firstName,
+        lastName: updatedTherapist.profile.lastName,
+        email: updatedTherapist.profile.email,
+        phone: updatedTherapist.profile.phone,
+        avatar: updatedTherapist.profile.avatar,
         licenseNumber: updatedTherapist.licenseNumber,
-        licenseExpiry: updatedTherapist.licenseExpiry,
         bio: updatedTherapist.bio,
-        languages: updatedTherapist.languages,
-        status: updatedTherapist.status,
-        isVerified: updatedTherapist.isVerified,
+        isCoordinator: updatedTherapist.isCoordinator,
+        isActive: updatedTherapist.isActive,
+        canTakeConsultations: updatedTherapist.canTakeConsultations,
         specialties: updatedTherapist.specialties.map(s => s.specialty),
         certifications: updatedTherapist.certifications.map(c => c.certification),
         updatedAt: updatedTherapist.updatedAt,
@@ -362,13 +319,13 @@ export async function DELETE(
     const activeSessions = await db.patientSession.findMany({
       where: {
         therapistId: therapistId,
-        status: { in: ['scheduled', 'in-progress'] }
+        status: { in: ['SCHEDULED', 'IN_PROGRESS'] }
       }
     })
 
     if (activeSessions.length > 0) {
       return NextResponse.json(
-        { 
+        {
           error: 'Cannot delete therapist with active sessions',
           activeSessions: activeSessions.map(s => ({
             id: s.id,
@@ -380,11 +337,11 @@ export async function DELETE(
       )
     }
 
-    // Perform soft delete (update status to inactive)
+    // Perform soft delete (update isActive to false)
     const deletedTherapist = await db.therapist.update({
       where: { id: therapistId },
       data: {
-        status: 'inactive',
+        isActive: false,
         updatedAt: new Date(),
       }
     })
@@ -394,7 +351,7 @@ export async function DELETE(
       message: 'Therapist deactivated successfully',
       data: {
         id: deletedTherapist.id,
-        status: deletedTherapist.status,
+        isActive: deletedTherapist.isActive,
         updatedAt: deletedTherapist.updatedAt,
       }
     })

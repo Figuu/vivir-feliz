@@ -1,8 +1,7 @@
 import { db } from './db'
 
 export type PaymentHistoryFilter = {
-  patientId?: string
-  therapistId?: string
+  parentId?: string
   paymentMethod?: string
   status?: string
   dateRange?: { start: Date; end: Date }
@@ -15,22 +14,6 @@ export type PaymentHistorySort = {
   direction: 'asc' | 'desc'
 }
 
-export interface PaymentHistoryEntry {
-  id: string
-  paymentId: string
-  patientId: string
-  therapistId: string
-  amount: number
-  paymentMethod: string
-  status: string
-  transactionDate: Date
-  description?: string
-  reference?: string
-  metadata?: Record<string, any>
-  createdAt: Date
-  updatedAt: Date
-}
-
 export interface PaymentHistorySummary {
   totalPayments: number
   totalAmount: number
@@ -41,18 +24,6 @@ export interface PaymentHistorySummary {
     month: string
     count: number
     total: number
-  }>
-  topPatients: Array<{
-    patientId: string
-    patientName: string
-    totalPaid: number
-    paymentCount: number
-  }>
-  topTherapists: Array<{
-    therapistId: string
-    therapistName: string
-    totalReceived: number
-    paymentCount: number
   }>
 }
 
@@ -95,37 +66,33 @@ export class PaymentHistoryManager {
 
       // Build where clause
       const whereClause: any = {}
-      
-      if (filters?.patientId) {
-        whereClause.patientId = filters.patientId
+
+      if (filters?.parentId) {
+        whereClause.parentId = filters.parentId
       }
-      
-      if (filters?.therapistId) {
-        whereClause.therapistId = filters.therapistId
-      }
-      
+
       if (filters?.paymentMethod) {
         whereClause.paymentMethod = filters.paymentMethod
       }
-      
+
       if (filters?.status) {
         whereClause.status = filters.status
       }
-      
+
       if (filters?.dateRange) {
-        whereClause.transactionDate = {
+        whereClause.createdAt = {
           gte: filters.dateRange.start,
           lte: filters.dateRange.end
         }
       }
-      
+
       if (filters?.amountRange) {
         whereClause.amount = {
           gte: filters.amountRange.min,
           lte: filters.amountRange.max
         }
       }
-      
+
       if (filters?.searchTerm) {
         whereClause.OR = [
           { description: { contains: filters.searchTerm, mode: 'insensitive' } },
@@ -138,7 +105,7 @@ export class PaymentHistoryManager {
       if (sort) {
         switch (sort.field) {
           case 'date':
-            orderBy.transactionDate = sort.direction
+            orderBy.createdAt = sort.direction
             break
           case 'amount':
             orderBy.amount = sort.direction
@@ -151,7 +118,7 @@ export class PaymentHistoryManager {
             break
         }
       } else {
-        orderBy.transactionDate = 'desc' // Default sort by date descending
+        orderBy.createdAt = 'desc' // Default sort by date descending
       }
 
       // Fetch payments
@@ -159,20 +126,13 @@ export class PaymentHistoryManager {
         db.payment.findMany({
           where: whereClause,
           include: {
-            patient: {
+            parent: {
               select: {
-                firstName: true,
-                lastName: true,
-                dateOfBirth: true
-              }
-            },
-            therapist: {
-              select: {
-                firstName: true,
-                lastName: true,
-                user: {
+                profile: {
                   select: {
-                    name: true
+                    firstName: true,
+                    lastName: true,
+                    email: true
                   }
                 }
               }
@@ -180,8 +140,12 @@ export class PaymentHistoryManager {
             consultationRequest: {
               select: {
                 id: true,
-                reason: true,
-                urgency: true
+                patient: {
+                  select: {
+                    firstName: true,
+                    lastName: true
+                  }
+                }
               }
             }
           },
@@ -195,7 +159,10 @@ export class PaymentHistoryManager {
       const totalPages = Math.ceil(totalCount / limit)
 
       return {
-        payments,
+        payments: payments.map(payment => ({
+          ...payment,
+          amount: payment.amount.toNumber()
+        })),
         totalCount,
         pagination: {
           page,
@@ -221,30 +188,26 @@ export class PaymentHistoryManager {
     try {
       // Build where clause
       const whereClause: any = {}
-      
-      if (filters?.patientId) {
-        whereClause.patientId = filters.patientId
+
+      if (filters?.parentId) {
+        whereClause.parentId = filters.parentId
       }
-      
-      if (filters?.therapistId) {
-        whereClause.therapistId = filters.therapistId
-      }
-      
+
       if (filters?.paymentMethod) {
         whereClause.paymentMethod = filters.paymentMethod
       }
-      
+
       if (filters?.status) {
         whereClause.status = filters.status
       }
-      
+
       if (filters?.dateRange) {
-        whereClause.transactionDate = {
+        whereClause.createdAt = {
           gte: filters.dateRange.start,
           lte: filters.dateRange.end
         }
       }
-      
+
       if (filters?.amountRange) {
         whereClause.amount = {
           gte: filters.amountRange.min,
@@ -285,18 +248,14 @@ export class PaymentHistoryManager {
       // Get monthly trends (last 12 months)
       const monthlyTrends = await this.getMonthlyTrends(whereClause)
 
-      // Get top patients
-      const topPatients = await this.getTopPatients(whereClause)
-
-      // Get top therapists
-      const topTherapists = await this.getTopTherapists(whereClause)
-
       // Format payment methods
       const paymentMethodsFormatted: Record<string, { count: number; total: number }> = {}
       paymentMethods.forEach(method => {
-        paymentMethodsFormatted[method.paymentMethod] = {
-          count: method._count.paymentMethod,
-          total: method._sum.amount || 0
+        if (method.paymentMethod) {
+          paymentMethodsFormatted[method.paymentMethod] = {
+            count: method._count.paymentMethod,
+            total: method._sum.amount?.toNumber() || 0
+          }
         }
       })
 
@@ -308,13 +267,11 @@ export class PaymentHistoryManager {
 
       return {
         totalPayments,
-        totalAmount: totalAmount._sum.amount || 0,
-        averageAmount: averageAmount._avg.amount || 0,
+        totalAmount: totalAmount._sum.amount?.toNumber() || 0,
+        averageAmount: averageAmount._avg.amount?.toNumber() || 0,
         paymentMethods: paymentMethodsFormatted,
         statusBreakdown: statusBreakdownFormatted,
-        monthlyTrends,
-        topPatients,
-        topTherapists
+        monthlyTrends
       }
 
     } catch (error) {
@@ -379,24 +336,20 @@ export class PaymentHistoryManager {
   }>> {
     try {
       const whereClause: any = {
-        transactionDate: {
+        createdAt: {
           gte: dateRange.start,
           lte: dateRange.end
         }
       }
 
-      if (filters?.patientId) {
-        whereClause.patientId = filters.patientId
+      if (filters?.parentId) {
+        whereClause.parentId = filters.parentId
       }
-      
-      if (filters?.therapistId) {
-        whereClause.therapistId = filters.therapistId
-      }
-      
+
       if (filters?.paymentMethod) {
         whereClause.paymentMethod = filters.paymentMethod
       }
-      
+
       if (filters?.status) {
         whereClause.status = filters.status
       }
@@ -404,13 +357,16 @@ export class PaymentHistoryManager {
       const payments = await db.payment.findMany({
         where: whereClause,
         select: {
-          transactionDate: true,
+          createdAt: true,
           amount: true
         },
-        orderBy: { transactionDate: 'asc' }
+        orderBy: { createdAt: 'asc' }
       })
 
-      return this.groupPaymentsByPeriod(payments, period)
+      return this.groupPaymentsByPeriod(
+        payments.map(p => ({ transactionDate: p.createdAt, amount: p.amount.toNumber() })),
+        period
+      )
 
     } catch (error) {
       console.error('Error getting payment trends:', error)
@@ -429,28 +385,29 @@ export class PaymentHistoryManager {
     const twelveMonthsAgo = new Date()
     twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12)
 
-    const monthlyData = await db.payment.groupBy({
-      by: ['transactionDate'],
+    const payments = await db.payment.findMany({
       where: {
         ...whereClause,
-        transactionDate: {
+        createdAt: {
           gte: twelveMonthsAgo
         }
       },
-      _count: { transactionDate: true },
-      _sum: { amount: true }
+      select: {
+        createdAt: true,
+        amount: true
+      }
     })
 
     // Group by month
     const monthlyTrends: Record<string, { count: number; total: number }> = {}
-    
-    monthlyData.forEach(item => {
-      const month = new Date(item.transactionDate).toISOString().substring(0, 7) // YYYY-MM
+
+    payments.forEach(payment => {
+      const month = payment.createdAt.toISOString().substring(0, 7) // YYYY-MM
       if (!monthlyTrends[month]) {
         monthlyTrends[month] = { count: 0, total: 0 }
       }
-      monthlyTrends[month].count += item._count.transactionDate
-      monthlyTrends[month].total += item._sum.amount || 0
+      monthlyTrends[month].count++
+      monthlyTrends[month].total += payment.amount.toNumber()
     })
 
     return Object.entries(monthlyTrends).map(([month, data]) => ({
@@ -458,96 +415,6 @@ export class PaymentHistoryManager {
       count: data.count,
       total: data.total
     })).sort((a, b) => a.month.localeCompare(b.month))
-  }
-
-  /**
-   * Get top patients by payment amount
-   */
-  private static async getTopPatients(whereClause: any): Promise<Array<{
-    patientId: string
-    patientName: string
-    totalPaid: number
-    paymentCount: number
-  }>> {
-    const patientData = await db.payment.groupBy({
-      by: ['patientId'],
-      where: whereClause,
-      _count: { patientId: true },
-      _sum: { amount: true },
-      orderBy: {
-        _sum: {
-          amount: 'desc'
-        }
-      },
-      take: 10
-    })
-
-    const patientIds = patientData.map(p => p.patientId)
-    const patients = await db.patient.findMany({
-      where: { id: { in: patientIds } },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true
-      }
-    })
-
-    const patientMap = new Map(patients.map(p => [p.id, p]))
-
-    return patientData.map(data => {
-      const patient = patientMap.get(data.patientId)
-      return {
-        patientId: data.patientId,
-        patientName: patient ? `${patient.firstName} ${patient.lastName}` : 'Unknown',
-        totalPaid: data._sum.amount || 0,
-        paymentCount: data._count.patientId
-      }
-    })
-  }
-
-  /**
-   * Get top therapists by payment amount
-   */
-  private static async getTopTherapists(whereClause: any): Promise<Array<{
-    therapistId: string
-    therapistName: string
-    totalReceived: number
-    paymentCount: number
-  }>> {
-    const therapistData = await db.payment.groupBy({
-      by: ['therapistId'],
-      where: whereClause,
-      _count: { therapistId: true },
-      _sum: { amount: true },
-      orderBy: {
-        _sum: {
-          amount: 'desc'
-        }
-      },
-      take: 10
-    })
-
-    const therapistIds = therapistData.map(t => t.therapistId)
-    const therapists = await db.therapist.findMany({
-      where: { id: { in: therapistIds } },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true
-      }
-    })
-
-    const therapistMap = new Map(therapists.map(t => [t.id, t]))
-
-    return therapistData.map(data => {
-      const therapist = therapistMap.get(data.therapistId)
-      return {
-        therapistId: data.therapistId,
-        therapistName: therapist ? `${therapist.firstName} ${therapist.lastName}` : 'Unknown',
-        totalReceived: data._sum.amount || 0,
-        paymentCount: data._count.therapistId
-      }
-    })
   }
 
   /**
@@ -608,7 +475,7 @@ export class PaymentHistoryManager {
   ): string {
     const startDate = dateRange.start.toLocaleDateString()
     const endDate = dateRange.end.toLocaleDateString()
-    
+
     switch (reportType) {
       case 'DAILY':
         return `Daily Payment Report - ${startDate}`
@@ -636,22 +503,19 @@ export class PaymentHistoryManager {
     filters?: PaymentHistoryFilter
   ): string {
     let description = `Payment report for ${reportType.toLowerCase()} period from ${dateRange.start.toLocaleDateString()} to ${dateRange.end.toLocaleDateString()}.`
-    
+
     if (filters) {
       const filterDescriptions = []
-      if (filters.patientId) filterDescriptions.push('specific patient')
-      if (filters.therapistId) filterDescriptions.push('specific therapist')
+      if (filters.parentId) filterDescriptions.push('specific parent')
       if (filters.paymentMethod) filterDescriptions.push(`payment method: ${filters.paymentMethod}`)
       if (filters.status) filterDescriptions.push(`status: ${filters.status}`)
       if (filters.amountRange) filterDescriptions.push(`amount range: $${filters.amountRange.min} - $${filters.amountRange.max}`)
-      
+
       if (filterDescriptions.length > 0) {
         description += ` Filtered by: ${filterDescriptions.join(', ')}.`
       }
     }
-    
+
     return description
   }
 }
-
-

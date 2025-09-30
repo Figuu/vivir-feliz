@@ -96,7 +96,9 @@ export async function GET(request: NextRequest) {
     }
     
     if (specialtyId) {
-      whereClause.specialtyId = specialtyId
+      whereClause.reason = {
+        specialtyId: specialtyId
+      }
     }
     
     if (therapistId) {
@@ -140,29 +142,27 @@ export async function GET(request: NextRequest) {
           },
           parent: {
             select: {
-              firstName: true,
-              lastName: true,
-              email: true,
-              phone: true
-            }
-          },
-          therapist: {
-            select: {
-              firstName: true,
-              lastName: true,
-              user: {
+              profile: {
                 select: {
-                  name: true
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  phone: true
                 }
               }
             }
           },
-          specialty: {
+          therapist: {
             select: {
-              name: true
+              profile: {
+                select: {
+                  firstName: true,
+                  lastName: true
+                }
+              }
             }
           },
-          consultationReason: {
+          reason: {
             select: {
               name: true
             }
@@ -284,56 +284,81 @@ export async function POST(request: NextRequest) {
     
     // Use transaction to create consultation request with automatic therapist assignment
     const result = await db.$transaction(async (tx) => {
+      // Check if parent profile already exists
+      let parentProfile = await tx.profile.findUnique({
+        where: { email: validatedData.parentEmail }
+      })
+      
+      let parent
+      
+      if (parentProfile) {
+        // Get existing parent
+        parent = await tx.parent.findUnique({
+          where: { profileId: parentProfile.id }
+        })
+        
+        if (!parent) {
+          // Profile exists but parent doesn't - create parent record
+          parent = await tx.parent.create({
+            data: {
+              profileId: parentProfile.id,
+              relationship: validatedData.parentRelationship,
+              address: validatedData.address,
+              city: validatedData.city,
+              emergencyContact: validatedData.emergencyContactName,
+              emergencyPhone: validatedData.emergencyContactPhone
+            }
+          })
+        }
+      } else {
+        // For new parents without auth, create a temporary profile ID
+        // They will need to complete registration later
+        const tempProfileId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        
+        parentProfile = await tx.profile.create({
+          data: {
+            id: tempProfileId,
+            email: validatedData.parentEmail,
+            firstName: validatedData.parentFirstName,
+            lastName: validatedData.parentLastName,
+            phone: validatedData.parentPhone,
+            role: 'PARENT'
+          }
+        })
+        
+        // Create parent
+        parent = await tx.parent.create({
+          data: {
+            profileId: parentProfile.id,
+            relationship: validatedData.parentRelationship,
+            address: validatedData.address,
+            city: validatedData.city,
+            emergencyContact: validatedData.emergencyContactName,
+            emergencyPhone: validatedData.emergencyContactPhone
+          }
+        })
+      }
+      
       // Create patient
       const patient = await tx.patient.create({
         data: {
           firstName: validatedData.patientFirstName,
           lastName: validatedData.patientLastName,
           dateOfBirth: new Date(validatedData.patientDateOfBirth),
-          gender: validatedData.patientGender
+          gender: validatedData.patientGender,
+          parentId: parent.id
         }
-      })
-      
-      // Create parent/guardian
-      const parent = await tx.parent.create({
-        data: {
-          firstName: validatedData.parentFirstName,
-          lastName: validatedData.parentLastName,
-          email: validatedData.parentEmail,
-          phone: validatedData.parentPhone,
-          relationship: validatedData.parentRelationship,
-          address: validatedData.address,
-          city: validatedData.city,
-          state: validatedData.state,
-          zipCode: validatedData.zipCode,
-          emergencyContactName: validatedData.emergencyContactName,
-          emergencyContactPhone: validatedData.emergencyContactPhone,
-          emergencyContactRelationship: validatedData.emergencyContactRelationship
-        }
-      })
-      
-      // Link patient to parent
-      await tx.patient.update({
-        where: { id: patient.id },
-        data: { parentId: parent.id }
       })
       
       // Create consultation request
       const consultationRequest = await tx.consultationRequest.create({
         data: {
-          consultationType: validatedData.consultationType,
-          specialtyId: validatedData.specialtyId,
-          consultationReasonId: validatedData.consultationReasonId,
-          urgency: validatedData.urgency,
-          preferredDate: new Date(validatedData.preferredDate),
-          preferredTime: validatedData.preferredTime,
+          type: validatedData.consultationType,
+          reasonId: validatedData.consultationReasonId,
+          scheduledDate: new Date(validatedData.preferredDate),
+          scheduledTime: validatedData.preferredTime,
           duration: validatedData.duration,
-          additionalNotes: validatedData.additionalNotes,
-          previousTherapy: validatedData.previousTherapy,
-          previousTherapyDetails: validatedData.previousTherapyDetails,
-          hasInsurance: validatedData.hasInsurance,
-          insuranceProvider: validatedData.insuranceProvider,
-          insurancePolicyNumber: validatedData.insurancePolicyNumber,
+          notes: validatedData.additionalNotes,
           patientId: patient.id,
           parentId: parent.id,
           status: 'PENDING'

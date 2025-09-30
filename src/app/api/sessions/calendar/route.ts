@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid query parameters', details: validation.error.errors },
+        { error: 'Invalid query parameters', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -60,10 +60,14 @@ export async function GET(request: NextRequest) {
             parent: {
               select: {
                 id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                phone: true
+                profile: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    phone: true
+                  }
+                }
               }
             }
           }
@@ -71,10 +75,14 @@ export async function GET(request: NextRequest) {
         therapist: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true
+              }
+            }
           }
         },
         serviceAssignment: {
@@ -420,9 +428,13 @@ async function getRoleSpecificData(role: string, userId: string | undefined, ses
           db.therapist.findMany({
             select: {
               id: true,
-              firstName: true,
-              lastName: true,
-              email: true
+              profile: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  email: true
+                }
+              }
             }
           }),
           db.service.findMany({
@@ -461,20 +473,30 @@ async function getRoleSpecificData(role: string, userId: string | undefined, ses
               parent: {
                 select: {
                   id: true,
-                  firstName: true,
-                  lastName: true,
-                  email: true,
-                  phone: true
+                  profile: {
+                    select: {
+                      firstName: true,
+                      lastName: true,
+                      email: true,
+                      phone: true
+                    }
+                  }
                 }
               }
             }
           }),
           db.service.findMany({
             where: {
-              serviceAssignments: {
+              proposalServices: {
                 some: {
-                  session: {
-                    therapistId: userId
+                  serviceAssignments: {
+                    some: {
+                      patientSessions: {
+                        some: {
+                          therapistId: userId
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -511,7 +533,7 @@ async function getRoleSpecificData(role: string, userId: string | undefined, ses
           }),
           db.therapist.findMany({
             where: {
-              sessions: {
+              patientSessions: {
                 some: {
                   patient: {
                     parentId: userId
@@ -521,10 +543,14 @@ async function getRoleSpecificData(role: string, userId: string | undefined, ses
             },
             select: {
               id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              phone: true
+              profile: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  phone: true
+                }
+              }
             }
           })
         ])
@@ -543,7 +569,7 @@ async function getRoleSpecificData(role: string, userId: string | undefined, ses
         const [therapist, patientServices] = await Promise.all([
           db.therapist.findFirst({
             where: {
-              sessions: {
+              patientSessions: {
                 some: {
                   patientId: userId
                 }
@@ -551,18 +577,28 @@ async function getRoleSpecificData(role: string, userId: string | undefined, ses
             },
             select: {
               id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              phone: true
+              profile: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  phone: true
+                }
+              }
             }
           }),
           db.service.findMany({
             where: {
-              serviceAssignments: {
+              proposalServices: {
                 some: {
-                  session: {
-                    patientId: userId
+                  serviceAssignments: {
+                    some: {
+                      patientSessions: {
+                        some: {
+                          patientId: userId
+                        }
+                      }
+                    }
                   }
                 }
               }

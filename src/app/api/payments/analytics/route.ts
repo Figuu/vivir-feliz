@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PaymentAnalyticsManager, PaymentAnalyticsFilters, PaymentStatus, PaymentMethod } from '@/lib/payment-analytics-manager'
+import { PaymentAnalyticsManager, PaymentAnalyticsFilters } from '@/lib/payment-analytics-manager'
+import { PaymentStatus } from '@prisma/client'
 import { z } from 'zod'
 
 const analyticsQuerySchema = z.object({
@@ -14,14 +15,11 @@ const analyticsQuerySchema = z.object({
   
   // Method filtering
   paymentMethod: z.string().optional().transform(val => 
-    val ? val.split(',').map(s => s.trim() as PaymentMethod) : undefined
+    val ? val.split(',').map(s => s.trim()) : undefined
   ),
   
   // Entity filtering
-  therapistId: z.string().uuid().optional(),
-  patientId: z.string().uuid().optional(),
-  specialtyId: z.string().uuid().optional(),
-  serviceId: z.string().uuid().optional(),
+  parentId: z.string().uuid().optional(),
   
   // Amount filtering
   minAmount: z.string().optional().transform(val => val ? parseFloat(val) : undefined),
@@ -53,10 +51,7 @@ export async function GET(request: NextRequest) {
       endDate,
       paymentStatus,
       paymentMethod,
-      therapistId,
-      patientId,
-      specialtyId,
-      serviceId,
+      parentId,
       minAmount,
       maxAmount
     } = validationResult.data
@@ -81,10 +76,7 @@ export async function GET(request: NextRequest) {
     
     if (paymentStatus) filters.paymentStatus = paymentStatus
     if (paymentMethod) filters.paymentMethod = paymentMethod
-    if (therapistId) filters.therapistId = therapistId
-    if (patientId) filters.patientId = patientId
-    if (specialtyId) filters.specialtyId = specialtyId
-    if (serviceId) filters.serviceId = serviceId
+    if (parentId) filters.parentId = parentId
     if (minAmount !== undefined) filters.minAmount = minAmount
     if (maxAmount !== undefined) filters.maxAmount = maxAmount
     

@@ -57,8 +57,12 @@ export async function GET(request: NextRequest) {
         therapist: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            },
             specialties: {
               include: {
                 specialty: {
@@ -139,6 +143,7 @@ export async function GET(request: NextRequest) {
             
             // Check if this time slot is already booked
             const isBooked = existingAppointments.some(appointment => {
+              if (!appointment.scheduledDate) return false
               const appointmentDate = appointment.scheduledDate.toISOString().split('T')[0]
               return appointmentDate === dateString && 
                      appointment.scheduledTime === timeString &&
@@ -148,9 +153,9 @@ export async function GET(request: NextRequest) {
             availability[dateString].push({
               time: timeString,
               therapistId: schedule.therapistId,
-              therapistName: `${schedule.therapist.firstName} ${schedule.therapist.lastName}`,
+              therapistName: `${schedule.therapist.profile.firstName} ${schedule.therapist.profile.lastName}`,
               available: !isBooked,
-              specialties: schedule.therapist.specialties.map(ts => ts.specialty.name)
+              specialties: schedule.therapist.specialties.map((ts: any) => ts.specialty.name)
             })
           }
 

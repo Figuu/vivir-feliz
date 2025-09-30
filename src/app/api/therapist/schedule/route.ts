@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
     const validation = createScheduleSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -223,7 +223,7 @@ export async function PUT(request: NextRequest) {
     const validation = updateScheduleSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }

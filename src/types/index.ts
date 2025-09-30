@@ -4,7 +4,7 @@ export type User = {
   email: string
   name: string | null
   avatar: string | null
-  role: 'USER' | 'ADMIN' | 'SUPER_ADMIN'
+  role: 'USER' | 'ADMIN' | 'SUPER_ADMIN' | 'THERAPIST' | 'PARENT' | 'COORDINATOR'
   createdAt: Date
   updatedAt: Date
   created_at?: Date // for API compatibility

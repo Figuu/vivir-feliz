@@ -5,7 +5,7 @@ import { db } from '@/lib/db'
 const adminActionSchema = z.object({
   action: z.enum(['bulk_update', 'data_export', 'system_health', 'user_activity']),
   adminId: z.string().uuid('Invalid admin ID'),
-  parameters: z.record(z.any()).optional()
+  parameters: z.record(z.string(), z.any()).optional()
 })
 
 export async function GET(request: NextRequest) {
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     if (action === 'system_health') {
       const [userCount, patientCount, sessionCount, paymentCount] = await Promise.all([
-        db.user.count(),
+        db.profile.count(),
         db.patient.count(),
         db.patientSession.count(),
         db.payment.count()
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     const validation = adminActionSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -57,8 +57,8 @@ export async function POST(request: NextRequest) {
     const { action, adminId } = validation.data
 
     // Verify admin user
-    const admin = await db.user.findUnique({
-      where: { id: adminId, role: 'admin' }
+    const admin = await db.profile.findUnique({
+      where: { id: adminId, role: 'ADMIN' }
     })
 
     if (!admin) {

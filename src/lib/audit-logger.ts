@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { AuditAction, AuditSeverity } from '@prisma/client'
+import { AuditAction, AuditSeverity } from '@/lib/audit-types'
 import { NextRequest } from 'next/server'
 
 export interface AuditLogData {

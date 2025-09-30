@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     const statistics = await MedicalFormManager.getFormStatistics(dateRange)
     
     // Get additional analytics data
-    const analytics = {
+    const analytics: any = {
       statistics,
       trends: {
         completionRate: statistics.totalForms > 0 

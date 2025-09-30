@@ -44,14 +44,13 @@ import {
   ChevronRight,
   Play,
   Pause,
-  Stop,
+  Square,
   Timer,
   User,
   FileText,
   MessageSquare,
   Video,
   PhoneCall,
-  Location,
   CalendarIcon,
   ClockIcon,
   PieChart,
@@ -61,8 +60,7 @@ import {
   TrendingDown as TrendingDownIcon,
   Info,
   AlertTriangle,
-  CheckSquare,
-  Square
+  CheckSquare
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { TherapistDashboard } from '@/components/therapist/therapist-dashboard'

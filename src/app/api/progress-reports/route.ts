@@ -220,7 +220,7 @@ export async function GET(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid query parameters', details: validation.error.errors },
+        { error: 'Invalid query parameters', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -271,16 +271,20 @@ export async function GET(request: NextRequest) {
               id: true,
               firstName: true,
               lastName: true,
-              email: true,
-              dateOfBirth: true
+              dateOfBirth: true,
+              gender: true
             }
           },
           therapist: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true
+            include: {
+              profile: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true
+                }
+              }
             }
           },
           session: {
@@ -294,8 +298,9 @@ export async function GET(request: NextRequest) {
           therapeuticPlan: {
             select: {
               id: true,
-              title: true,
-              status: true
+              status: true,
+              objectives: true,
+              background: true
             }
           },
           achievements: {
@@ -369,7 +374,12 @@ export async function GET(request: NextRequest) {
           status: report.status,
           isConfidential: report.isConfidential,
           patient: report.patient,
-          therapist: report.therapist,
+          therapist: {
+            id: report.therapist.id,
+            firstName: report.therapist.profile.firstName,
+            lastName: report.therapist.profile.lastName,
+            email: report.therapist.profile.email
+          },
           session: report.session,
           therapeuticPlan: report.therapeuticPlan,
           achievements: report.achievements.map(achievement => ({
@@ -446,7 +456,7 @@ export async function POST(request: NextRequest) {
     const validation = progressReportCreateSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -667,15 +677,19 @@ export async function POST(request: NextRequest) {
             id: true,
             firstName: true,
             lastName: true,
-            email: true
+            dateOfBirth: true
           }
         },
         therapist: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true
+          include: {
+            profile: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
           }
         },
         session: {
@@ -688,7 +702,8 @@ export async function POST(request: NextRequest) {
         therapeuticPlan: {
           select: {
             id: true,
-            title: true
+            status: true,
+            objectives: true
           }
         },
         achievements: {

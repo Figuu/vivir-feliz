@@ -621,9 +621,9 @@ export const enhancedMedicalFormSchema = z.object({
       isValid: z.boolean(),
       errors: z.array(z.string()),
       warnings: z.array(z.string()),
-      completedAt: z.date().optional()
+      completedAt: z.coerce.date().optional()
     })),
-    lastValidatedAt: z.date()
+    lastValidatedAt: z.coerce.date()
   }).optional()
 })
 
@@ -653,9 +653,9 @@ export const enhancedAutoSaveSchema = z.object({
       isValid: z.boolean(),
       errors: z.array(z.string()),
       warnings: z.array(z.string()),
-      completedAt: z.date().optional()
+      completedAt: z.coerce.date().optional()
     })),
-    lastValidatedAt: z.date()
+    lastValidatedAt: z.coerce.date()
   }).optional()
 })
 
@@ -666,7 +666,7 @@ export const enhancedFormProgressSchema = z.object({
   completedSteps: z.array(z.number()),
   totalSteps: z.number().default(6),
   progressPercentage: z.number().min(0).max(100),
-  lastSavedAt: z.date(),
+  lastSavedAt: z.coerce.date(),
   estimatedTimeRemaining: z.number().optional(), // in minutes
   validationState: z.object({
     isValid: z.boolean(),
@@ -676,9 +676,9 @@ export const enhancedFormProgressSchema = z.object({
       isValid: z.boolean(),
       errors: z.array(z.string()),
       warnings: z.array(z.string()),
-      completedAt: z.date().optional()
+      completedAt: z.coerce.date().optional()
     })),
-    lastValidatedAt: z.date()
+    lastValidatedAt: z.coerce.date()
   })
 })
 

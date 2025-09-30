@@ -424,7 +424,7 @@ export class TherapistMedicalFormManager {
 
       if (!validationResult.success) {
         // Parse validation errors by section
-        validationResult.error.errors.forEach(error => {
+        validationResult.error.issues.forEach((error: any) => {
           const path = error.path.join('.')
           const section = path.split('.')[0]
           

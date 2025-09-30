@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PaymentPlanManager, PaymentPlanType, PaymentPlanFrequency } from '@/lib/payment-plan-manager'
+import { PaymentPlanManager } from '@/lib/payment-plan-manager'
+import { PaymentPlanType } from '@prisma/client'
+import { db } from '@/lib/db'
 import { z } from 'zod'
 
 const createPaymentPlanSchema = z.object({
@@ -13,7 +15,7 @@ const createPaymentPlanSchema = z.object({
   startDate: z.string().datetime('Invalid start date format'),
   autoPay: z.boolean().optional(),
   description: z.string().max(500, 'Description too long').optional(),
-  metadata: z.record(z.any()).optional()
+  metadata: z.record(z.string(), z.any()).optional()
 })
 
 // POST - Create a new payment plan
@@ -49,21 +51,14 @@ export async function POST(request: NextRequest) {
     } = validationResult.data
     
     // Create payment plan
-    const paymentPlan = await PaymentPlanManager.createPaymentPlan(
-      patientId,
-      therapistId,
-      serviceId,
-      {
-        planName,
-        planType,
-        frequency,
-        totalAmount,
-        startDate: new Date(startDate),
-        autoPay,
-        description,
-        metadata
-      }
-    )
+    const paymentPlan = await PaymentPlanManager.createPaymentPlan({
+      name: planName,
+      description,
+      planType: planType as PaymentPlanType,
+      totalAmount,
+      installments: 1,
+      frequency
+    })
     
     return NextResponse.json({
       success: true,

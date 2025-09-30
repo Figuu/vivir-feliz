@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user from database to check permissions
-    const dbUser = await db.user.findUnique({
+    const dbUser = await db.profile.findUnique({
       where: { id: user.id },
       select: { role: true }
     })
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user from database to check permissions
-    const dbUser = await db.user.findUnique({
+    const dbUser = await db.profile.findUnique({
       where: { id: user.id },
       select: { role: true }
     })

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PaymentPlanManager } from '@/lib/payment-plan-manager'
+import { db } from '@/lib/db'
 
 // GET - Get payment plan statistics
 export async function GET(request: NextRequest) {
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate')
     
     // Validate date range if provided
-    let dateRange
+    let dateFilter: any = {}
     if (startDate || endDate) {
       if (!startDate || !endDate) {
         return NextResponse.json(
@@ -57,11 +57,36 @@ export async function GET(request: NextRequest) {
         )
       }
       
-      dateRange = { start, end }
+      dateFilter = {
+        createdAt: {
+          gte: start,
+          lte: end
+        }
+      }
     }
     
     // Get payment plan statistics
-    const statistics = await PaymentPlanManager.getPaymentPlanStatistics(dateRange)
+    const [
+      totalPlans,
+      activePlans,
+      totalRevenue
+    ] = await Promise.all([
+      db.paymentPlan.count({ where: dateFilter }),
+      db.paymentPlan.count({ where: { ...dateFilter, isActive: true } }),
+      db.paymentPlan.aggregate({
+        where: { ...dateFilter, isActive: true },
+        _sum: { totalAmount: true }
+      })
+    ])
+
+    const averagePlanValue = totalPlans > 0 ? ((totalRevenue._sum.totalAmount?.toNumber() || 0) / totalPlans) : 0
+
+    const statistics = {
+      totalPlans,
+      activePlans,
+      totalRevenue: totalRevenue._sum.totalAmount?.toNumber() || 0,
+      averagePlanValue
+    }
     
     return NextResponse.json({
       success: true,

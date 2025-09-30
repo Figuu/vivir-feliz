@@ -3,24 +3,26 @@ import { z } from 'zod'
 import { db } from '@/lib/db'
 
 const auditLogSchema = z.object({
-  userId: z.string().uuid('Invalid user ID'),
-  action: z.enum(['create', 'read', 'update', 'delete', 'login', 'logout', 'approve', 'reject', 'export']),
-  entityType: z.string().max(100, 'Entity type cannot exceed 100 characters'),
-  entityId: z.string().uuid('Invalid entity ID').optional(),
-  changes: z.record(z.any()).optional(),
-  metadata: z.object({
-    ipAddress: z.string().optional(),
-    userAgent: z.string().optional(),
-    sessionId: z.string().optional()
-  }).optional()
+  profileId: z.string().uuid('Invalid profile ID'),
+  action: z.string(),
+  resource: z.string().max(100, 'Resource cannot exceed 100 characters'),
+  resourceId: z.string().uuid('Invalid resource ID').optional(),
+  oldValue: z.record(z.string(), z.any()).optional(),
+  newValue: z.record(z.string(), z.any()).optional(),
+  ipAddress: z.string().optional(),
+  userAgent: z.string().optional(),
+  success: z.boolean().default(true),
+  errorMessage: z.string().optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
+  category: z.string().optional()
 })
 
 const auditQuerySchema = z.object({
   page: z.string().transform(val => parseInt(val) || 1).refine(val => val > 0),
   limit: z.string().transform(val => parseInt(val) || 50).refine(val => val > 0 && val <= 100),
-  userId: z.string().uuid().optional(),
-  action: z.enum(['create', 'read', 'update', 'delete', 'login', 'logout', 'approve', 'reject', 'export']).optional(),
-  entityType: z.string().optional(),
+  profileId: z.string().uuid().optional(),
+  action: z.string().optional(),
+  resource: z.string().optional(),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc')
@@ -33,9 +35,9 @@ export async function GET(request: NextRequest) {
     const validation = auditQuerySchema.safeParse({
       page: searchParams.get('page'),
       limit: searchParams.get('limit'),
-      userId: searchParams.get('userId'),
+      profileId: searchParams.get('profileId'),
       action: searchParams.get('action'),
-      entityType: searchParams.get('entityType'),
+      resource: searchParams.get('resource'),
       startDate: searchParams.get('startDate'),
       endDate: searchParams.get('endDate'),
       sortOrder: searchParams.get('sortOrder')
@@ -43,18 +45,18 @@ export async function GET(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid parameters', details: validation.error.errors },
+        { error: 'Invalid parameters', details: validation.error.issues },
         { status: 400 }
       )
     }
 
-    const { page, limit, userId, action, entityType, startDate, endDate, sortOrder } = validation.data
+    const { page, limit, profileId, action, resource, startDate, endDate, sortOrder } = validation.data
 
     const whereClause: any = {}
     
-    if (userId) whereClause.userId = userId
+    if (profileId) whereClause.profileId = profileId
     if (action) whereClause.action = action
-    if (entityType) whereClause.entityType = entityType
+    if (resource) whereClause.resource = resource
     if (startDate) whereClause.createdAt = { gte: new Date(startDate) }
     if (endDate) whereClause.createdAt = { ...whereClause.createdAt, lte: new Date(endDate) }
 
@@ -64,7 +66,7 @@ export async function GET(request: NextRequest) {
       db.auditLog.findMany({
         where: whereClause,
         include: {
-          user: { select: { firstName: true, lastName: true, email: true, role: true } }
+          profile: { select: { firstName: true, lastName: true, email: true, role: true } }
         },
         orderBy: { createdAt: sortOrder },
         skip,
@@ -99,7 +101,7 @@ export async function POST(request: NextRequest) {
     const validation = auditLogSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }

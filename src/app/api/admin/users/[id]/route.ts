@@ -5,8 +5,9 @@ import { db } from '@/lib/db'
 
 const updateUserSchema = z.object({
   email: z.string().email().optional(),
-  name: z.string().min(2).optional(),
-  role: z.enum(['USER', 'ADMIN', 'SUPER_ADMIN']).optional(),
+  firstName: z.string().min(2).optional(),
+  lastName: z.string().min(2).optional(),
+  role: z.enum(['USER', 'ADMIN', 'SUPER_ADMIN', 'THERAPIST', 'PARENT', 'COORDINATOR']).optional(),
 })
 
 export async function PATCH(
@@ -26,7 +27,7 @@ export async function PATCH(
     }
 
     // Check if user has admin privileges
-    const currentUser = await db.user.findUnique({
+    const currentUser = await db.profile.findUnique({
       where: { id: user.id },
       select: { role: true }
     })
@@ -43,7 +44,7 @@ export async function PATCH(
     const validatedData = updateUserSchema.parse(body)
 
     // Check if target user exists
-    const targetUser = await db.user.findUnique({
+    const targetUser = await db.profile.findUnique({
       where: { id: userId }
     })
 
@@ -64,7 +65,7 @@ export async function PATCH(
 
     // Check if email is already taken by another user
     if (validatedData.email && validatedData.email !== targetUser.email) {
-      const existingUser = await db.user.findUnique({
+      const existingUser = await db.profile.findUnique({
         where: { email: validatedData.email }
       })
 
@@ -77,22 +78,29 @@ export async function PATCH(
     }
 
     // Update user in database
-    const updatedUser = await db.user.update({
+    const updateData: any = {}
+    if (validatedData.email) updateData.email = validatedData.email
+    if (validatedData.firstName) updateData.firstName = validatedData.firstName
+    if (validatedData.lastName) updateData.lastName = validatedData.lastName
+    if (validatedData.role) updateData.role = validatedData.role
+
+    const updatedUser = await db.profile.update({
       where: { id: userId },
-      data: validatedData,
+      data: updateData,
     })
 
     // Update user metadata in Supabase if needed
-    if (validatedData.name || validatedData.role) {
+    if (validatedData.firstName || validatedData.lastName || validatedData.role) {
       const supabaseAdmin = createAdminClient()
-      const updateData: Record<string, string> = {}
-      if (validatedData.name) updateData.name = validatedData.name
-      if (validatedData.role) updateData.role = validatedData.role
+      const metadataUpdate: Record<string, string> = {}
+      if (validatedData.firstName) metadataUpdate.firstName = validatedData.firstName
+      if (validatedData.lastName) metadataUpdate.lastName = validatedData.lastName
+      if (validatedData.role) metadataUpdate.role = validatedData.role
 
       await supabaseAdmin.auth.admin.updateUserById(userId, {
         user_metadata: {
           ...targetUser,
-          ...updateData
+          ...metadataUpdate
         }
       })
     }
@@ -110,7 +118,9 @@ export async function PATCH(
       user: {
         id: updatedUser.id,
         email: updatedUser.email,
-        name: updatedUser.name,
+        name: `${updatedUser.firstName} ${updatedUser.lastName}`,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
         role: updatedUser.role,
         createdAt: updatedUser.createdAt,
         updatedAt: updatedUser.updatedAt,
@@ -151,7 +161,7 @@ export async function DELETE(
     }
 
     // Check if user has admin privileges
-    const currentUser = await db.user.findUnique({
+    const currentUser = await db.profile.findUnique({
       where: { id: user.id },
       select: { role: true }
     })
@@ -174,7 +184,7 @@ export async function DELETE(
     }
 
     // Check if target user exists
-    const targetUser = await db.user.findUnique({
+    const targetUser = await db.profile.findUnique({
       where: { id: userId }
     })
 
@@ -194,7 +204,7 @@ export async function DELETE(
     }
 
     // Delete user from database first (this will cascade to related records)
-    await db.user.delete({
+    await db.profile.delete({
       where: { id: userId }
     })
 

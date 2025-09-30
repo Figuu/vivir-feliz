@@ -15,7 +15,7 @@ import {
   Info,
   AlertCircle
 } from "lucide-react"
-import { AuditAction, AuditSeverity } from "@prisma/client"
+import { AuditAction, AuditSeverity } from "@/lib/audit-types"
 
 import { Button } from "@/components/ui/button"
 import {

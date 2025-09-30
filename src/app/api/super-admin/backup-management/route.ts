@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     const validation = backupRequestSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -151,7 +151,7 @@ export async function PUT(request: NextRequest) {
     const validation = restoreRequestSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -252,7 +252,7 @@ export async function DELETE(request: NextRequest) {
     const validation = deleteBackupSchema.safeParse({ backupId, deletedBy })
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid parameters', details: validation.error.errors },
+        { error: 'Invalid parameters', details: validation.error.issues },
         { status: 400 }
       )
     }

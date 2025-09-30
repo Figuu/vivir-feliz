@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { AuditSeverity } from '@prisma/client'
+import { AuditSeverity } from '@/lib/audit-types'
 
 export async function getCurrentMetrics() {
   const now = new Date()
@@ -16,8 +16,8 @@ export async function getCurrentMetrics() {
     // Active sessions in last 5 minutes
     db.session.count({
       where: {
-        isActive: true,
-        lastActivity: { gte: fiveMinutesAgo }
+        lastActivityAt: { gte: fiveMinutesAgo },
+        expiresAt: { gte: now }
       }
     }),
     
@@ -29,7 +29,7 @@ export async function getCurrentMetrics() {
     }),
     
     // New signups today
-    db.user.count({
+    db.profile.count({
       where: {
         createdAt: { gte: oneDayAgo }
       }
@@ -45,7 +45,7 @@ export async function getCurrentMetrics() {
     // Security events today
     db.auditLog.count({
       where: {
-        severity: { in: [AuditSeverity.HIGH, AuditSeverity.CRITICAL] },
+        action: { contains: 'SECURITY' },
         createdAt: { gte: oneDayAgo }
       }
     })
@@ -75,26 +75,33 @@ export async function getLiveActivity(limit: number) {
     take: limit,
     orderBy: { createdAt: 'desc' },
     include: {
-      user: {
-        select: { name: true, email: true }
+      profile: {
+        select: { firstName: true, lastName: true, email: true }
       }
     }
   })
 
-  return recentLogs.map(log => ({
-    id: log.id,
-    type: mapActionToType(log.action),
-    message: formatActivityMessage(log),
-    severity: mapSeverityToLevel(log.severity),
-    timestamp: log.createdAt,
-    userId: log.userId || undefined,
-    metadata: {
-      action: log.action,
-      resource: log.resource,
-      success: log.success,
-      userName: log.user?.name || log.user?.email
+  return recentLogs.map(log => {
+    const profile = log.profile
+    const userName = profile 
+      ? `${profile.firstName} ${profile.lastName}` 
+      : 'Unknown'
+    
+    return {
+      id: log.id,
+      type: mapActionToType(log.action),
+      message: formatActivityMessage(log),
+      severity: inferSeverityFromAction(log.action),
+      timestamp: log.createdAt,
+      userId: log.profileId || undefined,
+      metadata: {
+        action: log.action,
+        resource: log.resource,
+        success: log.success,
+        userName
+      }
     }
-  }))
+  })
 }
 
 export async function getChartData(metric: string, timeRange: string) {
@@ -120,7 +127,7 @@ export async function getChartData(metric: string, timeRange: string) {
     
     switch (metric) {
       case 'users':
-        value = await db.user.count({
+        value = await db.profile.count({
           where: {
             createdAt: { gte: intervalStart, lt: intervalEnd }
           }
@@ -224,23 +231,23 @@ function mapActionToType(action: string): 'user_action' | 'security_event' | 'sy
   return 'user_action'
 }
 
-function mapSeverityToLevel(severity: AuditSeverity): 'low' | 'medium' | 'high' | 'critical' {
-  switch (severity) {
-    case AuditSeverity.CRITICAL:
-      return 'critical'
-    case AuditSeverity.HIGH:
-      return 'high'
-    case AuditSeverity.WARNING:
-      return 'medium'
-    default:
-      return 'low'
+function inferSeverityFromAction(action: string): 'low' | 'medium' | 'high' | 'critical' {
+  if (action.includes('CRITICAL') || action.includes('DELETE') || action.includes('SECURITY')) {
+    return 'critical'
   }
+  if (action.includes('HIGH') || action.includes('UNAUTHORIZED') || action.includes('RATE_LIMIT')) {
+    return 'high'
+  }
+  if (action.includes('UPDATE') || action.includes('CHANGE')) {
+    return 'medium'
+  }
+  return 'low'
 }
 
 function formatActivityMessage(log: Record<string, unknown>): string {
   const action = String(log.action).replace(/_/g, ' ').toLowerCase()
-  const user = log.user as Record<string, unknown> | undefined
-  const userName = user?.name || user?.email || 'Unknown user'
+  const profile = log.profile as Record<string, unknown> | undefined
+  const userName = profile ? `${profile.firstName || ''} ${profile.lastName || ''}`.trim() : 'Unknown user'
   
   return `${userName} ${action} ${log.resource || 'resource'}`
 }

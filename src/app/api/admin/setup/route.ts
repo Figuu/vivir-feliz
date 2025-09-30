@@ -20,8 +20,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if this is the first user or if there are no admin users
-    const userCount = await db.user.count()
-    const adminCount = await db.user.count({
+    const userCount = await db.profile.count()
+    const adminCount = await db.profile.count({
       where: {
         role: {
           in: ['ADMIN', 'SUPER_ADMIN']
@@ -37,13 +37,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Update user to SUPER_ADMIN
-    const updatedUser = await db.user.update({
+    const updatedUser = await db.profile.update({
       where: { id: user.id },
       data: { role: 'SUPER_ADMIN' },
       select: {
         id: true,
         email: true,
-        name: true,
+        firstName: true,
+        lastName: true,
         avatar: true,
         role: true,
         createdAt: true,

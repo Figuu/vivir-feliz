@@ -193,7 +193,7 @@ async function handleCreateTemplate(body: any) {
   const validation = createTemplateSchema.safeParse(body)
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid request data', details: validation.error.errors },
+      { error: 'Invalid request data', details: validation.error.issues },
       { status: 400 }
     )
   }
@@ -301,7 +301,7 @@ async function handleUpdateTemplate(body: any) {
   const validation = updateTemplateSchema.safeParse(body)
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid request data', details: validation.error.errors },
+      { error: 'Invalid request data', details: validation.error.issues },
       { status: 400 }
     )
   }
@@ -379,7 +379,7 @@ async function handleApplyTemplate(body: any) {
   const validation = applyTemplateSchema.safeParse(body)
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid request data', details: validation.error.errors },
+      { error: 'Invalid request data', details: validation.error.issues },
       { status: 400 }
     )
   }

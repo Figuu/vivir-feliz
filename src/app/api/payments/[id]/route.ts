@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PaymentApiManager, PaymentRequest } from '@/lib/payment-api-manager'
+import { PaymentType } from '@prisma/client'
 import { z } from 'zod'
 
 const updatePaymentSchema = z.object({
   amount: z.number().positive('Amount must be greater than 0').max(100000, 'Amount cannot exceed $100,000').optional(),
   paymentMethod: z.enum(['CREDIT_CARD', 'BANK_TRANSFER', 'CASH', 'CHECK', 'DEBIT_CARD', 'PAYPAL', 'STRIPE']).optional(),
-  paymentType: z.enum(['CONSULTATION', 'SESSION', 'EVALUATION', 'TREATMENT', 'PLAN_INSTALLMENT', 'REFUND']).optional(),
+  type: z.enum(['CONSULTATION', 'SESSION', 'EVALUATION', 'TREATMENT', 'PLAN_INSTALLMENT', 'REFUND']).optional(),
   description: z.string().max(500, 'Description cannot exceed 500 characters').optional(),
   reference: z.string().max(100, 'Reference cannot exceed 100 characters').optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
   dueDate: z.string().datetime('Invalid due date format').optional()
 })
 
@@ -89,7 +90,7 @@ export async function PUT(
     const { 
       amount, 
       paymentMethod, 
-      paymentType, 
+      type, 
       description, 
       reference, 
       metadata, 
@@ -101,7 +102,7 @@ export async function PUT(
     
     if (amount !== undefined) updates.amount = amount
     if (paymentMethod !== undefined) updates.paymentMethod = paymentMethod
-    if (paymentType !== undefined) updates.paymentType = paymentType
+    if (type !== undefined) updates.type = type as PaymentType
     if (description !== undefined) updates.description = description
     if (reference !== undefined) updates.reference = reference
     if (metadata !== undefined) updates.metadata = metadata

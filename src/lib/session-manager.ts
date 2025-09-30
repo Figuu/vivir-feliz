@@ -2,7 +2,7 @@ import { db } from '@/lib/db'
 import { DeviceInfo, getLocationFromIP } from '@/lib/device-detection'
 
 export interface CreateSessionData {
-  userId: string
+  profileId: string
   token: string
   expiresAt: Date
   deviceInfo: Partial<DeviceInfo>
@@ -14,24 +14,19 @@ export interface SessionWithDevice {
   token: string
   expiresAt: Date
   createdAt: Date
-  updatedAt: Date
-  lastActivity: Date
-  isActive: boolean
-  deviceType: string | null
-  deviceName: string | null
+  lastActivityAt: Date
+  device: string | null
   browser: string | null
-  browserVersion: string | null
   os: string | null
-  osVersion: string | null
   ipAddress: string | null
   country: string | null
   city: string | null
-  loginMethod: string | null
+  userAgent: string | null
 }
 
 export class SessionManager {
   static async createSession(data: CreateSessionData): Promise<SessionWithDevice> {
-    const { userId, token, expiresAt, deviceInfo, loginMethod } = data
+    const { profileId, token, expiresAt, deviceInfo } = data
     
     // Get location data if IP is available
     const locationData = deviceInfo.ipAddress 
@@ -40,140 +35,108 @@ export class SessionManager {
 
     const session = await db.session.create({
       data: {
-        userId,
+        profileId,
         token,
         expiresAt,
-        deviceType: deviceInfo.deviceType,
-        deviceName: deviceInfo.deviceName,
-        browser: deviceInfo.browser,
-        browserVersion: deviceInfo.browserVersion,
-        os: deviceInfo.os,
-        osVersion: deviceInfo.osVersion,
-        ipAddress: deviceInfo.ipAddress,
-        country: locationData.country,
-        city: locationData.city,
-        loginMethod: loginMethod || 'email',
-        isActive: true,
-        lastActivity: new Date(),
+        device: deviceInfo.deviceName || deviceInfo.deviceType || null,
+        browser: deviceInfo.browser || null,
+        os: deviceInfo.os || null,
+        ipAddress: deviceInfo.ipAddress || null,
+        userAgent: deviceInfo.userAgent || null,
+        country: locationData.country || null,
+        city: locationData.city || null,
+        lastActivityAt: new Date(),
       },
     })
 
-    return session
+    return session as SessionWithDevice
   }
 
   static async updateSessionActivity(sessionId: string): Promise<void> {
     await db.session.update({
       where: { id: sessionId },
       data: {
-        lastActivity: new Date(),
-        isActive: true,
+        lastActivityAt: new Date(),
       },
     })
   }
 
   static async deactivateSession(sessionId: string): Promise<void> {
-    await db.session.update({
+    await db.session.delete({
       where: { id: sessionId },
-      data: {
-        isActive: false,
-      },
     })
   }
 
-  static async getUserSessions(userId: string): Promise<SessionWithDevice[]> {
-    return db.session.findMany({
+  static async getUserSessions(profileId: string): Promise<SessionWithDevice[]> {
+    const sessions = await db.session.findMany({
       where: {
-        userId,
-        isActive: true,
+        profileId,
         expiresAt: {
           gt: new Date(),
         },
       },
       orderBy: {
-        lastActivity: 'desc',
+        lastActivityAt: 'desc',
       },
     })
+    return sessions as SessionWithDevice[]
   }
 
-  static async revokeSession(sessionId: string, userId: string): Promise<void> {
-    await db.session.update({
+  static async revokeSession(sessionId: string, profileId: string): Promise<void> {
+    await db.session.deleteMany({
       where: { 
         id: sessionId,
-        userId, // Ensure user can only revoke their own sessions
-      },
-      data: {
-        isActive: false,
+        profileId, // Ensure user can only revoke their own sessions
       },
     })
   }
 
-  static async revokeAllUserSessions(userId: string, exceptSessionId?: string): Promise<number> {
+  static async revokeAllUserSessions(profileId: string, exceptSessionId?: string): Promise<number> {
     const where = {
-      userId,
-      isActive: true,
+      profileId,
       ...(exceptSessionId && { id: { not: exceptSessionId } }),
     }
 
-    const result = await db.session.updateMany({
+    const result = await db.session.deleteMany({
       where,
-      data: {
-        isActive: false,
-      },
     })
 
     return result.count
   }
 
   static async cleanExpiredSessions(): Promise<number> {
-    const result = await db.session.updateMany({
+    const result = await db.session.deleteMany({
       where: {
         OR: [
           { expiresAt: { lt: new Date() } },
           { 
-            lastActivity: { 
+            lastActivityAt: { 
               lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // 30 days
             } 
           },
         ],
-      },
-      data: {
-        isActive: false,
       },
     })
 
     return result.count
   }
 
-  static async getSessionStats(userId: string) {
+  static async getSessionStats(profileId: string) {
     const totalSessions = await db.session.count({
-      where: { userId },
+      where: { profileId },
     })
 
     const activeSessions = await db.session.count({
       where: { 
-        userId,
-        isActive: true,
+        profileId,
         expiresAt: { gt: new Date() },
-      },
-    })
-
-    const deviceStats = await db.session.groupBy({
-      by: ['deviceType'],
-      where: {
-        userId,
-        isActive: true,
-        expiresAt: { gt: new Date() },
-      },
-      _count: {
-        deviceType: true,
       },
     })
 
     const browserStats = await db.session.groupBy({
       by: ['browser'],
       where: {
-        userId,
-        isActive: true,
+        profileId,
         expiresAt: { gt: new Date() },
       },
       _count: {
@@ -184,8 +147,7 @@ export class SessionManager {
     const locationStats = await db.session.groupBy({
       by: ['country', 'city'],
       where: {
-        userId,
-        isActive: true,
+        profileId,
         expiresAt: { gt: new Date() },
         country: { not: null },
       },
@@ -197,17 +159,13 @@ export class SessionManager {
     return {
       totalSessions,
       activeSessions,
-      deviceBreakdown: deviceStats.reduce((acc, stat) => {
-        acc[stat.deviceType || 'unknown'] = stat._count.deviceType
-        return acc
-      }, {} as Record<string, number>),
       browserBreakdown: browserStats.reduce((acc, stat) => {
-        acc[stat.browser || 'unknown'] = stat._count.browser
+        acc[stat.browser || 'unknown'] = stat._count.browser || 0
         return acc
       }, {} as Record<string, number>),
       locationBreakdown: locationStats.map(stat => ({
         location: `${stat.city || 'Unknown'}, ${stat.country || 'Unknown'}`,
-        count: stat._count.country,
+        count: stat._count.country || 0,
       })),
     }
   }

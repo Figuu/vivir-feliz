@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auditSecurity } from '@/lib/audit-logger'
-import { AuditAction, AuditSeverity } from '@prisma/client'
+import { AuditAction, AuditSeverity } from '@/lib/audit-types'
 
 export interface SecurityHeadersConfig {
   // Content Security Policy configuration
@@ -300,7 +300,7 @@ export async function handleCSPViolation(request: NextRequest): Promise<NextResp
     // Log CSP violation
     await auditSecurity({
       action: AuditAction.SECURITY_VIOLATION,
-      severity: AuditSeverity.WARNING,
+      severity: AuditSeverity.MEDIUM,
       errorMessage: 'CSP violation reported',
       request,
       metadata: {

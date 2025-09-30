@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 
+// NOTE: This route requires the Certification model to be added to the Prisma schema
+// The model is currently missing and needs to be defined before this API can work
+
 // Validation schemas
 const certificationSchema = z.object({
   name: z.string()
@@ -71,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid query parameters', details: validation.error.errors },
+        { error: 'Invalid query parameters', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -142,8 +145,8 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         certifications,
-        categories: categories.map(c => c.category),
-        organizations: organizations.map(o => o.issuingOrganization),
+        categories: categories.map((c: any) => c.category),
+        organizations: organizations.map((o: any) => o.issuingOrganization),
         pagination: {
           page,
           limit,
@@ -171,7 +174,7 @@ export async function POST(request: NextRequest) {
     const validation = certificationSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -228,7 +231,7 @@ export async function PUT(request: NextRequest) {
     const validation = certificationUpdateSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }

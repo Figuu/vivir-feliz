@@ -11,15 +11,15 @@ const createFormSchema = z.object({
 const updateStepSchema = z.object({
   formId: z.string().uuid('Invalid form ID format'),
   step: z.number().min(1, 'Step must be at least 1').max(6, 'Step cannot exceed 6'),
-  stepData: z.record(z.any(), 'Step data must be an object'),
+  stepData: z.record(z.string(), z.any()),
   userId: z.string().uuid('Invalid user ID format').optional()
 })
 
 const autoSaveSchema = z.object({
   formId: z.string().uuid('Invalid form ID format'),
   currentStep: z.number().min(1, 'Step must be at least 1').max(6, 'Step cannot exceed 6'),
-  stepData: z.record(z.any(), 'Step data must be an object'),
-  completedSteps: z.array(z.number().min(1).max(6), 'Invalid completed steps')
+  stepData: z.record(z.string(), z.any()),
+  completedSteps: z.array(z.number().min(1).max(6))
 })
 
 const submitForReviewSchema = z.object({

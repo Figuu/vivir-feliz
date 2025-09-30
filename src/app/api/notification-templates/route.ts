@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
-import { db } from '@/lib/db'
+// import { z } from 'zod'
+// import { db } from '@/lib/db'
 
+// TODO: This route requires a NotificationTemplate model to be added to the Prisma schema
+// Temporarily disabled until the model is created
+
+/*
 const templateQuerySchema = z.object({
   type: z.enum(['email', 'sms', 'in_app']).optional(),
   category: z.string().optional(),
@@ -31,9 +35,18 @@ const updateTemplateSchema = z.object({
   isActive: z.boolean().optional(),
   updatedBy: z.string().uuid()
 })
+*/
 
 // GET - List notification templates
 export async function GET(request: NextRequest) {
+  return NextResponse.json(
+    { error: 'NotificationTemplate feature not yet implemented - requires Prisma model' },
+    { status: 501 }
+  )
+}
+
+/*
+export async function GET_DISABLED(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     
@@ -46,7 +59,7 @@ export async function GET(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid parameters', details: validation.error.errors },
+        { error: 'Invalid parameters', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -107,13 +120,21 @@ export async function GET(request: NextRequest) {
 
 // POST - Create notification template
 export async function POST(request: NextRequest) {
+  return NextResponse.json(
+    { error: 'NotificationTemplate feature not yet implemented - requires Prisma model' },
+    { status: 501 }
+  )
+}
+
+/*
+export async function POST_DISABLED(request: NextRequest) {
   try {
     const body = await request.json()
     
     const validation = createTemplateSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -167,13 +188,21 @@ export async function POST(request: NextRequest) {
 
 // PUT - Update notification template
 export async function PUT(request: NextRequest) {
+  return NextResponse.json(
+    { error: 'NotificationTemplate feature not yet implemented - requires Prisma model' },
+    { status: 501 }
+  )
+}
+
+/*
+export async function PUT_DISABLED(request: NextRequest) {
   try {
     const body = await request.json()
     
     const validation = updateTemplateSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -219,6 +248,14 @@ export async function PUT(request: NextRequest) {
 
 // DELETE - Delete notification template
 export async function DELETE(request: NextRequest) {
+  return NextResponse.json(
+    { error: 'NotificationTemplate feature not yet implemented - requires Prisma model' },
+    { status: 501 }
+  )
+}
+
+/*
+export async function DELETE_DISABLED(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const templateId = searchParams.get('templateId')
@@ -264,3 +301,4 @@ export async function DELETE(request: NextRequest) {
     )
   }
 }
+*/

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { auditFile } from '@/lib/audit-logger'
-import { AuditAction } from '@prisma/client'
+import { AuditAction } from '@/lib/audit-types'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB for avatars
 const ALLOWED_TYPES = [

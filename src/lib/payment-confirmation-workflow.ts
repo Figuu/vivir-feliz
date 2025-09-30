@@ -1,101 +1,49 @@
 import { db } from './db'
 
-export type PaymentConfirmationStatus = 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'REQUIRES_CLARIFICATION' | 'ESCALATED'
-export type PaymentReviewAction = 'APPROVE' | 'REJECT' | 'REQUEST_CLARIFICATION' | 'ESCALATE' | 'HOLD'
+export type PaymentConfirmationStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+export type PaymentReviewAction = 'APPROVE' | 'REJECT' | 'HOLD'
 
 export interface PaymentConfirmationRequest {
   id: string
   paymentId: string
-  status: PaymentConfirmationStatus
+  status: string
   requestedBy: string
   requestedAt: Date
-  reviewedBy?: string
-  reviewedAt?: Date
-  reviewNotes?: string
-  escalationReason?: string
-  holdReason?: string
-  metadata?: Record<string, any>
+  reviewedBy: string | null
+  reviewedAt: Date | null
+  notes: string | null
+  priority: string
 }
 
-export interface PaymentReviewCriteria {
-  amountThreshold: number
-  paymentMethod: string[]
-  requiresReceipt: boolean
-  requiresDocumentation: boolean
-  autoApprove: boolean
-  escalationThreshold: number
-}
-
-export interface PaymentConfirmationWorkflow {
-  id: string
-  paymentId: string
-  currentStep: number
-  totalSteps: number
-  status: PaymentConfirmationStatus
-  assignedTo?: string
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
-  createdAt: Date
-  updatedAt: Date
-  completedAt?: Date
-  steps: PaymentWorkflowStep[]
-}
-
-export interface PaymentWorkflowStep {
-  stepNumber: number
-  stepName: string
-  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'SKIPPED'
-  assignedTo?: string
-  completedBy?: string
-  completedAt?: Date
-  notes?: string
-  required: boolean
-}
-
-export class PaymentConfirmationWorkflow {
-  // Define workflow steps
-  private static readonly WORKFLOW_STEPS = [
-    { stepNumber: 1, stepName: 'Initial Review', required: true },
-    { stepNumber: 2, stepName: 'Receipt Verification', required: true },
-    { stepNumber: 3, stepName: 'Amount Validation', required: true },
-    { stepNumber: 4, stepName: 'Documentation Check', required: false },
-    { stepNumber: 5, stepName: 'Final Approval', required: true }
-  ]
-
-  // Define confirmation status descriptions
-  private static readonly STATUS_DESCRIPTIONS: { [key in PaymentConfirmationStatus]: string } = {
-    'PENDING_REVIEW': 'Payment is pending administrative review',
-    'APPROVED': 'Payment has been approved by administrator',
-    'REJECTED': 'Payment has been rejected by administrator',
-    'REQUIRES_CLARIFICATION': 'Payment requires additional clarification',
-    'ESCALATED': 'Payment has been escalated for higher-level review'
-  }
-
-  // Define status colors for UI
-  private static readonly STATUS_COLORS: { [key in PaymentConfirmationStatus]: string } = {
-    'PENDING_REVIEW': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-    'APPROVED': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-    'REJECTED': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-    'REQUIRES_CLARIFICATION': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-    'ESCALATED': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-  }
-
+export class PaymentConfirmationWorkflowManager {
   /**
    * Create a payment confirmation request
    */
   static async createConfirmationRequest(
     paymentId: string,
     requestedBy: string,
-    priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' = 'MEDIUM'
+    priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' = 'NORMAL',
+    notes?: string
   ): Promise<PaymentConfirmationRequest> {
     try {
-      // Check if payment exists and is eligible for confirmation
+      // Check if payment exists
       const payment = await db.payment.findUnique({
         where: { id: paymentId },
         include: {
           consultationRequest: {
             include: {
               patient: { select: { firstName: true, lastName: true } },
-              parent: { select: { firstName: true, lastName: true, email: true } }
+              parent: {
+                select: {
+                  profile: {
+                    select: {
+                      firstName: true,
+                      lastName: true,
+                      email: true
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -105,12 +53,12 @@ export class PaymentConfirmationWorkflow {
         throw new Error('Payment not found')
       }
 
-      if (payment.status !== 'COMPLETED') {
-        throw new Error('Only completed payments can be submitted for confirmation')
+      if (payment.status !== 'PENDING') {
+        throw new Error('Only pending payments can be submitted for confirmation')
       }
 
       // Check if confirmation request already exists
-      const existingRequest = await db.paymentConfirmationRequest.findUnique({
+      const existingRequest = await db.paymentConfirmationRequest.findFirst({
         where: { paymentId }
       })
 
@@ -122,27 +70,23 @@ export class PaymentConfirmationWorkflow {
       const confirmationRequest = await db.paymentConfirmationRequest.create({
         data: {
           paymentId,
-          status: 'PENDING_REVIEW',
+          status: 'PENDING',
           requestedBy,
-          priority
+          priority,
+          notes
         }
       })
-
-      // Create workflow
-      await this.createWorkflow(paymentId, priority)
 
       return {
         id: confirmationRequest.id,
         paymentId: confirmationRequest.paymentId,
-        status: confirmationRequest.status as PaymentConfirmationStatus,
+        status: confirmationRequest.status,
         requestedBy: confirmationRequest.requestedBy,
-        requestedAt: confirmationRequest.requestedAt,
-        reviewedBy: confirmationRequest.reviewedBy || undefined,
-        reviewedAt: confirmationRequest.reviewedAt || undefined,
-        reviewNotes: confirmationRequest.reviewNotes || undefined,
-        escalationReason: confirmationRequest.escalationReason || undefined,
-        holdReason: confirmationRequest.holdReason || undefined,
-        metadata: confirmationRequest.metadata ? JSON.parse(confirmationRequest.metadata) : undefined
+        requestedAt: confirmationRequest.createdAt,
+        reviewedBy: confirmationRequest.reviewedBy,
+        reviewedAt: confirmationRequest.reviewedAt,
+        notes: confirmationRequest.notes,
+        priority: confirmationRequest.priority
       }
 
     } catch (error) {
@@ -158,9 +102,7 @@ export class PaymentConfirmationWorkflow {
     confirmationRequestId: string,
     action: PaymentReviewAction,
     reviewedBy: string,
-    reviewNotes?: string,
-    escalationReason?: string,
-    holdReason?: string
+    reviewNotes?: string
   ): Promise<PaymentConfirmationRequest> {
     try {
       const confirmationRequest = await db.paymentConfirmationRequest.findUnique({
@@ -171,12 +113,12 @@ export class PaymentConfirmationWorkflow {
         throw new Error('Confirmation request not found')
       }
 
-      if (confirmationRequest.status !== 'PENDING_REVIEW') {
-        throw new Error('Confirmation request is not in pending review status')
+      if (confirmationRequest.status !== 'PENDING') {
+        throw new Error('Confirmation request is not in pending status')
       }
 
       // Determine new status based on action
-      let newStatus: PaymentConfirmationStatus
+      let newStatus: string
       switch (action) {
         case 'APPROVE':
           newStatus = 'APPROVED'
@@ -184,14 +126,8 @@ export class PaymentConfirmationWorkflow {
         case 'REJECT':
           newStatus = 'REJECTED'
           break
-        case 'REQUEST_CLARIFICATION':
-          newStatus = 'REQUIRES_CLARIFICATION'
-          break
-        case 'ESCALATE':
-          newStatus = 'ESCALATED'
-          break
         case 'HOLD':
-          newStatus = 'PENDING_REVIEW' // Keep in pending but add hold reason
+          newStatus = 'PENDING'
           break
         default:
           throw new Error('Invalid review action')
@@ -204,23 +140,28 @@ export class PaymentConfirmationWorkflow {
           status: newStatus,
           reviewedBy,
           reviewedAt: new Date(),
-          reviewNotes,
-          escalationReason,
-          holdReason
+          notes: reviewNotes || confirmationRequest.notes
         }
       })
-
-      // Update workflow
-      await this.updateWorkflow(confirmationRequest.paymentId, action, reviewedBy, reviewNotes)
 
       // If approved, update payment status
       if (action === 'APPROVE') {
         await db.payment.update({
           where: { id: confirmationRequest.paymentId },
-          data: { 
-            status: 'COMPLETED',
+          data: {
+            status: 'CONFIRMED',
             confirmedBy: reviewedBy,
             confirmedAt: new Date()
+          }
+        })
+      }
+
+      // If rejected, update payment status
+      if (action === 'REJECT') {
+        await db.payment.update({
+          where: { id: confirmationRequest.paymentId },
+          data: {
+            status: 'REJECTED'
           }
         })
       }
@@ -228,15 +169,13 @@ export class PaymentConfirmationWorkflow {
       return {
         id: updatedRequest.id,
         paymentId: updatedRequest.paymentId,
-        status: updatedRequest.status as PaymentConfirmationStatus,
+        status: updatedRequest.status,
         requestedBy: updatedRequest.requestedBy,
-        requestedAt: updatedRequest.requestedAt,
-        reviewedBy: updatedRequest.reviewedBy || undefined,
-        reviewedAt: updatedRequest.reviewedAt || undefined,
-        reviewNotes: updatedRequest.reviewNotes || undefined,
-        escalationReason: updatedRequest.escalationReason || undefined,
-        holdReason: updatedRequest.holdReason || undefined,
-        metadata: updatedRequest.metadata ? JSON.parse(updatedRequest.metadata) : undefined
+        requestedAt: updatedRequest.createdAt,
+        reviewedBy: updatedRequest.reviewedBy,
+        reviewedAt: updatedRequest.reviewedAt,
+        notes: updatedRequest.notes,
+        priority: updatedRequest.priority
       }
 
     } catch (error) {
@@ -249,9 +188,9 @@ export class PaymentConfirmationWorkflow {
    * Get confirmation requests with filtering and pagination
    */
   static async getConfirmationRequests(filters?: {
-    status?: PaymentConfirmationStatus
+    status?: string
     priority?: string
-    assignedTo?: string
+    requestedBy?: string
     dateRange?: { start: Date; end: Date }
     page?: number
     limit?: number
@@ -273,21 +212,21 @@ export class PaymentConfirmationWorkflow {
 
       // Build where clause
       const whereClause: any = {}
-      
+
       if (filters?.status) {
         whereClause.status = filters.status
       }
-      
+
       if (filters?.priority) {
         whereClause.priority = filters.priority
       }
-      
-      if (filters?.assignedTo) {
-        whereClause.assignedTo = filters.assignedTo
+
+      if (filters?.requestedBy) {
+        whereClause.requestedBy = filters.requestedBy
       }
-      
+
       if (filters?.dateRange) {
-        whereClause.requestedAt = {
+        whereClause.createdAt = {
           gte: filters.dateRange.start,
           lte: filters.dateRange.end
         }
@@ -297,22 +236,9 @@ export class PaymentConfirmationWorkflow {
       const [requests, totalCount] = await Promise.all([
         db.paymentConfirmationRequest.findMany({
           where: whereClause,
-          include: {
-            payment: {
-              include: {
-                consultationRequest: {
-                  include: {
-                    patient: { select: { firstName: true, lastName: true } },
-                    parent: { select: { firstName: true, lastName: true, email: true } },
-                    specialty: { select: { name: true } }
-                  }
-                }
-              }
-            }
-          },
           orderBy: [
-            { priority: 'asc' }, // Urgent first
-            { requestedAt: 'asc' } // Oldest first
+            { priority: 'desc' },
+            { createdAt: 'asc' }
           ],
           skip: offset,
           take: limit
@@ -346,41 +272,47 @@ export class PaymentConfirmationWorkflow {
   static async getConfirmationRequestDetails(confirmationRequestId: string): Promise<any> {
     try {
       const request = await db.paymentConfirmationRequest.findUnique({
-        where: { id: confirmationRequestId },
-        include: {
-          payment: {
-            include: {
-              consultationRequest: {
-                include: {
-                  patient: { select: { firstName: true, lastName: true, dateOfBirth: true } },
-                  parent: { select: { firstName: true, lastName: true, email: true, phone: true } },
-                  specialty: { select: { name: true } },
-                  therapist: { 
-                    select: { 
-                      firstName: true, 
-                      lastName: true,
-                      user: { select: { name: true } }
-                    } 
-                  }
-                }
-              }
-            }
-          },
-          workflow: {
-            include: {
-              steps: {
-                orderBy: { stepNumber: 'asc' }
-              }
-            }
-          }
-        }
+        where: { id: confirmationRequestId }
       })
 
       if (!request) {
         throw new Error('Confirmation request not found')
       }
 
-      return request
+      // Get payment details
+      const payment = await db.payment.findUnique({
+        where: { id: request.paymentId },
+        include: {
+          consultationRequest: {
+            include: {
+              patient: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  dateOfBirth: true
+                }
+              },
+              parent: {
+                select: {
+                  profile: {
+                    select: {
+                      firstName: true,
+                      lastName: true,
+                      email: true,
+                      phone: true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      })
+
+      return {
+        ...request,
+        payment
+      }
 
     } catch (error) {
       console.error('Error getting confirmation request details:', error)
@@ -393,15 +325,14 @@ export class PaymentConfirmationWorkflow {
    */
   static async getConfirmationStatistics(dateRange?: { start: Date; end: Date }): Promise<{
     totalRequests: number
-    statusCounts: { [key in PaymentConfirmationStatus]: number }
-    priorityCounts: { [key: string]: number }
-    averageReviewTime: number // in hours
+    statusCounts: Record<string, number>
+    priorityCounts: Record<string, number>
+    averageReviewTime: number
     approvalRate: number
-    escalationRate: number
   }> {
     try {
       const whereClause = dateRange ? {
-        requestedAt: {
+        createdAt: {
           gte: dateRange.start,
           lte: dateRange.end
         }
@@ -430,7 +361,7 @@ export class PaymentConfirmationWorkflow {
             reviewedAt: { not: null }
           },
           select: {
-            requestedAt: true,
+            createdAt: true,
             reviewedAt: true,
             status: true
           }
@@ -438,45 +369,35 @@ export class PaymentConfirmationWorkflow {
       ])
 
       // Format status counts
-      const formattedStatusCounts: { [key in PaymentConfirmationStatus]: number } = {
-        'PENDING_REVIEW': 0,
-        'APPROVED': 0,
-        'REJECTED': 0,
-        'REQUIRES_CLARIFICATION': 0,
-        'ESCALATED': 0
-      }
-
+      const formattedStatusCounts: Record<string, number> = {}
       statusCounts.forEach(item => {
-        formattedStatusCounts[item.status as PaymentConfirmationStatus] = item._count.status
+        formattedStatusCounts[item.status] = item._count.status
       })
 
       // Format priority counts
-      const formattedPriorityCounts: { [key: string]: number } = {}
+      const formattedPriorityCounts: Record<string, number> = {}
       priorityCounts.forEach(item => {
         formattedPriorityCounts[item.priority] = item._count.priority
       })
 
       // Calculate average review time
-      const reviewTimes = completedRequests.map(request => 
-        request.reviewedAt ? 
-          (request.reviewedAt.getTime() - request.requestedAt.getTime()) / (1000 * 60 * 60) : 0
+      const reviewTimes = completedRequests.map(request =>
+        request.reviewedAt ?
+          (request.reviewedAt.getTime() - request.createdAt.getTime()) / (1000 * 60 * 60) : 0
       )
-      const averageReviewTime = reviewTimes.length > 0 ? 
+      const averageReviewTime = reviewTimes.length > 0 ?
         reviewTimes.reduce((sum, time) => sum + time, 0) / reviewTimes.length : 0
 
       // Calculate rates
-      const approvedCount = formattedStatusCounts.APPROVED
-      const escalatedCount = formattedStatusCounts.ESCALATED
+      const approvedCount = formattedStatusCounts['APPROVED'] || 0
       const approvalRate = totalRequests > 0 ? (approvedCount / totalRequests) * 100 : 0
-      const escalationRate = totalRequests > 0 ? (escalatedCount / totalRequests) * 100 : 0
 
       return {
         totalRequests,
         statusCounts: formattedStatusCounts,
         priorityCounts: formattedPriorityCounts,
         averageReviewTime,
-        approvalRate,
-        escalationRate
+        approvalRate
       }
 
     } catch (error) {
@@ -486,141 +407,40 @@ export class PaymentConfirmationWorkflow {
   }
 
   /**
-   * Create workflow for payment confirmation
-   */
-  private static async createWorkflow(
-    paymentId: string,
-    priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
-  ): Promise<void> {
-    try {
-      const workflow = await db.paymentConfirmationWorkflow.create({
-        data: {
-          paymentId,
-          currentStep: 1,
-          totalSteps: this.WORKFLOW_STEPS.length,
-          status: 'PENDING_REVIEW',
-          priority
-        }
-      })
-
-      // Create workflow steps
-      const steps = this.WORKFLOW_STEPS.map(step => ({
-        workflowId: workflow.id,
-        stepNumber: step.stepNumber,
-        stepName: step.stepName,
-        status: 'PENDING' as const,
-        required: step.required
-      }))
-
-      await db.paymentWorkflowStep.createMany({
-        data: steps
-      })
-
-    } catch (error) {
-      console.error('Error creating workflow:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Update workflow based on review action
-   */
-  private static async updateWorkflow(
-    paymentId: string,
-    action: PaymentReviewAction,
-    reviewedBy: string,
-    notes?: string
-  ): Promise<void> {
-    try {
-      const workflow = await db.paymentConfirmationWorkflow.findUnique({
-        where: { paymentId },
-        include: { steps: { orderBy: { stepNumber: 'asc' } } }
-      })
-
-      if (!workflow) {
-        throw new Error('Workflow not found')
-      }
-
-      // Update current step based on action
-      let newStep = workflow.currentStep
-      let newStatus = workflow.status
-
-      switch (action) {
-        case 'APPROVE':
-          newStep = workflow.totalSteps
-          newStatus = 'APPROVED'
-          break
-        case 'REJECT':
-          newStatus = 'REJECTED'
-          break
-        case 'REQUEST_CLARIFICATION':
-          newStatus = 'REQUIRES_CLARIFICATION'
-          break
-        case 'ESCALATE':
-          newStatus = 'ESCALATED'
-          break
-        case 'HOLD':
-          // Keep current step and status
-          break
-      }
-
-      // Update workflow
-      await db.paymentConfirmationWorkflow.update({
-        where: { id: workflow.id },
-        data: {
-          currentStep: newStep,
-          status: newStatus,
-          updatedAt: new Date(),
-          completedAt: action === 'APPROVE' ? new Date() : undefined
-        }
-      })
-
-      // Update current step
-      if (workflow.steps.length > 0) {
-        const currentStep = workflow.steps[workflow.currentStep - 1]
-        if (currentStep) {
-          await db.paymentWorkflowStep.update({
-            where: { id: currentStep.id },
-            data: {
-              status: action === 'APPROVE' ? 'COMPLETED' : 'IN_PROGRESS',
-              completedBy: action === 'APPROVE' ? reviewedBy : undefined,
-              completedAt: action === 'APPROVE' ? new Date() : undefined,
-              notes
-            }
-          })
-        }
-      }
-
-    } catch (error) {
-      console.error('Error updating workflow:', error)
-      throw error
-    }
-  }
-
-  /**
    * Get status description
    */
-  static getStatusDescription(status: PaymentConfirmationStatus): string {
-    return this.STATUS_DESCRIPTIONS[status]
+  static getStatusDescription(status: string): string {
+    const descriptions: Record<string, string> = {
+      'PENDING': 'Payment is pending administrative review',
+      'APPROVED': 'Payment has been approved by administrator',
+      'REJECTED': 'Payment has been rejected by administrator'
+    }
+    return descriptions[status] || 'Unknown status'
   }
 
   /**
    * Get status color for UI
    */
-  static getStatusColor(status: PaymentConfirmationStatus): string {
-    return this.STATUS_COLORS[status]
+  static getStatusColor(status: string): string {
+    const colors: Record<string, string> = {
+      'PENDING': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      'APPROVED': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      'REJECTED': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+    }
+    return colors[status] || colors.PENDING
   }
 
   /**
    * Get priority color for UI
    */
   static getPriorityColor(priority: string): string {
-    const colors = {
+    const colors: Record<string, string> = {
       'LOW': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
+      'NORMAL': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
       'MEDIUM': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
       'HIGH': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
       'URGENT': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
     }
-    return colors[priority as keyof typeof colors] || colors.MEDIUM
+    return colors[priority] || colors.NORMAL
   }
 }

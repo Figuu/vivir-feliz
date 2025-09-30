@@ -5,7 +5,7 @@ import { z } from 'zod'
 
 const generatePdfSchema = z.object({
   formId: z.string().uuid(),
-  formData: z.record(z.any()).optional(),
+  formData: z.record(z.string(), z.unknown()).optional(),
   options: z.object({
     format: z.enum(['A4', 'LETTER', 'LEGAL']).optional(),
     orientation: z.enum(['portrait', 'landscape']).optional(),
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     const validation = generatePdfSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -51,8 +51,13 @@ export async function POST(request: NextRequest) {
           select: {
             therapist: {
               select: {
-                firstName: true,
-                lastName: true
+                id: true,
+                profile: {
+                  select: {
+                    firstName: true,
+                    lastName: true
+                  }
+                }
               }
             }
           }
@@ -71,7 +76,7 @@ export async function POST(request: NextRequest) {
     const pdfContent = generateMedicalFormPdf(medicalForm, options)
     
     // Return PDF as blob
-    return new NextResponse(pdfContent, {
+    return new NextResponse(Buffer.from(pdfContent), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',

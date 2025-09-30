@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 import { hasPermission, canManageUser, PERMISSIONS } from '@/lib/permissions'
 import { auditUser } from '@/lib/audit-logger'
-import { AuditAction } from '@prisma/client'
+import { AuditAction } from '@/lib/audit-types'
 
 export async function POST(
   request: NextRequest,
@@ -19,9 +19,9 @@ export async function POST(
     }
 
     // Get current user from database
-    const currentUser = await db.user.findUnique({
+    const currentUser = await db.profile.findUnique({
       where: { id: user.id },
-      select: { role: true, email: true, name: true }
+      select: { role: true, email: true, firstName: true, lastName: true }
     })
 
     if (!currentUser) {
@@ -34,17 +34,17 @@ export async function POST(
     }
 
     // Get target user to impersonate
-    const targetUser = await db.user.findUnique({
+    const targetUser = await db.profile.findUnique({
       where: { id },
       select: { 
         id: true,
         email: true, 
-        name: true,
+        firstName: true,
+        lastName: true,
         role: true,
         avatar: true,
         createdAt: true,
-        updatedAt: true,
-        profile: true
+        updatedAt: true
       }
     })
 
@@ -68,7 +68,7 @@ export async function POST(
 
     // Log the impersonation attempt
     await auditUser({
-      action: AuditAction.USER_IMPERSONATED,
+      action: AuditAction.USER_IMPERSONATE,
       userId: user.id,
       targetUserId: targetUser.id,
       request,
@@ -87,17 +87,16 @@ export async function POST(
       targetUser: {
         id: targetUser.id,
         email: targetUser.email,
-        name: targetUser.name,
+        name: `${targetUser.firstName} ${targetUser.lastName}`,
         avatar: targetUser.avatar,
         role: targetUser.role,
         createdAt: targetUser.createdAt,
-        updatedAt: targetUser.updatedAt,
-        profile: targetUser.profile
+        updatedAt: targetUser.updatedAt
       },
       originalUser: {
         id: user.id,
         email: currentUser.email,
-        name: currentUser.name,
+        name: `${currentUser.firstName} ${currentUser.lastName}`,
         role: currentUser.role
       }
     })
@@ -121,7 +120,7 @@ export async function DELETE(request: NextRequest) {
 
     // Log the end of impersonation
     await auditUser({
-      action: AuditAction.USER_IMPERSONATION_ENDED,
+      action: AuditAction.LOGOUT, // Using LOGOUT as the closest equivalent
       userId: user.id,
       request,
       metadata: {

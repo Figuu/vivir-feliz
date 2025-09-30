@@ -25,7 +25,7 @@ export const pricingSchema = z.object({
     .max(10000, 'El precio no puede exceder $10,000')
     .refine((price) => price % 0.01 === 0, 'El precio debe tener máximo 2 decimales'),
   currency: z.enum(['USD', 'EUR', 'GBP', 'CAD', 'MXN'], {
-    errorMap: () => ({ message: 'Moneda no válida' })
+    message: 'Moneda no válida'
   }),
   discountPercentage: z.number()
     .min(0, 'El descuento no puede ser negativo')
@@ -106,7 +106,7 @@ export const serviceValidationSchema = z.object({
   // Categorization
   categoryId: z.string().min(1, 'Debe seleccionar una categoría'),
   type: z.enum(['EVALUATION', 'TREATMENT', 'CONSULTATION', 'FOLLOW_UP', 'ASSESSMENT'], {
-    errorMap: () => ({ message: 'Tipo de servicio no válido' })
+    message: 'Tipo de servicio no válido'
   }),
   
   // Pricing and duration
@@ -211,7 +211,7 @@ export const validateServiceCode = (code: string): { isValid: boolean; errors: s
     return { isValid: true, errors: [] }
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { isValid: false, errors: error.errors.map(e => e.message) }
+      return { isValid: false, errors: error.issues.map(e => e.message) }
     }
     return { isValid: false, errors: ['Error de validación desconocido'] }
   }
@@ -223,7 +223,7 @@ export const validatePricing = (pricing: any): { isValid: boolean; errors: strin
     return { isValid: true, errors: [] }
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { isValid: false, errors: error.errors.map(e => e.message) }
+      return { isValid: false, errors: error.issues.map(e => e.message) }
     }
     return { isValid: false, errors: ['Error de validación desconocido'] }
   }
@@ -235,7 +235,7 @@ export const validateDuration = (duration: any): { isValid: boolean; errors: str
     return { isValid: true, errors: [] }
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { isValid: false, errors: error.errors.map(e => e.message) }
+      return { isValid: false, errors: error.issues.map(e => e.message) }
     }
     return { isValid: false, errors: ['Error de validación desconocido'] }
   }
@@ -247,7 +247,7 @@ export const validateService = (service: any): { isValid: boolean; errors: strin
     return { isValid: true, errors: [] }
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { isValid: false, errors: error.errors.map(e => e.message) }
+      return { isValid: false, errors: error.issues.map(e => e.message) }
     }
     return { isValid: false, errors: ['Error de validación desconocido'] }
   }
@@ -259,7 +259,7 @@ export const validateCategory = (category: any): { isValid: boolean; errors: str
     return { isValid: true, errors: [] }
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { isValid: false, errors: error.errors.map(e => e.message) }
+      return { isValid: false, errors: error.issues.map(e => e.message) }
     }
     return { isValid: false, errors: ['Error de validación desconocido'] }
   }

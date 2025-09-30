@@ -182,7 +182,7 @@ export const FILE_UPLOAD_SECURITY = {
 FILE_UPLOAD_SECURITY.allowedMimeTypes.all = [
   ...FILE_UPLOAD_SECURITY.allowedMimeTypes.images,
   ...FILE_UPLOAD_SECURITY.allowedMimeTypes.documents
-]
+] as string[]
 
 // API Security Configuration
 export const API_SECURITY = {

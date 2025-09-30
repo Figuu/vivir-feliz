@@ -6,31 +6,21 @@ import { db } from '@/lib/db'
 const patientUpdateSchema = z.object({
   firstName: z.string().min(1).max(50).optional(),
   lastName: z.string().min(1).max(50).optional(),
-  email: z.string().email().optional(),
-  phone: z.string().min(10).optional(),
-  dateOfBirth: z.string().optional(),
-  gender: z.enum(['male', 'female', 'other', 'prefer_not_to_say']).optional(),
-  address: z.string().max(200).optional(),
-  status: z.enum(['active', 'inactive', 'archived']).optional(),
-  emergencyContact: z.object({
-    name: z.string().max(100),
-    phone: z.string().min(10),
-    relationship: z.string().max(50)
-  }).optional(),
-  medicalInfo: z.object({
-    allergies: z.string().max(500).optional(),
-    medications: z.string().max(500).optional(),
-    medicalConditions: z.string().max(500).optional(),
-    insuranceProvider: z.string().max(100).optional(),
-    insuranceNumber: z.string().max(50).optional()
-  }).optional(),
-  notes: z.string().max(1000).optional()
+  dateOfBirth: z.string().refine(val => !isNaN(Date.parse(val)), 'Invalid date format').optional(),
+  gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
+  schoolName: z.string().max(200).optional(),
+  schoolGrade: z.string().max(50).optional(),
+  medicalHistory: z.any().optional(),
+  specialNeeds: z.string().max(1000).optional(),
+  emergencyContact: z.string().max(100).optional(),
+  emergencyPhone: z.string().min(10).optional(),
+  isActive: z.boolean().optional()
 })
 
 const sessionQuerySchema = z.object({
-  page: z.string().transform(val => parseInt(val) || 1).default(1),
-  limit: z.string().transform(val => parseInt(val) || 10).default(10),
-  status: z.enum(['scheduled', 'in-progress', 'completed', 'cancelled', 'no-show']).optional(),
+  page: z.string().optional().default('1').transform(val => parseInt(val) || 1),
+  limit: z.string().optional().default('10').transform(val => parseInt(val) || 10),
+  status: z.enum(['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'RESCHEDULED']).optional(),
   therapistId: z.string().uuid().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional()
@@ -54,45 +44,7 @@ export async function GET(
 
     // Get patient details
     const patient = await db.patient.findUnique({
-      where: { id: patientId },
-      include: {
-        sessions: {
-          include: {
-            therapist: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true
-              }
-            },
-            serviceAssignments: {
-              include: {
-                proposalService: {
-                  include: {
-                    service: {
-                      select: {
-                        id: true,
-                        name: true,
-                        description: true,
-                        price: true
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          orderBy: {
-            scheduledDate: 'desc'
-          }
-        },
-        _count: {
-          select: {
-            sessions: true
-          }
-        }
-      }
+      where: { id: patientId }
     })
 
     if (!patient) {
@@ -102,44 +54,81 @@ export async function GET(
       )
     }
 
+    // Get patient sessions separately
+    const sessions = await db.patientSession.findMany({
+      where: { patientId },
+      include: {
+        therapist: {
+          include: {
+            profile: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
+          }
+        },
+        serviceAssignment: {
+          include: {
+            proposalService: {
+              include: {
+                service: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    costPerSession: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        scheduledDate: 'desc'
+      }
+    })
+
     // Calculate patient statistics
-    const totalSessions = patient.sessions.length
-    const completedSessions = patient.sessions.filter(s => s.status === 'completed').length
-    const upcomingSessions = patient.sessions.filter(s => 
-      s.status === 'scheduled' && new Date(s.scheduledDate) > new Date()
+    const totalSessions = sessions.length
+    const completedSessions = sessions.filter(s => s.status === 'COMPLETED').length
+    const upcomingSessions = sessions.filter(s =>
+      s.status === 'SCHEDULED' && new Date(s.scheduledDate) > new Date()
     ).length
-    const totalRevenue = patient.sessions
-      .filter(s => s.status === 'completed')
+    const totalRevenue = sessions
+      .filter(s => s.status === 'COMPLETED')
       .reduce((total, session) => {
-        const sessionRevenue = session.serviceAssignments.reduce((sessionTotal, assignment) => {
-          return sessionTotal + (assignment.proposalService.service.price || 0)
-        }, 0)
+        const sessionRevenue = session.serviceAssignment?.proposalService?.service?.costPerSession?.toNumber() || 0
         return total + sessionRevenue
       }, 0)
 
     // Get recent sessions (last 10)
-    const recentSessions = patient.sessions.slice(0, 10)
+    const recentSessions = sessions.slice(0, 10)
 
     // Get upcoming sessions
-    const upcomingSessionsList = patient.sessions.filter(s => 
-      s.status === 'scheduled' && new Date(s.scheduledDate) > new Date()
+    const upcomingSessionsList = sessions.filter(s =>
+      s.status === 'SCHEDULED' && new Date(s.scheduledDate) > new Date()
     ).slice(0, 5)
 
     // Get session statistics by status
     const sessionStats = {
-      scheduled: patient.sessions.filter(s => s.status === 'scheduled').length,
-      completed: patient.sessions.filter(s => s.status === 'completed').length,
-      cancelled: patient.sessions.filter(s => s.status === 'cancelled').length,
-      'no-show': patient.sessions.filter(s => s.status === 'no-show').length,
-      'in-progress': patient.sessions.filter(s => s.status === 'in-progress').length
+      scheduled: sessions.filter(s => s.status === 'SCHEDULED').length,
+      completed: sessions.filter(s => s.status === 'COMPLETED').length,
+      cancelled: sessions.filter(s => s.status === 'CANCELLED').length,
+      rescheduled: sessions.filter(s => s.status === 'RESCHEDULED').length,
+      'in-progress': sessions.filter(s => s.status === 'IN_PROGRESS').length
     }
 
     // Get therapists who have worked with this patient
-    const therapists = Array.from(
-      new Set(patient.sessions.map(s => s.therapist.id))
-    ).map(therapistId => {
-      const therapist = patient.sessions.find(s => s.therapist.id === therapistId)?.therapist
-      return therapist
+    const uniqueTherapistIds = Array.from(
+      new Set(sessions.map(s => s.therapist.id))
+    )
+    const therapists = uniqueTherapistIds.map(therapistId => {
+      const session = sessions.find(s => s.therapist.id === therapistId)
+      return session?.therapist.profile
     }).filter(Boolean)
 
     return NextResponse.json({
@@ -147,17 +136,18 @@ export async function GET(
       data: {
         patient: {
           id: patient.id,
+          parentId: patient.parentId,
           firstName: patient.firstName,
           lastName: patient.lastName,
-          email: patient.email,
-          phone: patient.phone,
           dateOfBirth: patient.dateOfBirth,
           gender: patient.gender,
-          address: patient.address,
-          status: patient.status,
+          schoolName: patient.schoolName,
+          schoolGrade: patient.schoolGrade,
+          medicalHistory: patient.medicalHistory,
+          specialNeeds: patient.specialNeeds,
           emergencyContact: patient.emergencyContact,
-          medicalInfo: patient.medicalInfo,
-          notes: patient.notes,
+          emergencyPhone: patient.emergencyPhone,
+          isActive: patient.isActive,
           createdAt: patient.createdAt,
           updatedAt: patient.updatedAt
         },
@@ -175,13 +165,16 @@ export async function GET(
           scheduledTime: session.scheduledTime,
           duration: session.duration,
           status: session.status,
-          sessionNotes: session.sessionNotes,
-          therapistComments: session.therapistComments,
-          therapist: session.therapist,
-          services: session.serviceAssignments.map(sa => sa.proposalService.service),
-          revenue: session.serviceAssignments.reduce((total, assignment) => {
-            return total + (assignment.proposalService.service.price || 0)
-          }, 0)
+          therapistNotes: session.therapistNotes,
+          observations: session.observations,
+          therapist: {
+            id: session.therapist.id,
+            firstName: session.therapist.profile.firstName,
+            lastName: session.therapist.profile.lastName,
+            email: session.therapist.profile.email
+          },
+          service: session.serviceAssignment?.proposalService?.service,
+          revenue: session.serviceAssignment?.proposalService?.service?.costPerSession?.toNumber() || 0
         })),
         upcomingSessions: upcomingSessionsList.map(session => ({
           id: session.id,
@@ -189,8 +182,13 @@ export async function GET(
           scheduledTime: session.scheduledTime,
           duration: session.duration,
           status: session.status,
-          therapist: session.therapist,
-          services: session.serviceAssignments.map(sa => sa.proposalService.service)
+          therapist: {
+            id: session.therapist.id,
+            firstName: session.therapist.profile.firstName,
+            lastName: session.therapist.profile.lastName,
+            email: session.therapist.profile.email
+          },
+          service: session.serviceAssignment?.proposalService?.service
         })),
         therapists
       }
@@ -227,7 +225,7 @@ export async function PUT(
     const validation = patientUpdateSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -246,27 +244,15 @@ export async function PUT(
       )
     }
 
-    // Check for duplicate email if email is being updated
-    if (updateData.email && updateData.email !== existingPatient.email) {
-      const duplicatePatient = await db.patient.findUnique({
-        where: { email: updateData.email }
-      })
-
-      if (duplicatePatient) {
-        return NextResponse.json(
-          { error: 'Patient with this email already exists' },
-          { status: 409 }
-        )
-      }
+    // Update patient
+    const updatePayload: any = { ...updateData }
+    if (updateData.dateOfBirth) {
+      updatePayload.dateOfBirth = new Date(updateData.dateOfBirth)
     }
 
-    // Update patient
     const patient = await db.patient.update({
       where: { id: patientId },
-      data: {
-        ...updateData,
-        dateOfBirth: updateData.dateOfBirth ? new Date(updateData.dateOfBirth) : undefined
-      }
+      data: updatePayload
     })
 
     return NextResponse.json({
@@ -316,7 +302,7 @@ export async function DELETE(
     const activeSessions = await db.patientSession.count({
       where: {
         patientId,
-        status: { in: ['scheduled', 'in-progress'] }
+        status: { in: ['SCHEDULED', 'IN_PROGRESS'] }
       }
     })
 
@@ -327,10 +313,10 @@ export async function DELETE(
       )
     }
 
-    // Soft delete patient (set status to archived)
+    // Soft delete patient (set isActive to false)
     const patient = await db.patient.update({
       where: { id: patientId },
-      data: { status: 'archived' }
+      data: { isActive: false }
     })
 
     return NextResponse.json({

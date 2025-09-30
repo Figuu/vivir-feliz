@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 import { AuditLogger } from '@/lib/audit-logger'
-import { AuditAction, AuditSeverity } from '@prisma/client'
+import { AuditAction, AuditSeverity } from '@/lib/audit-types'
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,9 +15,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get current user from database
-    const currentUser = await db.user.findUnique({
+    const currentUser = await db.profile.findUnique({
       where: { id: user.id },
-      select: { role: true, email: true, name: true }
+      select: { role: true, email: true, firstName: true, lastName: true }
     })
 
     if (!currentUser) {
@@ -33,10 +33,9 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
-    const userId = searchParams.get('userId') || undefined
+    const profileId = searchParams.get('profileId') || undefined
     const action = searchParams.get('action') as AuditAction || undefined
     const resource = searchParams.get('resource') || undefined
-    const severity = searchParams.get('severity') as AuditSeverity || undefined
     const category = searchParams.get('category') || undefined
     const success = searchParams.get('success') === 'true' ? true : 
                    searchParams.get('success') === 'false' ? false : undefined
@@ -45,10 +44,9 @@ export async function GET(request: NextRequest) {
 
     // Get audit logs with filtering
     const result = await AuditLogger.getLogs({
-      userId,
+      userId: profileId,
       action,
       resource,
-      severity,
       category,
       success,
       startDate,
@@ -59,15 +57,15 @@ export async function GET(request: NextRequest) {
 
     // Log the audit log viewing action
     await AuditLogger.logAdminAction({
-      action: AuditAction.AUDIT_LOG_VIEWED,
+      action: AuditAction.READ,
       userId: user.id,
       request,
       metadata: {
+        resourceType: 'audit_logs',
         filters: {
-          userId,
+          profileId,
           action,
           resource,
-          severity,
           category,
           success,
           startDate,
@@ -97,9 +95,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Get current user from database
-    const currentUser = await db.user.findUnique({
+    const currentUser = await db.profile.findUnique({
       where: { id: user.id },
-      select: { role: true, email: true, name: true }
+      select: { role: true, email: true, firstName: true, lastName: true }
     })
 
     if (!currentUser) {

@@ -210,7 +210,7 @@ async function handleValidateScheduling(data: any) {
   const validation = validateSchedulingSchema.safeParse(data)
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid request data', details: validation.error.errors },
+      { error: 'Invalid request data', details: validation.error.issues },
       { status: 400 }
     )
   }
@@ -393,7 +393,7 @@ async function handleCreateRule(body: any) {
   const validation = createRuleSchema.safeParse(body)
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid request data', details: validation.error.errors },
+      { error: 'Invalid request data', details: validation.error.issues },
       { status: 400 }
     )
   }
@@ -450,7 +450,7 @@ async function handleUpdateRule(body: any) {
   const validation = updateRuleSchema.safeParse(body)
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid request data', details: validation.error.errors },
+      { error: 'Invalid request data', details: validation.error.issues },
       { status: 400 }
     )
   }

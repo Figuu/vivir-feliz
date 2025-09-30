@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { auditAuth } from '@/lib/audit-logger'
-import { AuditAction } from '@prisma/client'
+import { AuditAction } from '@/lib/audit-types'
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),

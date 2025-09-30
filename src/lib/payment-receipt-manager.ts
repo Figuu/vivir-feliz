@@ -1,36 +1,27 @@
 import { db } from './db'
 
-export type ReceiptStatus = 'PENDING' | 'UPLOADED' | 'VERIFIED' | 'REJECTED' | 'EXPIRED'
-export type ReceiptType = 'PAYMENT_RECEIPT' | 'BANK_STATEMENT' | 'TRANSACTION_PROOF' | 'INVOICE' | 'OTHER'
 export type FileType = 'PDF' | 'JPG' | 'JPEG' | 'PNG' | 'DOC' | 'DOCX' | 'TXT'
 
 export interface ReceiptUploadRequest {
   paymentId: string
-  receiptType: ReceiptType
-  fileName: string
+  receiptNumber: string
   fileSize: number
   fileType: FileType
   fileData: string // Base64 encoded file data
-  description?: string
-  metadata?: Record<string, any>
+  generatedBy?: string
 }
 
 export interface ReceiptRecord {
   id: string
   paymentId: string
-  receiptType: ReceiptType
-  fileName: string
-  fileSize: number
-  fileType: FileType
-  filePath: string
-  status: ReceiptStatus
-  description?: string
-  uploadedBy: string
-  uploadedAt: Date
-  verifiedBy?: string
-  verifiedAt?: Date
-  rejectionReason?: string
-  metadata?: Record<string, any>
+  receiptNumber: string
+  fileSize: number | null
+  fileType: string
+  receiptUrl: string
+  generatedBy: string | null
+  generatedAt: Date
+  emailSent: boolean
+  emailSentAt: Date | null
   createdAt: Date
   updatedAt: Date
 }
@@ -49,9 +40,7 @@ export interface ReceiptValidationResult {
 
 export interface ReceiptSearchFilters {
   paymentId?: string
-  receiptType?: ReceiptType
-  status?: ReceiptStatus
-  uploadedBy?: string
+  generatedBy?: string
   dateRange?: { start: Date; end: Date }
   fileType?: FileType
   searchTerm?: string
@@ -88,11 +77,11 @@ export class PaymentReceiptManager {
         }
       }
 
-      // Validate file information
-      if (!request.fileName) {
-        errors.push('File name is required')
-      } else if (request.fileName.length > 255) {
-        errors.push('File name cannot exceed 255 characters')
+      // Validate receipt number
+      if (!request.receiptNumber) {
+        errors.push('Receipt number is required')
+      } else if (request.receiptNumber.length > 100) {
+        errors.push('Receipt number cannot exceed 100 characters')
       }
 
       if (!request.fileSize || request.fileSize <= 0) {
@@ -122,29 +111,13 @@ export class PaymentReceiptManager {
         }
       }
 
-      // Validate receipt type
-      if (!request.receiptType) {
-        errors.push('Receipt type is required')
-      } else if (!Object.values(['PAYMENT_RECEIPT', 'BANK_STATEMENT', 'TRANSACTION_PROOF', 'INVOICE', 'OTHER']).includes(request.receiptType)) {
-        errors.push('Invalid receipt type')
-      }
-
-      // Validate description
-      if (request.description && request.description.length > 500) {
-        errors.push('Description cannot exceed 500 characters')
-      }
-
-      // Check for duplicate receipts
-      if (request.paymentId) {
-        const existingReceipt = await db.paymentReceipt.findFirst({
-          where: {
-            paymentId: request.paymentId,
-            receiptType: request.receiptType,
-            status: { in: ['PENDING', 'UPLOADED', 'VERIFIED'] }
-          }
+      // Check for duplicate receipt numbers
+      if (request.receiptNumber) {
+        const existingReceipt = await db.paymentReceipt.findUnique({
+          where: { receiptNumber: request.receiptNumber }
         })
         if (existingReceipt) {
-          warnings.push('A receipt of this type already exists for this payment')
+          errors.push('Receipt number already exists')
         }
       }
 
@@ -188,10 +161,7 @@ export class PaymentReceiptManager {
   /**
    * Upload receipt
    */
-  static async uploadReceipt(
-    request: ReceiptUploadRequest,
-    uploadedBy: string
-  ): Promise<ReceiptRecord> {
+  static async uploadReceipt(request: ReceiptUploadRequest): Promise<ReceiptRecord> {
     try {
       // Validate request first
       const validation = await this.validateReceiptUpload(request)
@@ -211,45 +181,27 @@ export class PaymentReceiptManager {
       const receipt = await db.paymentReceipt.create({
         data: {
           paymentId: request.paymentId,
-          receiptType: request.receiptType,
-          fileName: request.fileName,
+          receiptNumber: request.receiptNumber,
+          receiptUrl: filePath,
           fileSize: request.fileSize,
           fileType: request.fileType,
-          filePath,
-          status: 'UPLOADED',
-          description: request.description,
-          uploadedBy,
-          uploadedAt: new Date(),
-          metadata: request.metadata ? JSON.stringify(request.metadata) : null
-        },
-        include: {
-          payment: {
-            select: {
-              id: true,
-              amount: true,
-              paymentMethod: true,
-              status: true
-            }
-          }
+          generatedBy: request.generatedBy,
+          generatedAt: new Date(),
+          emailSent: false
         }
       })
 
       return {
         id: receipt.id,
         paymentId: receipt.paymentId,
-        receiptType: receipt.receiptType as ReceiptType,
-        fileName: receipt.fileName,
+        receiptNumber: receipt.receiptNumber,
         fileSize: receipt.fileSize,
-        fileType: receipt.fileType as FileType,
-        filePath: receipt.filePath,
-        status: receipt.status as ReceiptStatus,
-        description: receipt.description || undefined,
-        uploadedBy: receipt.uploadedBy,
-        uploadedAt: receipt.uploadedAt,
-        verifiedBy: receipt.verifiedBy || undefined,
-        verifiedAt: receipt.verifiedAt || undefined,
-        rejectionReason: receipt.rejectionReason || undefined,
-        metadata: receipt.metadata ? JSON.parse(receipt.metadata) : undefined,
+        fileType: receipt.fileType,
+        receiptUrl: receipt.receiptUrl,
+        generatedBy: receipt.generatedBy,
+        generatedAt: receipt.generatedAt,
+        emailSent: receipt.emailSent,
+        emailSentAt: receipt.emailSentAt,
         createdAt: receipt.createdAt,
         updatedAt: receipt.updatedAt
       }
@@ -274,16 +226,14 @@ export class PaymentReceiptManager {
               amount: true,
               paymentMethod: true,
               status: true,
-              patient: {
+              parent: {
                 select: {
-                  firstName: true,
-                  lastName: true
-                }
-              },
-              therapist: {
-                select: {
-                  firstName: true,
-                  lastName: true
+                  profile: {
+                    select: {
+                      firstName: true,
+                      lastName: true
+                    }
+                  }
                 }
               }
             }
@@ -298,19 +248,14 @@ export class PaymentReceiptManager {
       return {
         id: receipt.id,
         paymentId: receipt.paymentId,
-        receiptType: receipt.receiptType as ReceiptType,
-        fileName: receipt.fileName,
+        receiptNumber: receipt.receiptNumber,
         fileSize: receipt.fileSize,
-        fileType: receipt.fileType as FileType,
-        filePath: receipt.filePath,
-        status: receipt.status as ReceiptStatus,
-        description: receipt.description || undefined,
-        uploadedBy: receipt.uploadedBy,
-        uploadedAt: receipt.uploadedAt,
-        verifiedBy: receipt.verifiedBy || undefined,
-        verifiedAt: receipt.verifiedAt || undefined,
-        rejectionReason: receipt.rejectionReason || undefined,
-        metadata: receipt.metadata ? JSON.parse(receipt.metadata) : undefined,
+        fileType: receipt.fileType,
+        receiptUrl: receipt.receiptUrl,
+        generatedBy: receipt.generatedBy,
+        generatedAt: receipt.generatedAt,
+        emailSent: receipt.emailSent,
+        emailSentAt: receipt.emailSentAt,
         createdAt: receipt.createdAt,
         updatedAt: receipt.updatedAt
       }
@@ -345,38 +290,29 @@ export class PaymentReceiptManager {
 
       // Build where clause
       const whereClause: any = {}
-      
+
       if (filters?.paymentId) {
         whereClause.paymentId = filters.paymentId
       }
-      
-      if (filters?.receiptType) {
-        whereClause.receiptType = filters.receiptType
+
+      if (filters?.generatedBy) {
+        whereClause.generatedBy = filters.generatedBy
       }
-      
-      if (filters?.status) {
-        whereClause.status = filters.status
-      }
-      
-      if (filters?.uploadedBy) {
-        whereClause.uploadedBy = filters.uploadedBy
-      }
-      
+
       if (filters?.fileType) {
         whereClause.fileType = filters.fileType
       }
-      
+
       if (filters?.dateRange) {
-        whereClause.uploadedAt = {
+        whereClause.generatedAt = {
           gte: filters.dateRange.start,
           lte: filters.dateRange.end
         }
       }
-      
+
       if (filters?.searchTerm) {
         whereClause.OR = [
-          { fileName: { contains: filters.searchTerm, mode: 'insensitive' } },
-          { description: { contains: filters.searchTerm, mode: 'insensitive' } }
+          { receiptNumber: { contains: filters.searchTerm, mode: 'insensitive' } }
         ]
       }
 
@@ -391,22 +327,20 @@ export class PaymentReceiptManager {
                 amount: true,
                 paymentMethod: true,
                 status: true,
-                patient: {
+                parent: {
                   select: {
-                    firstName: true,
-                    lastName: true
-                  }
-                },
-                therapist: {
-                  select: {
-                    firstName: true,
-                    lastName: true
+                    profile: {
+                      select: {
+                        firstName: true,
+                        lastName: true
+                      }
+                    }
                   }
                 }
               }
             }
           },
-          orderBy: { uploadedAt: 'desc' },
+          orderBy: { generatedAt: 'desc' },
           skip: offset,
           take: limit
         }),
@@ -434,76 +368,6 @@ export class PaymentReceiptManager {
   }
 
   /**
-   * Verify receipt
-   */
-  static async verifyReceipt(
-    receiptId: string,
-    verifiedBy: string,
-    isApproved: boolean,
-    comments?: string
-  ): Promise<ReceiptRecord> {
-    try {
-      const receipt = await db.paymentReceipt.findUnique({
-        where: { id: receiptId }
-      })
-
-      if (!receipt) {
-        throw new Error('Receipt not found')
-      }
-
-      if (receipt.status !== 'UPLOADED') {
-        throw new Error(`Cannot verify receipt with status: ${receipt.status}`)
-      }
-
-      // Update receipt status
-      const updatedReceipt = await db.paymentReceipt.update({
-        where: { id: receiptId },
-        data: {
-          status: isApproved ? 'VERIFIED' : 'REJECTED',
-          verifiedBy,
-          verifiedAt: new Date(),
-          rejectionReason: !isApproved ? comments : null,
-          description: comments ? `${receipt.description || ''} - Verification: ${comments}`.trim() : receipt.description
-        },
-        include: {
-          payment: {
-            select: {
-              id: true,
-              amount: true,
-              paymentMethod: true,
-              status: true
-            }
-          }
-        }
-      })
-
-      return {
-        id: updatedReceipt.id,
-        paymentId: updatedReceipt.paymentId,
-        receiptType: updatedReceipt.receiptType as ReceiptType,
-        fileName: updatedReceipt.fileName,
-        fileSize: updatedReceipt.fileSize,
-        fileType: updatedReceipt.fileType as FileType,
-        filePath: updatedReceipt.filePath,
-        status: updatedReceipt.status as ReceiptStatus,
-        description: updatedReceipt.description || undefined,
-        uploadedBy: updatedReceipt.uploadedBy,
-        uploadedAt: updatedReceipt.uploadedAt,
-        verifiedBy: updatedReceipt.verifiedBy || undefined,
-        verifiedAt: updatedReceipt.verifiedAt || undefined,
-        rejectionReason: updatedReceipt.rejectionReason || undefined,
-        metadata: updatedReceipt.metadata ? JSON.parse(updatedReceipt.metadata) : undefined,
-        createdAt: updatedReceipt.createdAt,
-        updatedAt: updatedReceipt.updatedAt
-      }
-
-    } catch (error) {
-      console.error('Error verifying receipt:', error)
-      throw error
-    }
-  }
-
-  /**
    * Delete receipt
    */
   static async deleteReceipt(receiptId: string): Promise<boolean> {
@@ -517,7 +381,7 @@ export class PaymentReceiptManager {
       }
 
       // Delete file from storage
-      await this.deleteFileFromStorage(receipt.filePath)
+      await this.deleteFileFromStorage(receipt.receiptUrl)
 
       // Delete receipt record
       await db.paymentReceipt.delete({
@@ -537,16 +401,16 @@ export class PaymentReceiptManager {
    */
   static async getReceiptFile(receiptId: string): Promise<{
     fileData: string
-    fileName: string
+    receiptNumber: string
     fileType: string
-    fileSize: number
+    fileSize: number | null
   }> {
     try {
       const receipt = await db.paymentReceipt.findUnique({
         where: { id: receiptId },
         select: {
-          filePath: true,
-          fileName: true,
+          receiptUrl: true,
+          receiptNumber: true,
           fileType: true,
           fileSize: true
         }
@@ -557,11 +421,11 @@ export class PaymentReceiptManager {
       }
 
       // Read file from storage
-      const fileData = await this.readFileFromStorage(receipt.filePath)
+      const fileData = await this.readFileFromStorage(receipt.receiptUrl)
 
       return {
         fileData,
-        fileName: receipt.fileName,
+        receiptNumber: receipt.receiptNumber,
         fileType: receipt.fileType,
         fileSize: receipt.fileSize
       }
@@ -577,39 +441,28 @@ export class PaymentReceiptManager {
    */
   static async getReceiptStatistics(filters?: ReceiptSearchFilters): Promise<{
     totalReceipts: number
-    statusBreakdown: Record<string, number>
-    typeBreakdown: Record<string, number>
     fileTypeBreakdown: Record<string, number>
     totalFileSize: number
     averageFileSize: number
-    verificationRate: number
   }> {
     try {
       // Build where clause
       const whereClause: any = {}
-      
+
       if (filters?.paymentId) {
         whereClause.paymentId = filters.paymentId
       }
-      
-      if (filters?.receiptType) {
-        whereClause.receiptType = filters.receiptType
+
+      if (filters?.generatedBy) {
+        whereClause.generatedBy = filters.generatedBy
       }
-      
-      if (filters?.status) {
-        whereClause.status = filters.status
-      }
-      
-      if (filters?.uploadedBy) {
-        whereClause.uploadedBy = filters.uploadedBy
-      }
-      
+
       if (filters?.fileType) {
         whereClause.fileType = filters.fileType
       }
-      
+
       if (filters?.dateRange) {
-        whereClause.uploadedAt = {
+        whereClause.generatedAt = {
           gte: filters.dateRange.start,
           lte: filters.dateRange.end
         }
@@ -617,23 +470,10 @@ export class PaymentReceiptManager {
 
       const [
         totalReceipts,
-        statusBreakdown,
-        typeBreakdown,
         fileTypeBreakdown,
-        totalFileSize,
-        verifiedReceipts
+        totalFileSize
       ] = await Promise.all([
         db.paymentReceipt.count({ where: whereClause }),
-        db.paymentReceipt.groupBy({
-          by: ['status'],
-          where: whereClause,
-          _count: { status: true }
-        }),
-        db.paymentReceipt.groupBy({
-          by: ['receiptType'],
-          where: whereClause,
-          _count: { receiptType: true }
-        }),
         db.paymentReceipt.groupBy({
           by: ['fileType'],
           where: whereClause,
@@ -642,42 +482,22 @@ export class PaymentReceiptManager {
         db.paymentReceipt.aggregate({
           where: whereClause,
           _sum: { fileSize: true }
-        }),
-        db.paymentReceipt.count({
-          where: {
-            ...whereClause,
-            status: { in: ['VERIFIED', 'REJECTED'] }
-          }
         })
       ])
 
       // Format breakdowns
-      const statusBreakdownFormatted: Record<string, number> = {}
-      statusBreakdown.forEach(status => {
-        statusBreakdownFormatted[status.status] = status._count.status
-      })
-
-      const typeBreakdownFormatted: Record<string, number> = {}
-      typeBreakdown.forEach(type => {
-        typeBreakdownFormatted[type.receiptType] = type._count.receiptType
-      })
-
       const fileTypeBreakdownFormatted: Record<string, number> = {}
       fileTypeBreakdown.forEach(fileType => {
         fileTypeBreakdownFormatted[fileType.fileType] = fileType._count.fileType
       })
 
       const averageFileSize = totalReceipts > 0 ? (totalFileSize._sum.fileSize || 0) / totalReceipts : 0
-      const verificationRate = totalReceipts > 0 ? (verifiedReceipts / totalReceipts) * 100 : 0
 
       return {
         totalReceipts,
-        statusBreakdown: statusBreakdownFormatted,
-        typeBreakdown: typeBreakdownFormatted,
         fileTypeBreakdown: fileTypeBreakdownFormatted,
         totalFileSize: totalFileSize._sum.fileSize || 0,
-        averageFileSize,
-        verificationRate
+        averageFileSize
       }
 
     } catch (error) {
@@ -743,5 +563,3 @@ export class PaymentReceiptManager {
     return uuidRegex.test(uuid)
   }
 }
-
-

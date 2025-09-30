@@ -126,7 +126,7 @@ async function handleDurationConfig(body: any) {
   const validation = durationConfigSchema.safeParse(body)
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid request data', details: validation.error.errors },
+      { error: 'Invalid request data', details: validation.error.issues },
       { status: 400 }
     )
   }
@@ -177,7 +177,7 @@ async function handleTimingAdjustment(body: any) {
   const validation = timingAdjustmentSchema.safeParse(body)
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid request data', details: validation.error.errors },
+      { error: 'Invalid request data', details: validation.error.issues },
       { status: 400 }
     )
   }
@@ -334,7 +334,7 @@ async function handleTimeSlotOptimization(body: any) {
   const validation = timeSlotOptimizationSchema.safeParse(body)
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid request data', details: validation.error.errors },
+      { error: 'Invalid request data', details: validation.error.issues },
       { status: 400 }
     )
   }

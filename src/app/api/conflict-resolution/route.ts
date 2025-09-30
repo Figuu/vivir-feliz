@@ -68,7 +68,7 @@ async function handleAvailabilityCheck(body: any) {
   const validation = availabilityCheckSchema.safeParse(body)
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid request data', details: validation.error.errors },
+      { error: 'Invalid request data', details: validation.error.issues },
       { status: 400 }
     )
   }
@@ -103,7 +103,7 @@ async function handleBulkAvailabilityCheck(body: any) {
   const validation = bulkAvailabilityCheckSchema.safeParse(body)
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid request data', details: validation.error.errors },
+      { error: 'Invalid request data', details: validation.error.issues },
       { status: 400 }
     )
   }
@@ -136,7 +136,7 @@ async function handleConflictResolution(body: any) {
   const validation = conflictResolutionSchema.safeParse(body)
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid request data', details: validation.error.errors },
+      { error: 'Invalid request data', details: validation.error.issues },
       { status: 400 }
     )
   }

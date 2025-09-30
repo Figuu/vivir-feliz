@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const validation = autoRescheduleSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     // Get therapist schedules
     const therapistIds = [...new Set(sessions.map(s => s.therapistId))]
     const schedules = await db.therapistSchedule.findMany({
-      where: { therapistId: { in: therapistIds }, isAvailable: true }
+      where: { therapistId: { in: therapistIds }, isActive: true }
     })
 
     // Find available slots
@@ -63,10 +63,8 @@ export async function POST(request: NextRequest) {
             scheduledDate: bestSlot.date,
             scheduledTime: bestSlot.time,
             therapistId: bestSlot.therapistId,
-            status: 'rescheduled',
-            rescheduledReason: 'Automatic rescheduling',
-            rescheduledBy: triggeredBy,
-            rescheduledAt: new Date()
+            status: 'RESCHEDULED',
+            therapistNotes: `Automatic rescheduling triggered by user ${triggeredBy} at ${new Date().toISOString()}`
           }
         })
 

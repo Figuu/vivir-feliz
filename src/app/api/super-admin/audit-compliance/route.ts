@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid parameters', details: validation.error.errors },
+        { error: 'Invalid parameters', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
     const validation = complianceCheckSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }

@@ -8,7 +8,7 @@ const updateStatusSchema = z.object({
   updatedBy: z.string().min(1, 'Updated by is required'),
   reason: z.string().max(500, 'Reason too long').optional(),
   notes: z.string().max(1000, 'Notes too long').optional(),
-  metadata: z.record(z.any()).optional()
+  metadata: z.record(z.string(), z.any()).optional()
 })
 
 // POST - Update consultation status

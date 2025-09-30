@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
     const validation = validateProposalStats(statsData)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid statistics parameters', details: validation.error.errors },
+        { error: 'Invalid statistics parameters', details: validation.error.issues },
         { status: 400 }
       )
     }

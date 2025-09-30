@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user has admin privileges
-    const currentUser = await db.user.findUnique({
+    const currentUser = await db.profile.findUnique({
       where: { id: user.id },
       select: { role: true }
     })
@@ -45,14 +45,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Get users to be deleted to check permissions
-    const usersToDelete = await db.user.findMany({
+    const usersToDelete = await db.profile.findMany({
       where: { id: { in: userIds } },
       select: { id: true, role: true, email: true }
     })
 
     // Prevent non-super-admin from deleting super-admin users
     if (currentUser.role !== 'SUPER_ADMIN') {
-      const superAdminUsers = usersToDelete.filter(user => user.role === 'SUPER_ADMIN')
+      const superAdminUsers = usersToDelete.filter((user: any) => user.role === 'SUPER_ADMIN')
       if (superAdminUsers.length > 0) {
         return NextResponse.json(
           { error: 'Cannot delete Super Admin users' },
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Delete users from database (this will cascade to related records)
-    const deleteResult = await db.user.deleteMany({
+    const deleteResult = await db.profile.deleteMany({
       where: { id: { in: userIds } }
     })
 

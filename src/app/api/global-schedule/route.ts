@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import { SessionStatus } from '@prisma/client'
 
 const globalScheduleQuerySchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be in YYYY-MM-DD format').transform(val => new Date(val)),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be in YYYY-MM-DD format').transform(val => new Date(val)),
   therapistId: z.string().uuid('Invalid therapist ID').optional(),
   patientId: z.string().uuid('Invalid patient ID').optional(),
-  status: z.enum(['scheduled', 'in_progress', 'completed', 'cancelled', 'rescheduled']).optional(),
+  status: z.nativeEnum(SessionStatus).optional(),
   view: z.enum(['day', 'week', 'month']).optional().default('week')
 })
 
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
 
       if (!validation.success) {
         return NextResponse.json(
-          { error: 'Invalid parameters', details: validation.error.errors },
+          { error: 'Invalid parameters', details: validation.error.issues },
           { status: 400 }
         )
       }
@@ -50,12 +51,26 @@ export async function GET(request: NextRequest) {
         db.patientSession.findMany({
           where: whereClause,
           include: {
-            therapist: { select: { firstName: true, lastName: true } },
+            therapist: {
+              select: {
+                id: true,
+                profile: {
+                  select: { firstName: true, lastName: true }
+                }
+              }
+            },
             patient: { select: { firstName: true, lastName: true } }
           },
           orderBy: { scheduledDate: 'asc' }
         }),
-        db.therapist.findMany({ select: { id: true, firstName: true, lastName: true } }),
+        db.therapist.findMany({
+          select: {
+            id: true,
+            profile: {
+              select: { firstName: true, lastName: true }
+            }
+          }
+        }),
         db.patient.findMany({ select: { id: true, firstName: true, lastName: true } }),
         db.patientSession.groupBy({
           by: ['status'],

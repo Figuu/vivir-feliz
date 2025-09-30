@@ -19,9 +19,9 @@ const updateProgressSchema = z.object({
   completedSteps: z.array(z.number().min(1).max(20), 'Invalid completed steps'),
   validationState: z.object({
     isValid: z.boolean(),
-    errors: z.record(z.array(z.string())),
-    warnings: z.record(z.array(z.string())),
-    stepValidation: z.record(z.object({
+    errors: z.record(z.string(), z.array(z.string())),
+    warnings: z.record(z.string(), z.array(z.string())),
+    stepValidation: z.record(z.number(), z.object({
       isValid: z.boolean(),
       errors: z.array(z.string()),
       warnings: z.array(z.string()),
@@ -39,9 +39,9 @@ const autoSaveProgressSchema = z.object({
   completedSteps: z.array(z.number().min(1).max(20), 'Invalid completed steps'),
   validationState: z.object({
     isValid: z.boolean(),
-    errors: z.record(z.array(z.string())),
-    warnings: z.record(z.array(z.string())),
-    stepValidation: z.record(z.object({
+    errors: z.record(z.string(), z.array(z.string())),
+    warnings: z.record(z.string(), z.array(z.string())),
+    stepValidation: z.record(z.number(), z.object({
       isValid: z.boolean(),
       errors: z.array(z.string()),
       warnings: z.array(z.string()),
@@ -58,9 +58,9 @@ const markStepCompletedSchema = z.object({
   step: z.number().min(1, 'Step must be at least 1').max(20, 'Step cannot exceed 20'),
   validationState: z.object({
     isValid: z.boolean(),
-    errors: z.record(z.array(z.string())),
-    warnings: z.record(z.array(z.string())),
-    stepValidation: z.record(z.object({
+    errors: z.record(z.string(), z.array(z.string())),
+    warnings: z.record(z.string(), z.array(z.string())),
+    stepValidation: z.record(z.number(), z.object({
       isValid: z.boolean(),
       errors: z.array(z.string()),
       warnings: z.array(z.string()),

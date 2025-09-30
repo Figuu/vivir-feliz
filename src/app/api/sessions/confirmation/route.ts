@@ -64,10 +64,14 @@ export async function GET(request: NextRequest) {
             parent: {
               select: {
                 id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                phone: true
+                profile: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    phone: true
+                  }
+                }
               }
             }
           }
@@ -75,10 +79,14 @@ export async function GET(request: NextRequest) {
         therapist: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true
+              }
+            }
           }
         },
         serviceAssignment: {
@@ -170,7 +178,7 @@ async function handleSendConfirmation(body: any) {
   const validation = sendConfirmationSchema.safeParse(body)
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid request data', details: validation.error.errors },
+      { error: 'Invalid request data', details: validation.error.issues },
       { status: 400 }
     )
   }
@@ -184,10 +192,14 @@ async function handleSendConfirmation(body: any) {
       include: {
         patient: {
           include: {
-            parent: true
+            parent: {
+              include: {
+                profile: true
+              }
+            }
           }
         },
-        therapist: true,
+        therapist: { include: { profile: true } },
         serviceAssignment: {
           include: {
             service: true
@@ -267,7 +279,7 @@ async function handleConfirmSession(body: any) {
   const validation = confirmSessionSchema.safeParse(body)
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid request data', details: validation.error.errors },
+      { error: 'Invalid request data', details: validation.error.issues },
       { status: 400 }
     )
   }
@@ -281,8 +293,16 @@ async function handleConfirmSession(body: any) {
       include: {
         session: {
           include: {
-            patient: true,
-            therapist: true
+            patient: {
+              include: {
+                parent: {
+                  include: {
+                    profile: true
+                  }
+                }
+              }
+            },
+            therapist: { include: { profile: true } }
           }
         }
       }
@@ -353,7 +373,7 @@ async function handleRescheduleRequest(body: any) {
   const validation = rescheduleRequestSchema.safeParse(body)
   if (!validation.success) {
     return NextResponse.json(
-      { error: 'Invalid request data', details: validation.error.errors },
+      { error: 'Invalid request data', details: validation.error.issues },
       { status: 400 }
     )
   }
@@ -365,8 +385,16 @@ async function handleRescheduleRequest(body: any) {
     const session = await db.patientSession.findUnique({
       where: { id: sessionId },
       include: {
-        patient: true,
-        therapist: true,
+        patient: {
+          include: {
+            parent: {
+              include: {
+                profile: true
+              }
+            }
+          }
+        },
+        therapist: { include: { profile: true } },
         serviceAssignment: {
           include: {
             service: true
@@ -445,8 +473,16 @@ async function handleCancelSession(body: any) {
     const session = await db.patientSession.findUnique({
       where: { id: sessionId },
       include: {
-        patient: true,
-        therapist: true
+        patient: {
+          include: {
+            parent: {
+              include: {
+                profile: true
+              }
+            }
+          }
+        },
+        therapist: { include: { profile: true } }
       }
     })
 

@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 import { hasPermission, PERMISSIONS } from '@/lib/permissions'
 import { AuditLogger } from '@/lib/audit-logger'
-import { AuditAction, AuditSeverity } from '@prisma/client'
+import { AuditAction, AuditSeverity } from '@/lib/audit-types'
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,9 +15,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get current user from database
-    const currentUser = await db.user.findUnique({
+    const currentUser = await db.profile.findUnique({
       where: { id: user.id },
-      select: { role: true, email: true, name: true }
+      select: { role: true, email: true, firstName: true, lastName: true }
     })
 
     if (!currentUser) {
@@ -32,10 +32,9 @@ export async function GET(request: NextRequest) {
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams
     const format = searchParams.get('format') || 'json'
-    const userId = searchParams.get('userId') || undefined
+    const profileId = searchParams.get('profileId') || undefined
     const action = searchParams.get('action') as AuditAction || undefined
     const resource = searchParams.get('resource') || undefined
-    const severity = searchParams.get('severity') as AuditSeverity || undefined
     const category = searchParams.get('category') || undefined
     const success = searchParams.get('success') === 'true' ? true : 
                    searchParams.get('success') === 'false' ? false : undefined
@@ -44,10 +43,9 @@ export async function GET(request: NextRequest) {
 
     // Get audit logs for export (no pagination limit)
     const result = await AuditLogger.getLogs({
-      userId,
+      userId: profileId,
       action,
       resource,
-      severity,
       category,
       success,
       startDate,
@@ -58,16 +56,16 @@ export async function GET(request: NextRequest) {
 
     // Log the export action
     await AuditLogger.logAdminAction({
-      action: AuditAction.AUDIT_LOG_EXPORTED,
+      action: AuditAction.READ,
       userId: user.id,
       request,
       metadata: {
+        exportType: 'audit_logs',
         format,
         filters: {
-          userId,
+          profileId,
           action,
           resource,
-          severity,
           category,
           success,
           startDate,
@@ -85,33 +83,27 @@ export async function GET(request: NextRequest) {
         'Action',
         'Resource',
         'Resource ID',
-        'User ID',
+        'Profile ID',
         'User Email',
         'User Name',
-        'Endpoint',
-        'Method',
         'IP Address',
         'User Agent',
-        'Severity',
         'Category',
         'Success',
         'Error Message',
       ]
 
-      const csvRows = result.logs.map(log => [
+      const csvRows = result.logs.map((log: any) => [
         log.id,
         log.createdAt.toISOString(),
         log.action,
         log.resource,
         log.resourceId || '',
-        log.userId || '',
-        log.user?.email || '',
-        log.user?.name || '',
-        log.endpoint || '',
-        log.method || '',
+        log.profileId || '',
+        log.profile?.email || '',
+        log.profile ? `${log.profile.firstName} ${log.profile.lastName}` : '',
         log.ipAddress || '',
         log.userAgent || '',
-        log.severity,
         log.category || '',
         log.success.toString(),
         log.errorMessage || '',

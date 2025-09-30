@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid parameters', details: validation.error.errors },
+        { error: 'Invalid parameters', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -29,41 +29,45 @@ export async function GET(request: NextRequest) {
     if (action === 'dashboard') {
       // Get parent's patients
       const patients = await db.patient.findMany({
-        where: patientId ? { id: patientId } : {},
+        where: patientId ? { id: patientId, parentId } : { parentId },
         include: {
-          user: { select: { email: true } }
+          parent: {
+            select: {
+              profile: {
+                select: { email: true, firstName: true, lastName: true }
+              }
+            }
+          }
         }
       })
 
       // Get sessions for all patients
       const patientIds = patients.map(p => p.id)
-      
-      const [upcomingSessions, recentProgress, pendingPayments] = await Promise.all([
+
+      const [upcomingSessions, pendingPayments] = await Promise.all([
         db.patientSession.findMany({
           where: {
             patientId: { in: patientIds },
             scheduledDate: { gte: new Date() },
-            status: { in: ['scheduled', 'confirmed'] }
+            status: { in: ['SCHEDULED', 'IN_PROGRESS'] }
           },
           include: {
-            therapist: { select: { firstName: true, lastName: true } },
+            therapist: {
+              select: {
+                profile: {
+                  select: { firstName: true, lastName: true }
+                }
+              }
+            },
             patient: { select: { firstName: true, lastName: true } }
           },
           orderBy: { scheduledDate: 'asc' },
           take: 10
         }),
-        db.patientProgress.findMany({
-          where: { patientId: { in: patientIds } },
-          include: {
-            therapist: { select: { firstName: true, lastName: true } }
-          },
-          orderBy: { entryDate: 'desc' },
-          take: 5
-        }),
         db.payment.findMany({
           where: {
-            patientId: { in: patientIds },
-            status: { in: ['pending', 'correction_requested'] }
+            parentId,
+            status: { in: ['PENDING', 'PROCESSING'] }
           },
           orderBy: { createdAt: 'desc' }
         })
@@ -74,12 +78,10 @@ export async function GET(request: NextRequest) {
         data: {
           patients,
           upcomingSessions,
-          recentProgress,
           pendingPayments,
           statistics: {
             totalPatients: patients.length,
             upcomingSessionsCount: upcomingSessions.length,
-            recentProgressCount: recentProgress.length,
             pendingPaymentsCount: pendingPayments.length
           }
         }

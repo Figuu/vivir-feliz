@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid query parameters', details: validation.error.errors },
+        { error: 'Invalid query parameters', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -104,12 +104,6 @@ export async function GET(request: NextRequest) {
           patient: {
             select: {
               id: true,
-              firstName: true,
-              lastName: true
-            }
-          },
-          uploadedByUser: {
-            select: {
               firstName: true,
               lastName: true
             }
@@ -156,7 +150,7 @@ export async function POST(request: NextRequest) {
     const validation = documentUploadSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -179,24 +173,14 @@ export async function POST(request: NextRequest) {
     const document = await db.patientDocument.create({
       data: {
         patientId: validatedData.patientId,
-        documentType: validatedData.documentType,
-        fileName: validatedData.fileName,
-        fileUrl: validatedData.fileUrl,
-        fileType: validatedData.fileType,
-        fileSize: validatedData.fileSize,
+        name: validatedData.fileName,
+        type: validatedData.documentType,
+        url: validatedData.fileUrl,
         description: validatedData.description,
-        tags: validatedData.tags,
-        isConfidential: validatedData.isConfidential,
         uploadedBy: validatedData.uploadedBy
       },
       include: {
         patient: {
-          select: {
-            firstName: true,
-            lastName: true
-          }
-        },
-        uploadedByUser: {
           select: {
             firstName: true,
             lastName: true

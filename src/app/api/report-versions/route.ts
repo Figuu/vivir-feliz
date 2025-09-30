@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
 
       if (!validation.success) {
         return NextResponse.json(
-          { error: 'Invalid comparison parameters', details: validation.error.errors },
+          { error: 'Invalid comparison parameters', details: validation.error.issues },
           { status: 400 }
         )
       }
@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid query parameters', details: validation.error.errors },
+        { error: 'Invalid query parameters', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -265,7 +265,7 @@ export async function POST(request: NextRequest) {
       const validation = restoreVersionSchema.safeParse(body)
       if (!validation.success) {
         return NextResponse.json(
-          { error: 'Invalid request data', details: validation.error.errors },
+          { error: 'Invalid request data', details: validation.error.issues },
           { status: 400 }
         )
       }
@@ -337,7 +337,7 @@ export async function POST(request: NextRequest) {
       const validation = versionCreateSchema.safeParse(body)
       if (!validation.success) {
         return NextResponse.json(
-          { error: 'Invalid request data', details: validation.error.errors },
+          { error: 'Invalid request data', details: validation.error.issues },
           { status: 400 }
         )
       }

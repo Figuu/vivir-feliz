@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -39,55 +40,56 @@ interface ErrorLog {
 export function ErrorReportingDashboard() {
   const [timeRange, setTimeRange] = useState<'1h' | '24h' | '7d' | '30d'>('24h')
 
-  // Mock data - In production, this would come from API
-  const errorStats: ErrorStat[] = [
-    { type: 'Validation', count: 45, percentage: 35, severity: 'low' },
-    { type: 'Authentication', count: 28, percentage: 22, severity: 'medium' },
-    { type: 'Authorization', count: 19, percentage: 15, severity: 'medium' },
-    { type: 'Not Found', count: 18, percentage: 14, severity: 'low' },
-    { type: 'Database', count: 12, percentage: 9, severity: 'high' },
-    { type: 'Internal', count: 6, percentage: 5, severity: 'critical' }
-  ]
-
-  const recentErrors: ErrorLog[] = [
-    {
-      id: '1',
-      timestamp: new Date(Date.now() - 10 * 60000),
-      type: 'Database',
-      message: 'Connection timeout',
-      severity: 'high',
-      statusCode: 500,
-      endpoint: '/api/patients',
-      resolved: false
+  // Fetch error data from audit logs API
+  const { data: errorData } = useQuery({
+    queryKey: ['error-logs'],
+    queryFn: async () => {
+      const response = await fetch('/api/audit?success=false&limit=100')
+      if (!response.ok) return { errors: [], summary: {} }
+      const data = await response.json()
+      return {
+        errors: data.logs || [],
+        summary: {
+          total: data.pagination?.total || 0,
+          critical: data.logs?.filter((l: any) => l.severity === 'CRITICAL').length || 0,
+          high: data.logs?.filter((l: any) => l.severity === 'HIGH').length || 0,
+          medium: data.logs?.filter((l: any) => l.severity === 'WARNING').length || 0
+        }
+      }
     },
-    {
-      id: '2',
-      timestamp: new Date(Date.now() - 25 * 60000),
-      type: 'Validation',
-      message: 'Invalid email format',
-      severity: 'low',
-      statusCode: 400,
-      userId: 'user123',
-      endpoint: '/api/auth/signup',
-      resolved: true
-    },
-    {
-      id: '3',
-      timestamp: new Date(Date.now() - 45 * 60000),
-      type: 'Authorization',
-      message: 'Insufficient permissions',
-      severity: 'medium',
-      statusCode: 403,
-      userId: 'user456',
-      endpoint: '/api/admin/settings',
-      resolved: true
-    }
-  ]
+    refetchInterval: 30000
+  })
 
-  const totalErrors = errorStats.reduce((sum, stat) => sum + stat.count, 0)
-  const criticalErrors = errorStats.filter(s => s.severity === 'critical').reduce((sum, s) => sum + s.count, 0)
-  const errorRate = 2.3 // percentage
-  const avgResponseTime = 245 // ms
+  // Use real error data from API
+  const recentErrors: ErrorLog[] = errorData?.errors.map((log: any) => ({
+    id: log.id,
+    timestamp: new Date(log.createdAt),
+    type: log.category || 'Unknown',
+    message: log.errorMessage || 'No message',
+    severity: log.severity.toLowerCase(),
+    statusCode: log.metadata?.statusCode || 500,
+    userId: log.userId,
+    endpoint: log.endpoint,
+    resolved: false
+  })) || []
+
+  // Calculate error statistics from real data
+  const errorsByType = recentErrors.reduce((acc, err) => {
+    acc[err.type] = (acc[err.type] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
+  const totalErrors = recentErrors.length
+  const errorStats: ErrorStat[] = Object.entries(errorsByType).map(([type, count]) => ({
+    type,
+    count,
+    percentage: totalErrors > 0 ? Math.round((count / totalErrors) * 100) : 0,
+    severity: recentErrors.find(e => e.type === type)?.severity || 'low'
+  })).sort((a, b) => b.count - a.count)
+
+  const criticalErrors = recentErrors.filter(e => e.severity === 'critical').length
+  const errorRate = errorData?.summary.total || 0
+  const avgResponseTime = 245 // This should come from performance metrics API
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {

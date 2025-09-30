@@ -5,8 +5,9 @@ import { db } from '@/lib/db'
 
 const createUserSchema = z.object({
   email: z.string().email(),
-  name: z.string().min(2),
-  role: z.enum(['USER', 'ADMIN', 'SUPER_ADMIN']),
+  firstName: z.string().min(2),
+  lastName: z.string().min(2),
+  role: z.enum(['USER', 'ADMIN', 'SUPER_ADMIN', 'THERAPIST', 'PARENT', 'COORDINATOR']),
   password: z.string().min(8),
 })
 
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user has admin privileges
-    const currentUser = await db.user.findUnique({
+    const currentUser = await db.profile.findUnique({
       where: { id: user.id },
       select: { role: true }
     })
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
     const validatedData = createUserSchema.parse(body)
 
     // Check if user already exists
-    const existingUser = await db.user.findUnique({
+    const existingUser = await db.profile.findUnique({
       where: { email: validatedData.email }
     })
 
@@ -60,7 +61,8 @@ export async function POST(request: NextRequest) {
       password: validatedData.password,
       email_confirm: true,
       user_metadata: {
-        name: validatedData.name,
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName,
         role: validatedData.role
       }
     })
@@ -81,12 +83,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Create user in database
-    const newUser = await db.user.create({
+    const newUser = await db.profile.create({
       data: {
         id: authUser.user.id,
         email: validatedData.email,
-        name: validatedData.name,
-        role: validatedData.role,
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName,
+        role: validatedData.role as any,
       },
     })
 
@@ -95,7 +98,9 @@ export async function POST(request: NextRequest) {
       user: {
         id: newUser.id,
         email: newUser.email,
-        name: newUser.name,
+        name: `${newUser.firstName} ${newUser.lastName}`,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
         role: newUser.role,
         createdAt: newUser.createdAt,
         updatedAt: newUser.updatedAt,

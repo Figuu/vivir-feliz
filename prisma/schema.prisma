@@ -48,12 +48,14 @@ model Therapist {
   licenseNumber        String?  @unique
   bio                  String?
   isCoordinator        Boolean  @default(false) // Coordinador = super therapist
+  isActive             Boolean  @default(true)
   canTakeConsultations Boolean  @default(true)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
   // Relations
   specialties           TherapistSpecialty[]
+  certifications        TherapistCertification[]
   schedules             TherapistSchedule[]
   consultationRequests  ConsultationRequest[]
   consultationForms     ConsultationForm[]
@@ -64,9 +66,11 @@ model Therapist {
   therapeuticPlans      TherapeuticPlan[]
   progressReports       ProgressReport[]
   finalReports          FinalReport[]
+  therapistMedicalForms TherapistMedicalForm[]
 
   @@index([profileId])
   @@index([isCoordinator])
+  @@index([isActive])
   @@index([canTakeConsultations])
   @@index([licenseNumber])
   @@map("therapists")
@@ -225,6 +229,51 @@ model Specialty {
   @@map("specialties")
 }
 
+model Certification {
+  id                   String   @id @default(uuid())
+  name                 String   @unique
+  description          String
+  issuingOrganization  String
+  category             String
+  expiryRequired       Boolean  @default(false)
+  validityPeriod       Int? // in years
+  requirements         String?
+  website              String?
+  color                String? // hex color code
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  therapists TherapistCertification[]
+
+  @@index([name])
+  @@index([category])
+  @@index([issuingOrganization])
+  @@index([isActive])
+  @@map("certifications")
+}
+
+model TherapistCertification {
+  id               String        @id @default(uuid())
+  therapistId      String
+  therapist        Therapist     @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  certificationId  String
+  certification    Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  issueDate        DateTime
+  expiryDate       DateTime?
+  certificateNumber String?
+  isVerified       Boolean       @default(false)
+  notes            String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@unique([therapistId, certificationId])
+  @@index([therapistId])
+  @@index([certificationId])
+  @@index([expiryDate])
+  @@map("therapist_certifications")
+}
+
 model ConsultationReason {
   id          String   @id @default(uuid())
   name        String   @unique
@@ -316,6 +365,7 @@ model ConsultationRequest {
   status         ConsultationStatus       @default(PENDING)
   scheduledDate  DateTime?
   scheduledTime  String? // HH:mm format
+  duration       Int?                     // minutes
   therapistId    String?
   therapist      Therapist?               @relation(fields: [therapistId], references: [id], onDelete: SetNull)
   reasonId       String?
@@ -329,6 +379,8 @@ model ConsultationRequest {
 
   consultationForm     ConsultationForm?
   therapeuticProposal  TherapeuticProposal?
+  medicalForms         MedicalForm[]
+  payments             Payment[]
 
   @@index([parentId])
   @@index([patientId])
@@ -360,17 +412,27 @@ model ConsultationForm {
 }
 
 model MedicalForm {
-  id         String     @id @default(uuid())
-  patientId  String
-  patient    Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  formData   Json // All medical form data
-  filledBy   String // "parent" or "therapist"
-  isComplete Boolean    @default(false)
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  id                    String               @id @default(uuid())
+  patientId             String
+  patient               Patient              @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  consultationRequestId String?
+  consultationRequest   ConsultationRequest? @relation(fields: [consultationRequestId], references: [id], onDelete: SetNull)
+  formData              Json                 // All medical form data
+  filledBy              String               // "parent" or "therapist"
+  isComplete            Boolean              @default(false)
+  status                MedicalFormStatus    @default(DRAFT)
+  currentStep           Int                  @default(1)
+  completedSteps        Json                 @default("[]")
+  completedAt           DateTime?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  formProgress FormProgress[]
 
   @@index([patientId])
+  @@index([consultationRequestId])
   @@index([isComplete])
+  @@index([status])
   @@map("medical_forms")
 }
 
@@ -388,7 +450,7 @@ model TherapeuticProposal {
   coordinatorNotes      String?
   adminNotes            String?
   selectedProposal      ProposalType? // A or B
-  paymentPlan           PaymentPlan?
+  paymentPlanType       PaymentPlanType?
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
 
@@ -545,25 +607,46 @@ model FinalReport {
 }
 
 model Payment {
-  id              String        @id @default(uuid())
-  parentId        String
-  parent          Parent        @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  type            PaymentType
-  amount          Decimal       @db.Decimal(10, 2)
-  status          PaymentStatus @default(PENDING)
-  paymentProof    String? // URL to uploaded file
-  paymentDate     DateTime?
-  dueDate         DateTime?
-  confirmedBy     String? // Admin who confirmed
-  confirmedAt     DateTime?
-  notes           String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id                    String               @id @default(uuid())
+  parentId              String
+  parent                Parent               @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  consultationRequestId String?
+  consultationRequest   ConsultationRequest? @relation(fields: [consultationRequestId], references: [id], onDelete: SetNull)
+  paymentPlanId         String?
+  paymentPlan           PaymentPlan?         @relation(fields: [paymentPlanId], references: [id], onDelete: SetNull)
+  type                  PaymentType
+  amount                Decimal              @db.Decimal(10, 2)
+  status                PaymentStatus        @default(PENDING)
+  paymentMethod         String?
+  paymentProof          String?              // URL to uploaded file
+  paymentDate           DateTime?
+  dueDate               DateTime?
+  confirmedBy           String?              // Admin who confirmed
+  confirmedAt           DateTime?
+  transactionId         String?
+  currency              String               @default("USD")
+  receiptUrl            String?
+  refundAmount          Decimal?             @db.Decimal(10, 2)
+  errorMessage          String?
+  notes                 String?
+  description           String?
+  reference             String?
+  processedAt           DateTime?
+  metadata              Json?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  receipts        PaymentReceipt[]
+  statusHistory   PaymentStatusHistory[]
+  timeouts        PaymentTimeout[]
 
   @@index([parentId])
+  @@index([consultationRequestId])
+  @@index([paymentPlanId])
   @@index([type])
   @@index([status])
   @@index([dueDate])
+  @@index([transactionId])
   @@map("payments")
 }
 
@@ -642,6 +725,7 @@ enum ConsultationStatus {
   PENDING
   PAYMENT_PENDING
   PAYMENT_CONFIRMED
+  CONFIRMED
   SCHEDULED
   IN_PROGRESS
   COMPLETED
@@ -652,9 +736,13 @@ enum ConsultationStatus {
 
 enum PaymentStatus {
   PENDING
+  PROCESSING
   CONFIRMED
+  COMPLETED
   REJECTED
+  FAILED
   REFUNDED
+  CANCELLED
 
   @@map("payment_statuses")
 }
@@ -667,11 +755,11 @@ enum PaymentType {
   @@map("payment_types")
 }
 
-enum PaymentPlan {
+enum PaymentPlanType {
   FULL
   MONTHLY
 
-  @@map("payment_plans")
+  @@map("payment_plan_types")
 }
 
 enum FormStatus {
@@ -757,5 +845,229 @@ enum ScheduleRequestType {
   CHANGE_THERAPIST
 
   @@map("schedule_request_types")
+}
+
+enum MedicalFormStatus {
+  DRAFT
+  IN_PROGRESS
+  PENDING_REVIEW
+  REVIEWED
+  APPROVED
+  COMPLETED
+  ARCHIVED
+
+  @@map("medical_form_statuses")
+}
+
+// ========== ADDITIONAL MODELS FOR PAYMENT & FORM MANAGEMENT ==========
+
+model PaymentReceipt {
+  id              String   @id @default(uuid())
+  paymentId       String
+  payment         Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  receiptNumber   String   @unique
+  receiptUrl      String
+  fileType        String
+  fileSize        Int?
+  generatedBy     String?
+  generatedAt     DateTime @default(now())
+  emailSent       Boolean  @default(false)
+  emailSentAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([paymentId])
+  @@index([receiptNumber])
+  @@map("payment_receipts")
+}
+
+model PaymentStatusHistory {
+  id          String        @id @default(uuid())
+  paymentId   String
+  payment     Payment       @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  fromStatus  PaymentStatus
+  toStatus    PaymentStatus
+  changedBy   String?
+  reason      String?
+  metadata    Json?
+  createdAt   DateTime      @default(now())
+
+  @@index([paymentId])
+  @@index([createdAt])
+  @@map("payment_status_history")
+}
+
+model PaymentTimeout {
+  id                 String    @id @default(uuid())
+  paymentId          String
+  payment            Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  timeoutAt          DateTime
+  warningsSent       Int       @default(0)
+  lastWarningAt      DateTime?
+  warningAt          DateTime?
+  isCancelled        Boolean   @default(false)
+  cancelledAt        DateTime?
+  cancelledBy        String?
+  reason             String?
+  cancellationReason String?
+  status             String    @default("ACTIVE")
+  extendedAt         DateTime?
+  extensionCount     Int       @default(0)
+  maxExtensions      Int       @default(3)
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  notifications PaymentTimeoutNotification[]
+
+  @@index([paymentId])
+  @@index([timeoutAt])
+  @@index([isCancelled])
+  @@index([status])
+  @@map("payment_timeouts")
+}
+
+model PaymentTimeoutNotification {
+  id               String         @id @default(uuid())
+  paymentTimeoutId String
+  paymentTimeout   PaymentTimeout @relation(fields: [paymentTimeoutId], references: [id], onDelete: Cascade)
+  paymentId        String?
+  notificationType String
+  sentTo           String
+  sentAt           DateTime       @default(now())
+  status           String
+  errorMessage     String?
+  message          String?
+  createdAt        DateTime       @default(now())
+
+  @@index([paymentTimeoutId])
+  @@index([paymentId])
+  @@index([sentAt])
+  @@map("payment_timeout_notifications")
+}
+
+model FormProgress {
+  id                   String        @id @default(uuid())
+  medicalFormId        String
+  medicalForm          MedicalForm   @relation(fields: [medicalFormId], references: [id], onDelete: Cascade)
+  currentStep          Int           @default(1)
+  completedSteps       Json          @default("[]")
+  totalSteps           Int           @default(6)
+  progressPercentage   Float         @default(0)
+  lastSavedAt          DateTime      @default(now())
+  estimatedTimeRemaining Int?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  snapshots ProgressSnapshot[]
+
+  @@index([medicalFormId])
+  @@map("form_progress")
+}
+
+model ProgressSnapshot {
+  id             String       @id @default(uuid())
+  formProgressId String
+  formProgress   FormProgress @relation(fields: [formProgressId], references: [id], onDelete: Cascade)
+  step           Int
+  data           Json
+  completedAt    DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+
+  @@index([formProgressId])
+  @@index([completedAt])
+  @@map("progress_snapshots")
+}
+
+model TherapistMedicalForm {
+  id              String            @id @default(uuid())
+  therapistId     String
+  therapist       Therapist         @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  patientId       String
+  medicalFormId   String?
+  formData        Json
+  assessment      Json?
+  status          MedicalFormStatus @default(DRAFT)
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
+  approvedAt      DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([therapistId])
+  @@index([patientId])
+  @@index([medicalFormId])
+  @@index([status])
+  @@map("therapist_medical_forms")
+}
+
+model PaymentPlan {
+  id              String           @id @default(uuid())
+  name            String
+  description     String?
+  planType        PaymentPlanType  @default(FULL)
+  totalAmount     Decimal          @db.Decimal(10, 2)
+  installments    Int              @default(1)
+  frequency       String?          // "monthly", "weekly", etc.
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  payments Payment[]
+
+  @@index([planType])
+  @@index([isActive])
+  @@map("payment_plans")
+}
+
+model PaymentConfirmationRequest {
+  id              String                      @id @default(uuid())
+  paymentId       String
+  requestedBy     String
+  priority        String                      @default("NORMAL")
+  notes           String?
+  status          String                      @default("PENDING")
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  createdAt       DateTime                    @default(now())
+  updatedAt       DateTime                    @updatedAt
+
+  @@index([paymentId])
+  @@index([status])
+  @@index([requestedBy])
+  @@map("payment_confirmation_requests")
+}
+
+model PaymentConfirmationWorkflow {
+  id              String   @id @default(uuid())
+  name            String
+  description     String?
+  steps           Json
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  workflowSteps PaymentWorkflowStep[]
+
+  @@index([isActive])
+  @@map("payment_confirmation_workflows")
+}
+
+model PaymentWorkflowStep {
+  id                            String                      @id @default(uuid())
+  paymentConfirmationWorkflowId String
+  workflow                      PaymentConfirmationWorkflow @relation(fields: [paymentConfirmationWorkflowId], references: [id], onDelete: Cascade)
+  stepNumber                    Int
+  name                          String
+  description                   String?
+  requiredRole                  String?
+  isOptional                    Boolean                     @default(false)
+  createdAt                     DateTime                    @default(now())
+  updatedAt                     DateTime                    @updatedAt
+
+  @@index([paymentConfirmationWorkflowId])
+  @@index([stepNumber])
+  @@map("payment_workflow_steps")
 }
 

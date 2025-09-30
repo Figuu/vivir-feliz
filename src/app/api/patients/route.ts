@@ -4,60 +4,41 @@ import { db } from '@/lib/db'
 
 // Validation schemas
 const patientQuerySchema = z.object({
-  page: z.string().transform(val => parseInt(val) || 1).default(1),
-  limit: z.string().transform(val => parseInt(val) || 20).default(20),
+  page: z.string().optional().default('1').transform(val => parseInt(val) || 1),
+  limit: z.string().optional().default('20').transform(val => parseInt(val) || 20),
   search: z.string().optional(),
-  status: z.enum(['active', 'inactive', 'archived']).optional(),
+  isActive: z.string().optional().transform(val => val === 'true'),
   therapistId: z.string().uuid().optional(),
-  sortBy: z.enum(['firstName', 'lastName', 'createdAt', 'lastSession']).default('lastName'),
-  sortOrder: z.enum(['asc', 'desc']).default('asc')
+  sortBy: z.enum(['firstName', 'lastName', 'createdAt', 'lastSession']).optional().default('lastName'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('asc')
 })
 
 const patientCreateSchema = z.object({
+  parentId: z.string().uuid('Invalid parent ID'),
   firstName: z.string().min(1, 'First name is required').max(50),
   lastName: z.string().min(1, 'Last name is required').max(50),
-  email: z.string().email('Invalid email format'),
-  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
-  dateOfBirth: z.string().optional(),
-  gender: z.enum(['male', 'female', 'other', 'prefer_not_to_say']).optional(),
-  address: z.string().max(200).optional(),
-  emergencyContact: z.object({
-    name: z.string().max(100),
-    phone: z.string().min(10),
-    relationship: z.string().max(50)
-  }).optional(),
-  medicalInfo: z.object({
-    allergies: z.string().max(500).optional(),
-    medications: z.string().max(500).optional(),
-    medicalConditions: z.string().max(500).optional(),
-    insuranceProvider: z.string().max(100).optional(),
-    insuranceNumber: z.string().max(50).optional()
-  }).optional(),
-  notes: z.string().max(1000).optional()
+  dateOfBirth: z.string().refine(val => !isNaN(Date.parse(val)), 'Invalid date format'),
+  gender: z.enum(['MALE', 'FEMALE', 'OTHER']),
+  schoolName: z.string().max(200).optional(),
+  schoolGrade: z.string().max(50).optional(),
+  medicalHistory: z.any().optional(), // JSON field
+  specialNeeds: z.string().max(1000).optional(),
+  emergencyContact: z.string().max(100).optional(),
+  emergencyPhone: z.string().min(10).optional()
 })
 
 const patientUpdateSchema = z.object({
   firstName: z.string().min(1).max(50).optional(),
   lastName: z.string().min(1).max(50).optional(),
-  email: z.string().email().optional(),
-  phone: z.string().min(10).optional(),
-  dateOfBirth: z.string().optional(),
-  gender: z.enum(['male', 'female', 'other', 'prefer_not_to_say']).optional(),
-  address: z.string().max(200).optional(),
-  status: z.enum(['active', 'inactive', 'archived']).optional(),
-  emergencyContact: z.object({
-    name: z.string().max(100),
-    phone: z.string().min(10),
-    relationship: z.string().max(50)
-  }).optional(),
-  medicalInfo: z.object({
-    allergies: z.string().max(500).optional(),
-    medications: z.string().max(500).optional(),
-    medicalConditions: z.string().max(500).optional(),
-    insuranceProvider: z.string().max(100).optional(),
-    insuranceNumber: z.string().max(50).optional()
-  }).optional(),
-  notes: z.string().max(1000).optional()
+  dateOfBirth: z.string().refine(val => !isNaN(Date.parse(val)), 'Invalid date format').optional(),
+  gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
+  schoolName: z.string().max(200).optional(),
+  schoolGrade: z.string().max(50).optional(),
+  medicalHistory: z.any().optional(),
+  specialNeeds: z.string().max(1000).optional(),
+  emergencyContact: z.string().max(100).optional(),
+  emergencyPhone: z.string().min(10).optional(),
+  isActive: z.boolean().optional()
 })
 
 // GET /api/patients - Get patients list
@@ -67,58 +48,44 @@ export async function GET(request: NextRequest) {
     
     // Validate query parameters
     const validation = patientQuerySchema.safeParse({
-      page: searchParams.get('page'),
-      limit: searchParams.get('limit'),
+      page: searchParams.get('page') || '1',
+      limit: searchParams.get('limit') || '20',
       search: searchParams.get('search'),
-      status: searchParams.get('status'),
+      isActive: searchParams.get('isActive'),
       therapistId: searchParams.get('therapistId'),
-      sortBy: searchParams.get('sortBy'),
-      sortOrder: searchParams.get('sortOrder')
+      sortBy: searchParams.get('sortBy') || 'lastName',
+      sortOrder: searchParams.get('sortOrder') || 'asc'
     })
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid query parameters', details: validation.error.errors },
+        { error: 'Invalid query parameters', details: validation.error.issues },
         { status: 400 }
       )
     }
 
-    const { page, limit, search, status, therapistId, sortBy, sortOrder } = validation.data
+    const { page, limit, search, isActive, therapistId, sortBy, sortOrder } = validation.data
     const skip = (page - 1) * limit
 
     // Build where clause
     const where: any = {}
-    
+
     if (search) {
       where.OR = [
         { firstName: { contains: search, mode: 'insensitive' } },
-        { lastName: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } }
+        { lastName: { contains: search, mode: 'insensitive' } }
       ]
     }
-    
-    if (status) {
-      where.status = status
+
+    if (isActive !== undefined) {
+      where.isActive = isActive
     }
     
-    if (therapistId) {
-      where.sessions = {
-        some: {
-          therapistId: therapistId
-        }
-      }
-    }
+    // Note: therapistId filter requires joining with patientSessions
+    // For simplicity, we'll filter after the query if therapistId is provided
 
     // Build orderBy clause
-    const orderBy: any = {}
-    if (sortBy === 'lastSession') {
-      orderBy.sessions = {
-        _count: 'desc'
-      }
-    } else {
-      orderBy[sortBy] = sortOrder
-    }
+    const orderBy: any = sortBy === 'lastSession' ? { createdAt: 'desc' } : { [sortBy]: sortOrder }
 
     // Get patients with pagination
     const [patients, totalCount] = await Promise.all([
@@ -126,36 +93,53 @@ export async function GET(request: NextRequest) {
         where,
         skip,
         take: limit,
-        orderBy,
-        include: {
-          sessions: {
-            select: {
-              id: true,
-              scheduledDate: true,
-              scheduledTime: true,
-              status: true,
-              therapist: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true
-                }
-              }
-            },
-            orderBy: {
-              scheduledDate: 'desc'
-            },
-            take: 5 // Get last 5 sessions
-          },
-          _count: {
-            select: {
-              sessions: true
-            }
-          }
-        }
+        orderBy
       }),
       db.patient.count({ where })
     ])
+
+    // Get sessions for all patients
+    const patientIds = patients.map(p => p.id)
+    const allSessions = await db.patientSession.findMany({
+      where: {
+        patientId: { in: patientIds }
+      },
+      include: {
+        therapist: {
+          include: {
+            profile: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        scheduledDate: 'desc'
+      }
+    })
+
+    // Group sessions by patient
+    const sessionsByPatient = allSessions.reduce((acc, session) => {
+      if (!acc[session.patientId]) {
+        acc[session.patientId] = []
+      }
+      acc[session.patientId].push(session)
+      return acc
+    }, {} as Record<string, typeof allSessions>)
+
+    // Filter by therapistId if provided
+    let filteredPatients = patients
+    if (therapistId) {
+      filteredPatients = patients.filter(patient => {
+        const patientSessions = sessionsByPatient[patient.id] || []
+        return patientSessions.some(session => session.therapistId === therapistId)
+      })
+    }
 
     // Calculate pagination info
     const totalPages = Math.ceil(totalCount / limit)
@@ -165,25 +149,49 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        patients: patients.map(patient => ({
-          id: patient.id,
-          firstName: patient.firstName,
-          lastName: patient.lastName,
-          email: patient.email,
-          phone: patient.phone,
-          dateOfBirth: patient.dateOfBirth,
-          gender: patient.gender,
-          address: patient.address,
-          status: patient.status,
-          emergencyContact: patient.emergencyContact,
-          medicalInfo: patient.medicalInfo,
-          notes: patient.notes,
-          createdAt: patient.createdAt,
-          updatedAt: patient.updatedAt,
-          lastSession: patient.sessions[0] || null,
-          totalSessions: patient._count.sessions,
-          recentSessions: patient.sessions
-        })),
+        patients: filteredPatients.map(patient => {
+          const patientSessions = sessionsByPatient[patient.id] || []
+          const recentSessions = patientSessions.slice(0, 5)
+          return {
+            id: patient.id,
+            firstName: patient.firstName,
+            lastName: patient.lastName,
+            dateOfBirth: patient.dateOfBirth,
+            gender: patient.gender,
+            schoolName: patient.schoolName,
+            schoolGrade: patient.schoolGrade,
+            emergencyContact: patient.emergencyContact,
+            emergencyPhone: patient.emergencyPhone,
+            medicalHistory: patient.medicalHistory,
+            specialNeeds: patient.specialNeeds,
+            isActive: patient.isActive,
+            createdAt: patient.createdAt,
+            updatedAt: patient.updatedAt,
+            lastSession: patientSessions[0] ? {
+              id: patientSessions[0].id,
+              scheduledDate: patientSessions[0].scheduledDate,
+              scheduledTime: patientSessions[0].scheduledTime,
+              status: patientSessions[0].status,
+              therapist: {
+                id: patientSessions[0].therapist.id,
+                firstName: patientSessions[0].therapist.profile.firstName,
+                lastName: patientSessions[0].therapist.profile.lastName
+              }
+            } : null,
+            totalSessions: patientSessions.length,
+            recentSessions: recentSessions.map(session => ({
+              id: session.id,
+              scheduledDate: session.scheduledDate,
+              scheduledTime: session.scheduledTime,
+              status: session.status,
+              therapist: {
+                id: session.therapist.id,
+                firstName: session.therapist.profile.firstName,
+                lastName: session.therapist.profile.lastName
+              }
+            }))
+          }
+        }),
         pagination: {
           page,
           limit,
@@ -213,39 +221,40 @@ export async function POST(request: NextRequest) {
     const validation = patientCreateSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
 
     const patientData = validation.data
 
-    // Check for duplicate email
-    const existingPatient = await db.patient.findUnique({
-      where: { email: patientData.email }
+    // Verify parent exists
+    const parent = await db.parent.findUnique({
+      where: { id: patientData.parentId }
     })
 
-    if (existingPatient) {
+    if (!parent) {
       return NextResponse.json(
-        { error: 'Patient with this email already exists' },
-        { status: 409 }
+        { error: 'Parent not found' },
+        { status: 404 }
       )
     }
 
     // Create patient
     const patient = await db.patient.create({
       data: {
+        parentId: patientData.parentId,
         firstName: patientData.firstName,
         lastName: patientData.lastName,
-        email: patientData.email,
-        phone: patientData.phone,
-        dateOfBirth: patientData.dateOfBirth ? new Date(patientData.dateOfBirth) : null,
+        dateOfBirth: new Date(patientData.dateOfBirth),
         gender: patientData.gender,
-        address: patientData.address,
-        status: 'active',
+        schoolName: patientData.schoolName,
+        schoolGrade: patientData.schoolGrade,
+        medicalHistory: patientData.medicalHistory,
+        specialNeeds: patientData.specialNeeds,
         emergencyContact: patientData.emergencyContact,
-        medicalInfo: patientData.medicalInfo,
-        notes: patientData.notes
+        emergencyPhone: patientData.emergencyPhone,
+        isActive: true
       }
     })
 
@@ -283,7 +292,7 @@ export async function PUT(request: NextRequest) {
     const validation = patientUpdateSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -302,27 +311,15 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Check for duplicate email if email is being updated
-    if (updateData.email && updateData.email !== existingPatient.email) {
-      const duplicatePatient = await db.patient.findUnique({
-        where: { email: updateData.email }
-      })
-
-      if (duplicatePatient) {
-        return NextResponse.json(
-          { error: 'Patient with this email already exists' },
-          { status: 409 }
-        )
-      }
+    // Update patient
+    const updatePayload: any = { ...updateData }
+    if (updateData.dateOfBirth) {
+      updatePayload.dateOfBirth = new Date(updateData.dateOfBirth)
     }
 
-    // Update patient
     const patient = await db.patient.update({
       where: { id: patientId },
-      data: {
-        ...updateData,
-        dateOfBirth: updateData.dateOfBirth ? new Date(updateData.dateOfBirth) : undefined
-      }
+      data: updatePayload
     })
 
     return NextResponse.json({
@@ -369,7 +366,7 @@ export async function DELETE(request: NextRequest) {
     const activeSessions = await db.patientSession.count({
       where: {
         patientId,
-        status: { in: ['scheduled', 'in-progress'] }
+        status: { in: ['SCHEDULED', 'IN_PROGRESS'] }
       }
     })
 
@@ -380,10 +377,10 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Soft delete patient (set status to archived)
+    // Soft delete patient (set isActive to false)
     const patient = await db.patient.update({
       where: { id: patientId },
-      data: { status: 'archived' }
+      data: { isActive: false }
     })
 
     return NextResponse.json({

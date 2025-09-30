@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import { PaymentStatus, SessionStatus } from '@prisma/client'
+import { Decimal } from '@prisma/client/runtime/library'
 
 const financialQuerySchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).transform(val => new Date(val)),
@@ -26,7 +28,7 @@ export async function GET(request: NextRequest) {
 
       if (!validation.success) {
         return NextResponse.json(
-          { error: 'Invalid parameters', details: validation.error.errors },
+          { error: 'Invalid parameters', details: validation.error.issues },
           { status: 400 }
         )
       }
@@ -42,28 +44,45 @@ export async function GET(request: NextRequest) {
 
       const [payments, sessions, proposals] = await Promise.all([
         db.payment.findMany({
-          where: { ...whereClause, status: 'confirmed' },
-          include: { patient: { select: { firstName: true, lastName: true } } }
+          where: { ...whereClause, status: PaymentStatus.CONFIRMED },
+          include: {
+            parent: {
+              select: {
+                profile: {
+                  select: { firstName: true, lastName: true }
+                }
+              }
+            }
+          }
         }),
         db.patientSession.findMany({
           where: whereClause,
-          include: { 
-            therapist: { select: { firstName: true, lastName: true } },
+          include: {
+            therapist: {
+              select: {
+                profile: {
+                  select: { firstName: true, lastName: true }
+                }
+              }
+            },
             patient: { select: { firstName: true, lastName: true } }
           }
         }),
         db.therapeuticProposal.findMany({
           where: whereClause,
-          include: { 
+          include: {
             patient: { select: { firstName: true, lastName: true } },
             services: true
           }
         })
       ])
 
-      const totalRevenue = payments.reduce((sum, p) => sum + (p.amount || 0), 0)
+      const totalRevenue = payments.reduce((sum, p) => {
+        const amount = p.amount instanceof Decimal ? p.amount.toNumber() : Number(p.amount)
+        return sum + amount
+      }, 0)
       const totalSessions = sessions.length
-      const completedSessions = sessions.filter(s => s.status === 'completed').length
+      const completedSessions = sessions.filter(s => s.status === SessionStatus.COMPLETED).length
       const avgSessionRevenue = completedSessions > 0 ? totalRevenue / completedSessions : 0
 
       return NextResponse.json({

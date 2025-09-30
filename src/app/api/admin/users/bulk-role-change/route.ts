@@ -5,7 +5,7 @@ import { db } from '@/lib/db'
 
 const bulkRoleChangeSchema = z.object({
   userIds: z.array(z.string().uuid()),
-  role: z.enum(['USER', 'ADMIN', 'SUPER_ADMIN'])
+  role: z.enum(['USER', 'ADMIN', 'SUPER_ADMIN', 'THERAPIST', 'PARENT', 'COORDINATOR'])
 })
 
 export async function POST(request: NextRequest) {
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user has admin privileges
-    const currentUser = await db.user.findUnique({
+    const currentUser = await db.profile.findUnique({
       where: { id: user.id },
       select: { role: true }
     })
@@ -38,14 +38,14 @@ export async function POST(request: NextRequest) {
     const { userIds, role } = bulkRoleChangeSchema.parse(body)
 
     // Get users to be updated to check permissions
-    const usersToUpdate = await db.user.findMany({
+    const usersToUpdate = await db.profile.findMany({
       where: { id: { in: userIds } },
       select: { id: true, role: true, email: true }
     })
 
     // Prevent non-super-admin from modifying super-admin users or creating super-admins
     if (currentUser.role !== 'SUPER_ADMIN') {
-      const superAdminUsers = usersToUpdate.filter(user => user.role === 'SUPER_ADMIN')
+      const superAdminUsers = usersToUpdate.filter((user: any) => user.role === 'SUPER_ADMIN')
       if (superAdminUsers.length > 0) {
         return NextResponse.json(
           { error: 'Cannot modify Super Admin users' },
@@ -70,14 +70,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Update users in database
-    const updateResult = await db.user.updateMany({
+    const updateResult = await db.profile.updateMany({
       where: { id: { in: userIds } },
-      data: { role }
+      data: { role: role as any }
     })
 
     // Update user metadata in Supabase
     const supabaseAdmin = createAdminClient()
-    const updatePromises = usersToUpdate.map(async (user) => {
+    const updatePromises = usersToUpdate.map(async (user: any) => {
       try {
         await supabaseAdmin.auth.admin.updateUserById(user.id, {
           user_metadata: {

@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid query parameters', details: validation.error.errors },
+        { error: 'Invalid query parameters', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -232,7 +232,7 @@ export async function POST(request: NextRequest) {
     const validation = performanceGoalSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -499,8 +499,8 @@ function generatePerformanceComparisons(performanceData: any[], period: string) 
 }
 
 async function getPerformanceGoals(therapistId?: string) {
-  // In a real implementation, this would fetch from a goals table
-  // For now, return mock data
+  // Fetch performance goals from database if implemented
+  // For now, return empty structure (no mock data)
   return {
     active: [],
     completed: [],

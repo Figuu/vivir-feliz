@@ -16,7 +16,7 @@ export async function GET(
     }
 
     // Get current user from database to check permissions
-    const dbUser = await db.user.findUnique({
+    const dbUser = await db.profile.findUnique({
       where: { id: user.id },
       select: { role: true }
     })
@@ -31,9 +31,9 @@ export async function GET(
     }
 
     // Get target user's avatar
-    const targetUser = await db.user.findUnique({
+    const targetUser = await db.profile.findUnique({
       where: { id: userId },
-      select: { avatar: true, name: true, email: true }
+      select: { avatar: true, firstName: true, lastName: true, email: true }
     })
 
     if (!targetUser) {
@@ -65,7 +65,7 @@ export async function GET(
         avatarUrl: avatarUrl,
         hasAvatar: true,
         user: {
-          name: targetUser.name,
+          name: `${targetUser.firstName} ${targetUser.lastName}`,
           email: targetUser.email
         }
       })
@@ -90,7 +90,7 @@ export async function GET(
       avatarUrl: signedUrlData.signedUrl,
       hasAvatar: true,
       user: {
-        name: targetUser.name,
+        name: `${targetUser.firstName} ${targetUser.lastName}`,
         email: targetUser.email
       },
       expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString()

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PaymentPlanManager } from '@/lib/payment-plan-manager'
+import { db } from '@/lib/db'
 import { z } from 'zod'
 
 const recordPaymentSchema = z.object({
@@ -42,18 +43,39 @@ export async function POST(
     
     const { installmentNumber, paymentId, paidDate, notes } = validationResult.data
     
-    // Record payment
-    const result = await PaymentPlanManager.recordPayment(
-      id,
-      installmentNumber,
-      paymentId,
-      new Date(paidDate),
-      notes
-    )
+    // Check if payment plan exists
+    const paymentPlan = await db.paymentPlan.findUnique({
+      where: { id }
+    })
+    
+    if (!paymentPlan) {
+      return NextResponse.json(
+        { success: false, error: 'Payment plan not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Record payment - update the payment with plan reference
+    const payment = await db.payment.update({
+      where: { id: paymentId },
+      data: {
+        paymentPlanId: id,
+        paymentDate: new Date(paidDate),
+        notes: notes || null
+      }
+    })
     
     return NextResponse.json({
       success: true,
-      data: result,
+      data: {
+        id: payment.id,
+        installmentNumber,
+        paymentPlanId: id,
+        paymentDate: payment.paymentDate,
+        amount: payment.amount.toNumber(),
+        status: payment.status,
+        notes: payment.notes
+      },
       message: 'Payment recorded successfully'
     })
     

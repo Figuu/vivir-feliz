@@ -46,18 +46,19 @@ export async function GET(
             parent: {
               select: {
                 id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                phone: true,
                 relationship: true,
                 address: true,
                 city: true,
-                state: true,
-                zipCode: true,
-                emergencyContactName: true,
-                emergencyContactPhone: true,
-                emergencyContactRelationship: true
+                emergencyContact: true,
+                emergencyPhone: true,
+                profile: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    phone: true
+                  }
+                }
               }
             }
           }
@@ -65,11 +66,10 @@ export async function GET(
         therapist: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            user: {
+            profile: {
               select: {
-                name: true
+                firstName: true,
+                lastName: true
               }
             },
             specialties: {
@@ -83,31 +83,24 @@ export async function GET(
             }
           }
         },
-        specialty: {
-          select: {
-            id: true,
-            name: true,
-            description: true
+        reason: {
+          include: {
+            specialty: {
+              select: {
+                id: true,
+                name: true,
+                description: true
+              }
+            }
           }
         },
-        consultationReason: {
+        medicalForms: {
           select: {
             id: true,
-            name: true,
-            description: true
-          }
-        },
-        medicalForm: {
-          select: {
-            id: true,
-            medicalHistory: true,
-            currentMedications: true,
-            allergies: true,
-            emergencyContact: true,
             createdAt: true
           }
         },
-        payment: {
+        payments: {
           select: {
             id: true,
             amount: true,
@@ -178,7 +171,13 @@ export async function PUT(
     // Check if consultation request exists
     const existingRequest = await db.consultationRequest.findUnique({
       where: { id },
-      select: { id: true, status: true }
+      select: { 
+        id: true, 
+        status: true,
+        scheduledDate: true,
+        scheduledTime: true,
+        therapistId: true
+      }
     })
     
     if (!existingRequest) {
@@ -311,31 +310,34 @@ export async function PUT(
         },
         parent: {
           select: {
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true
-          }
-        },
-        therapist: {
-          select: {
-            firstName: true,
-            lastName: true,
-            user: {
+            profile: {
               select: {
-                name: true
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true
               }
             }
           }
         },
-        specialty: {
+        therapist: {
           select: {
-            name: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
           }
         },
-        consultationReason: {
+        reason: {
           select: {
-            name: true
+            name: true,
+            specialty: {
+              select: {
+                name: true
+              }
+            }
           }
         }
       }
@@ -408,7 +410,7 @@ export async function DELETE(
       where: { id },
       data: {
         status: 'CANCELLED',
-        cancellationReason: cancellationReason || 'Cancelled by user'
+        notes: cancellationReason || 'Cancelled by user'
       },
       include: {
         patient: {
@@ -419,9 +421,13 @@ export async function DELETE(
         },
         parent: {
           select: {
-            firstName: true,
-            lastName: true,
-            email: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
           }
         }
       }

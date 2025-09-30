@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import { SessionStatus } from '@prisma/client'
 
 const manualRescheduleSchema = z.object({
   sessionId: z.string().uuid('Invalid session ID'),
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
     const validation = manualRescheduleSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.errors },
+        { error: 'Invalid request data', details: validation.error.issues },
         { status: 400 }
       )
     }
@@ -36,8 +37,15 @@ export async function POST(request: NextRequest) {
     const session = await db.patientSession.findUnique({
       where: { id: data.sessionId },
       include: {
-        patient: { select: { firstName: true, lastName: true, email: true } },
-        therapist: { select: { firstName: true, lastName: true, email: true } }
+        patient: { select: { firstName: true, lastName: true } },
+        therapist: {
+          select: {
+            id: true,
+            profile: {
+              select: { firstName: true, lastName: true, email: true }
+            }
+          }
+        }
       }
     })
 
@@ -59,7 +67,7 @@ export async function POST(request: NextRequest) {
         therapistId,
         scheduledDate: data.newDate,
         scheduledTime: data.newTime,
-        status: { notIn: ['cancelled', 'completed'] },
+        status: { notIn: [SessionStatus.CANCELLED, SessionStatus.COMPLETED] },
         id: { not: data.sessionId }
       }
     })
@@ -75,27 +83,35 @@ export async function POST(request: NextRequest) {
         scheduledDate: data.newDate,
         scheduledTime: data.newTime,
         therapistId,
-        status: 'rescheduled',
-        rescheduledReason: data.reason,
-        rescheduledBy: data.rescheduledBy,
-        rescheduledAt: new Date()
+        status: SessionStatus.RESCHEDULED
       },
       include: {
-        patient: { select: { firstName: true, lastName: true, email: true } },
-        therapist: { select: { firstName: true, lastName: true, email: true } }
+        patient: { select: { firstName: true, lastName: true } },
+        therapist: {
+          select: {
+            id: true,
+            profile: {
+              select: { firstName: true, lastName: true, email: true }
+            }
+          }
+        }
       }
     })
 
     // Create audit log
     await db.auditLog.create({
       data: {
-        userId: data.rescheduledBy,
+        profileId: data.rescheduledBy,
         action: 'update',
-        entityType: 'PatientSession',
-        entityId: data.sessionId,
-        changes: {
-          from: { date: session.scheduledDate, time: session.scheduledTime },
-          to: { date: data.newDate, time: data.newTime }
+        resource: 'PatientSession',
+        resourceId: data.sessionId,
+        newValue: {
+          date: data.newDate,
+          time: data.newTime
+        },
+        oldValue: {
+          date: session.scheduledDate,
+          time: session.scheduledTime
         }
       }
     })

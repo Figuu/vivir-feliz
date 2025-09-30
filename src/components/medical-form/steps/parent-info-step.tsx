@@ -95,7 +95,7 @@ export function ParentInfoStep({
           setIsValid(true)
         } else {
           const errors: Record<string, string[]> = {}
-          result.error.errors.forEach(error => {
+          result.error.issues.forEach(error => {
             const path = error.path.join('.')
             errors[path] = errors[path] || []
             errors[path].push(error.message)

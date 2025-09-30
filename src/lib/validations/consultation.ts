@@ -49,7 +49,7 @@ export const personalInfoSchema = z.object({
     .transform(formatPhoneNumber),
   
   relationshipToChild: z.enum(['parent', 'guardian', 'grandparent', 'other'], {
-    required_error: "Please select your relationship to the child"
+    message: "Please select your relationship to the child"
   }),
   
   otherRelationship: z.string().optional(),
@@ -77,7 +77,7 @@ export const personalInfoSchema = z.object({
     }, "Child must be between 0 and 18 years old"),
   
   childGender: z.enum(['male', 'female', 'other', 'prefer_not_to_say'], {
-    required_error: "Please select the child's gender"
+    message: "Please select the child's gender"
   }),
   
   // Address Information
@@ -123,7 +123,7 @@ export const consultationDetailsSchema = z.object({
     .min(1, "Please select a consultation reason"),
   
   urgencyLevel: z.enum(['low', 'medium', 'high', 'urgent'], {
-    required_error: "Please select the urgency level"
+    message: "Please select the urgency level"
   }),
   
   preferredSpecialty: z.string()

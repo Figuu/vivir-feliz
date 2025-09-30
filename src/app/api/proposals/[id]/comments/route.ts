@@ -168,7 +168,7 @@ export async function POST(
     const validation = validateProposalComment(body)
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid comment data', details: validation.error.errors },
+        { error: 'Invalid comment data', details: validation.error.issues },
         { status: 400 }
       )
     }

@@ -345,7 +345,7 @@ export class MedicalFormManager {
 
       if (!validationResult.success) {
         // Parse validation errors by step
-        validationResult.error.errors.forEach(error => {
+        validationResult.error.issues.forEach((error: any) => {
           const path = error.path.join('.')
           const step = this.getStepFromPath(path)
           

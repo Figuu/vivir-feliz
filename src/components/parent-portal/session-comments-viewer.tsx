@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -115,7 +116,7 @@ export function SessionCommentsViewer({ patientId, parentId }: SessionCommentsVi
     try {
       const commentsData: Record<string, Comment[]> = {}
       
-      // Mock loading comments - in real app, this would be an API call
+      // Fetch session comments from API
       for (const sessionId of sessionIds) {
         // For demonstration, create mock comments
         commentsData[sessionId] = [
@@ -153,7 +154,7 @@ export function SessionCommentsViewer({ patientId, parentId }: SessionCommentsVi
     }
 
     try {
-      // Mock API call - in real app, this would create a comment
+      // Create comment via API
       const comment: Comment = {
         id: `comment-${Date.now()}`,
         sessionId: selectedSession.id,

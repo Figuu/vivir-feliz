@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -137,19 +138,21 @@ export function TherapistReassignmentInterface({ defaultSessionId }: TherapistRe
 
   const loadHistory = async () => {
     try {
-      // Mock data - in real app, this would be an API call
-      const mockHistory: ReassignmentHistory[] = [
-        {
-          id: 'hist-1',
-          sessionId: 'session-1',
-          oldTherapist: { firstName: 'Dr. John', lastName: 'Smith' },
-          newTherapist: { firstName: 'Dr. Jane', lastName: 'Doe' },
-          reason: 'Original therapist unavailable due to illness',
-          reassignedBy: 'admin-1',
-          reassignedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-        }
-      ]
-      setHistory(mockHistory)
+      // Fetch reassignment history from audit logs
+      const response = await fetch('/api/audit?action=SESSION_REASSIGNED&limit=50')
+      if (response.ok) {
+        const data = await response.json()
+        const reassignmentHistory = data.logs?.map((log: any) => ({
+          id: log.id,
+          sessionId: log.resourceId,
+          oldTherapist: log.oldData?.therapist || { firstName: 'Unknown', lastName: '' },
+          newTherapist: log.newData?.therapist || { firstName: 'Unknown', lastName: '' },
+          reason: log.metadata?.reason || 'No reason provided',
+          reassignedBy: log.userId,
+          reassignedAt: log.createdAt
+        })) || []
+        setHistory(reassignmentHistory)
+      }
     } catch (err) {
       console.error('Error loading history:', err)
     }

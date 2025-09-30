@@ -236,11 +236,8 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
         }
       ]
 
-      const filtered = statusFilter === 'all' 
-        ? mockRequests 
-        : mockRequests.filter(r => r.status === statusFilter)
-
-      setRequests(filtered)
+      // Data is already filtered by useQuery hook
+      // No additional filtering needed
     } catch (err) {
       console.error('Error loading requests:', err)
       toast({

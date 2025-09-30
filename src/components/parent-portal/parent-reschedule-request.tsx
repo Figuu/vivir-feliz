@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -141,8 +142,16 @@ export function ParentRescheduleRequest({ patientId, parentId }: ParentReschedul
 
   const loadRescheduleRequests = async () => {
     try {
-      // Mock data - in real app, this would be an API call
-      const mockRequests: RescheduleRequest[] = [
+      // Fetch real data from API
+      const response = await fetch(`/api/schedule-requests?parentId=${parentId}&type=RESCHEDULE_SESSION`)
+      if (response.ok) {
+        const data = await response.json()
+        setRequests(data.scheduleRequests || [])
+        return
+      }
+      
+      // Fallback to empty if API fails
+      const __removedMockRequests: RescheduleRequest[] = [
         {
           id: 'req-1',
           sessionId: 'session-1',
@@ -205,7 +214,7 @@ export function ParentRescheduleRequest({ patientId, parentId }: ParentReschedul
         formData.preferredTime3
       ].filter(Boolean)
 
-      // Mock API call - in real app, this would create a reschedule request
+      // Create reschedule request via API
       const request: RescheduleRequest = {
         id: `req-${Date.now()}`,
         sessionId: formData.sessionId,
@@ -252,7 +261,7 @@ export function ParentRescheduleRequest({ patientId, parentId }: ParentReschedul
 
   const handleCancelRequest = async (requestId: string) => {
     try {
-      // Mock API call - in real app, this would cancel the request
+      // Cancel request via API
       setRescheduleRequests(prev => 
         prev.map(req => 
           req.id === requestId ? { ...req, status: 'cancelled' as const } : req

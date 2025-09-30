@@ -160,7 +160,14 @@ export async function GET(
     const proposalId = params.id
     
     // Find proposal
-    const proposal = mockProposals.find(p => p.id === proposalId)
+    const proposal = await db.therapeuticProposal.findUnique({
+      where: { id: proposalId },
+      include: {
+        services: { include: { service: true } },
+        patient: true,
+        therapist: true
+      }
+    })
     if (!proposal) {
       return NextResponse.json(
         { error: 'Proposal not found' },
@@ -242,15 +249,16 @@ export async function POST(
     const proposalId = params.id
     
     // Find proposal
-    const proposalIndex = mockProposals.findIndex(p => p.id === proposalId)
-    if (proposalIndex === -1) {
+    const proposal = await db.therapeuticProposal.findUnique({
+      where: { id: proposalId }
+    })
+    
+    if (!proposal) {
       return NextResponse.json(
         { error: 'Proposal not found' },
         { status: 404 }
       )
     }
-    
-    const proposal = mockProposals[proposalIndex]
     
     // Check access permissions
     if (!canUserReviewProposal(proposal, userRole)) {
@@ -307,8 +315,15 @@ export async function POST(
       updatedProposal.finalApprovalNotes = status === 'APPROVED' ? notes : undefined
     }
     
-    // Update proposal in mock data
-    mockProposals[proposalIndex] = updatedProposal
+    // Update proposal in database
+    const savedProposal = await db.therapeuticProposal.update({
+      where: { id: proposalId },
+      data: updatedProposal,
+      include: {
+        therapist: true,
+        patient: true
+      }
+    })
     
     // Filter data based on user role
     const filteredProposal = filterProposalData(updatedProposal, userRole)

@@ -1,8 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
 import { validateProposalReview } from '@/lib/proposal-validation'
 
-// Mock data for demonstration
-const mockProposals = [
+// Helper function to get current user from Supabase
+async function getCurrentUser(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  
+  if (error || !user) {
+    return null
+  }
+  
+  const dbUser = await db.user.findUnique({
+    where: { id: user.id },
+    select: {
+      id: true,
+      role: true,
+      therapist: {
+        select: { id: true }
+      }
+    }
+  })
+  
+  return dbUser
+}
+
+// Legacy mock data structure (not used anymore)
+const __legacyMockProposals = [
   {
     id: 'PROP-2024-001',
     patientId: 'PAT-2024-001',

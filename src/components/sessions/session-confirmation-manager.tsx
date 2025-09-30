@@ -40,7 +40,7 @@ import {
   Info
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface Session {
   id: string
@@ -180,7 +180,10 @@ export function SessionConfirmationManager({
         throw new Error(result.error || 'Failed to send confirmation')
       }
 
-      toast.success('Confirmation sent successfully')
+      toast({
+        title: "Success",
+        description: 'Confirmation sent successfully'
+      })
       
       if (onConfirmationSent) {
         onConfirmationSent(result.data)
@@ -191,7 +194,11 @@ export function SessionConfirmationManager({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to send confirmation'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error sending confirmation:', err)
     } finally {
       setLoading(false)
@@ -200,7 +207,11 @@ export function SessionConfirmationManager({
 
   const handleBulkSendConfirmation = async () => {
     if (selectedSessions.length === 0) {
-      toast.error('Please select sessions to send confirmations')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please select sessions to send confirmations'
+      })
       return
     }
 
@@ -226,10 +237,17 @@ export function SessionConfirmationManager({
       const failed = results.filter(r => r.status === 'rejected').length
 
       if (successful > 0) {
-        toast.success(`${successful} confirmations sent successfully`)
+        toast({
+        title: "Success",
+        description: `${successful} confirmations sent successfully`
+      })
       }
       if (failed > 0) {
-        toast.error(`${failed} confirmations failed to send`)
+        toast({
+        variant: "destructive",
+        title: "Error",
+        description: `${failed} confirmations failed to send`
+      })
       }
 
       setSelectedSessions([])
@@ -237,7 +255,11 @@ export function SessionConfirmationManager({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to send bulk confirmations'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error sending bulk confirmations:', err)
     } finally {
       setLoading(false)
@@ -266,7 +288,10 @@ export function SessionConfirmationManager({
         throw new Error(result.error || `Failed to ${action} session`)
       }
 
-      toast.success(`Session ${action}ed successfully`)
+      toast({
+        title: "Success",
+        description: `Session ${action}ed successfully`
+      })
       
       if (onSessionConfirmed && action === 'confirm') {
         onSessionConfirmed(result.data)
@@ -276,7 +301,11 @@ export function SessionConfirmationManager({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : `Failed to ${action} session`
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error(`Error ${action}ing session:`, err)
     } finally {
       setLoading(false)

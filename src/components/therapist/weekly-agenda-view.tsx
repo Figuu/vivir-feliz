@@ -67,7 +67,7 @@ import {
   RotateCcw
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface Therapist {
   id: string
@@ -227,13 +227,20 @@ export function WeeklyAgendaView({
         if (response.status === 409 && result.conflicts) {
           setConflicts(result.conflicts)
           setSuggestions(result.suggestions)
-          toast.error('Session conflicts detected. Please review and resolve conflicts.')
+          toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Session conflicts detected. Please review and resolve conflicts.'
+      })
           return
         }
         throw new Error(result.error || 'Failed to update session')
       }
 
-      toast.success('Session updated successfully')
+      toast({
+        title: "Success",
+        description: 'Session updated successfully'
+      })
       setShowSessionDialog(false)
       setSelectedSession(null)
       setEditingSession(null)
@@ -245,7 +252,11 @@ export function WeeklyAgendaView({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update session'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error updating session:', err)
     } finally {
       setLoading(false)
@@ -271,7 +282,10 @@ export function WeeklyAgendaView({
         throw new Error(result.error || 'Failed to delete session')
       }
 
-      toast.success('Session deleted successfully')
+      toast({
+        title: "Success",
+        description: 'Session deleted successfully'
+      })
       setShowSessionDialog(false)
       setSelectedSession(null)
       loadWeeklyAgenda()
@@ -282,7 +296,11 @@ export function WeeklyAgendaView({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete session'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error deleting session:', err)
     } finally {
       setLoading(false)

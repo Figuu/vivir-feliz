@@ -19,7 +19,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface ReschedulingHistoryViewerProps {
   sessionId?: string
@@ -97,7 +97,11 @@ export function ReschedulingHistoryViewer({
       setHistory(data.data.history || [])
     } catch (err) {
       console.error('Error loading history:', err)
-      toast.error('Failed to load rescheduling history')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load rescheduling history'
+      })
     } finally {
       setLoading(false)
     }
@@ -153,10 +157,17 @@ export function ReschedulingHistoryViewer({
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
 
-      toast.success('History exported successfully')
+      toast({
+        title: "Success",
+        description: 'History exported successfully'
+      })
     } catch (err) {
       console.error('Error exporting history:', err)
-      toast.error('Failed to export history')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to export history'
+      })
     }
   }
 

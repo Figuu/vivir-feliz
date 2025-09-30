@@ -24,7 +24,7 @@ import {
   User
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface AuditLog {
   id: string
@@ -113,7 +113,11 @@ export function AuditComplianceReporting() {
       setStatistics(result.data.statistics)
     } catch (err) {
       console.error('Error loading audit logs:', err)
-      toast.error('Failed to load audit logs')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load audit logs'
+      })
     } finally {
       setLoading(false)
     }
@@ -140,7 +144,11 @@ export function AuditComplianceReporting() {
       setComplianceData(result.data)
     } catch (err) {
       console.error('Error running compliance check:', err)
-      toast.error('Failed to run compliance check')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to run compliance check'
+      })
     } finally {
       setLoading(false)
     }
@@ -173,7 +181,10 @@ export function AuditComplianceReporting() {
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
 
-    toast.success('Audit log exported successfully')
+    toast({
+        title: "Success",
+        description: 'Audit log exported successfully'
+      })
   }
 
   const handleExportComplianceReport = () => {
@@ -216,7 +227,10 @@ ${Object.entries(check).filter(([key]) => !['status', 'recommendation'].includes
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
 
-    toast.success('Compliance report exported successfully')
+    toast({
+        title: "Success",
+        description: 'Compliance report exported successfully'
+      })
   }
 
   const getSeverityColor = (severity: string) => {

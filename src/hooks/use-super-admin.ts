@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface DashboardData {
   financial?: {
@@ -91,7 +91,11 @@ export function useSuperAdmin() {
       return result.data
     } catch (err) {
       console.error('Error loading dashboard:', err)
-      toast.error('Failed to load dashboard data')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load dashboard data'
+      })
       return null
     } finally {
       setLoading(false)
@@ -112,7 +116,11 @@ export function useSuperAdmin() {
       return result.data
     } catch (err) {
       console.error('Error loading quick stats:', err)
-      toast.error('Failed to load quick stats')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load quick stats'
+      })
       return null
     }
   }
@@ -131,7 +139,11 @@ export function useSuperAdmin() {
       return result.data
     } catch (err) {
       console.error('Error loading alerts:', err)
-      toast.error('Failed to load alerts')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load alerts'
+      })
       return null
     }
   }

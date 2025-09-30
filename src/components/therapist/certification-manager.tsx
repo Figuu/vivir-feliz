@@ -47,7 +47,7 @@ import {
   Shield
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 // Validation schema
 const certificationSchema = z.object({
@@ -226,7 +226,10 @@ export function CertificationManager({
         throw new Error(result.error || 'Failed to save certification')
       }
 
-      toast.success(editMode ? 'Certification updated successfully' : 'Certification created successfully')
+      toast({
+        title: "Success",
+        description: editMode ? 'Certification updated successfully' : 'Certification created successfully'
+      })
       
       if (editMode && onCertificationUpdate) {
         onCertificationUpdate(result.data.certification)
@@ -241,7 +244,11 @@ export function CertificationManager({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save certification'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error saving certification:', err)
     } finally {
       setLoading(false)
@@ -292,7 +299,10 @@ export function CertificationManager({
         throw new Error(result.error || 'Failed to delete certification')
       }
 
-      toast.success('Certification deactivated successfully')
+      toast({
+        title: "Success",
+        description: 'Certification deactivated successfully'
+      })
       loadCertifications()
       
       if (onCertificationDelete) {
@@ -301,7 +311,11 @@ export function CertificationManager({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete certification'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error deleting certification:', err)
     } finally {
       setLoading(false)

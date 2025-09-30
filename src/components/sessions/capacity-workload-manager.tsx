@@ -42,7 +42,7 @@ import {
   EyeOff
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface CapacityConfig {
   therapistId: string
@@ -189,7 +189,11 @@ export function CapacityWorkloadManager({
 
   const handleSaveConfig = async () => {
     if (!selectedTherapist) {
-      toast.error('Please select a therapist')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please select a therapist"
+      })
       return
     }
 
@@ -214,7 +218,10 @@ export function CapacityWorkloadManager({
         throw new Error(result.error || 'Failed to save configuration')
       }
 
-      toast.success('Capacity configuration saved successfully')
+      toast({
+        title: "Success",
+        description: "Capacity configuration saved successfully"
+      })
       
       if (onConfigUpdate) {
         onConfigUpdate(result.data.config)
@@ -224,7 +231,11 @@ export function CapacityWorkloadManager({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save configuration'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error saving configuration:', err)
     } finally {
       setLoading(false)
@@ -233,7 +244,11 @@ export function CapacityWorkloadManager({
 
   const handleAnalyzeWorkload = async () => {
     if (!selectedTherapist) {
-      toast.error('Please select a therapist')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please select a therapist"
+      })
       return
     }
 
@@ -267,11 +282,18 @@ export function CapacityWorkloadManager({
         onWorkloadAnalysis(result.data)
       }
 
-      toast.success('Workload analysis completed')
+      toast({
+        title: "Success",
+        description: "Workload analysis completed"
+      })
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to analyze workload'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error analyzing workload:', err)
     } finally {
       setLoading(false)
@@ -280,7 +302,11 @@ export function CapacityWorkloadManager({
 
   const handleOptimizeCapacity = async (optimizationType: string) => {
     if (!selectedTherapist) {
-      toast.error('Please select a therapist')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please select a therapist"
+      })
       return
     }
 
@@ -306,11 +332,18 @@ export function CapacityWorkloadManager({
         throw new Error(result.error || 'Failed to optimize capacity')
       }
 
-      toast.success('Capacity optimization completed')
+      toast({
+        title: "Success",
+        description: "Capacity optimization completed"
+      })
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to optimize capacity'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error optimizing capacity:', err)
     } finally {
       setLoading(false)
@@ -449,7 +482,7 @@ export function CapacityWorkloadManager({
                 {overview.filter(item => item.utilization > 90).length}
               </div>
               <p className="text-xs text-muted-foreground">
-                >90% utilization
+                90% utilization
               </p>
             </CardContent>
           </Card>

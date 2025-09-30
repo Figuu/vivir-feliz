@@ -24,7 +24,7 @@ import {
   Info
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface Session {
   id: string
@@ -167,7 +167,10 @@ export function SessionTimingAdjuster({
         throw new Error(result.error || 'Failed to adjust session timing')
       }
 
-      toast.success('Session timing adjusted successfully')
+      toast({
+        title: "Success",
+        description: 'Session timing adjusted successfully'
+      })
       
       if (onAdjustmentComplete) {
         onAdjustmentComplete(result.data)
@@ -175,7 +178,11 @@ export function SessionTimingAdjuster({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to adjust session timing'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error adjusting session timing:', err)
     } finally {
       setLoading(false)

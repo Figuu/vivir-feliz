@@ -31,7 +31,7 @@ import {
   GripVertical
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface ReportCompilationInterfaceProps {
   coordinatorId?: string
@@ -152,12 +152,20 @@ export function ReportCompilationInterface({
 
   const handleSubmit = async (status: 'draft' | 'completed') => {
     if (!formData.title || !formData.executiveSummary || !formData.overallAssessment) {
-      toast.error('Please fill in all required fields')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please fill in all required fields'
+      })
       return
     }
 
     if (formData.includedReports.length === 0) {
-      toast.error('Please include at least one report')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please include at least one report'
+      })
       return
     }
 
@@ -189,7 +197,10 @@ export function ReportCompilationInterface({
         throw new Error(result.error || 'Failed to create compilation')
       }
 
-      toast.success(status === 'draft' ? 'Compilation saved as draft' : 'Compilation completed successfully')
+      toast({
+        title: "Success",
+        description: status === 'draft' ? 'Compilation saved as draft' : 'Compilation completed successfully'
+      })
       
       if (onCompilationComplete) {
         onCompilationComplete(result.data)
@@ -197,7 +208,11 @@ export function ReportCompilationInterface({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create compilation'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error creating compilation:', err)
     } finally {
       setLoading(false)

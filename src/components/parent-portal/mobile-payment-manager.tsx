@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { 
   DollarSign,
@@ -16,7 +18,7 @@ import {
   CreditCard
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface MobilePaymentManagerProps {
   patientId: string
@@ -35,60 +37,37 @@ interface Payment {
 }
 
 export function MobilePaymentManager({ patientId, parentId }: MobilePaymentManagerProps) {
-  const [loading, setLoading] = useState(false)
-  const [payments, setPayments] = useState<Payment[]>([])
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [filter, setFilter] = useState<'pending' | 'paid'>('pending')
 
-  useEffect(() => {
-    loadPayments()
-  }, [patientId, filter])
-
-  const loadPayments = async () => {
-    try {
-      setLoading(true)
-      
-      // Mock data - in real app, this would be an API call
-      const mockPayments: Payment[] = [
-        {
-          id: 'pay-1',
-          amount: 350.00,
-          status: 'pending',
-          dueDate: '2025-10-15',
-          description: 'October 2025 - Speech Therapy (4 sessions)',
-        },
-        {
-          id: 'pay-2',
-          amount: 350.00,
-          status: 'paid',
-          dueDate: '2025-09-15',
-          paidDate: '2025-09-12',
-          description: 'September 2025 - Speech Therapy (4 sessions)',
-          method: 'Credit Card',
-          referenceNumber: 'PAY-2025-09-12345'
-        },
-        {
-          id: 'pay-3',
-          amount: 350.00,
-          status: 'paid',
-          dueDate: '2025-08-15',
-          paidDate: '2025-08-10',
-          description: 'August 2025 - Speech Therapy (4 sessions)',
-          method: 'Bank Transfer',
-          referenceNumber: 'PAY-2025-08-12346'
-        }
-      ]
-
-      const filtered = mockPayments.filter(p => p.status === filter)
-      setPayments(filtered)
-    } catch (err) {
-      console.error('Error loading payments:', err)
-      toast.error('Failed to load payments')
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Fetch payments from API
+  const { data: payments = [], isLoading: loading } = useQuery({
+    queryKey: ['payments', parentId, filter],
+    queryFn: async () => {
+      const statusParam = filter === 'pending' ? 'PENDING,SUBMITTED' : 'CONFIRMED'
+      const response = await fetch(`/api/payments?parentId=${parentId}&status=${statusParam}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch payments')
+      }
+      const data = await response.json()
+      return data.payments.map((p: any) => ({
+        id: p.id,
+        amount: Number(p.amount),
+        status: p.status.toLowerCase(),
+        dueDate: p.dueDate || p.createdAt,
+        paidDate: p.reviewedAt,
+        description: p.type === 'CONSULTATION' 
+          ? 'Consultation Payment' 
+          : p.type === 'MONTHLY_PAYMENT'
+          ? `Monthly Payment #${p.monthlyPaymentNumber || 1}`
+          : 'Therapeutic Services',
+        method: p.paymentMethod,
+        referenceNumber: p.transactionId
+      }))
+    },
+    refetchInterval: 30000 // Refresh every 30 seconds
+  })
 
   const handleViewDetails = (payment: Payment) => {
     setSelectedPayment(payment)
@@ -96,11 +75,17 @@ export function MobilePaymentManager({ patientId, parentId }: MobilePaymentManag
   }
 
   const handlePayNow = async (payment: Payment) => {
-    toast.info('Payment processing would be implemented here')
+    toast({
+        title: "Info",
+        description: 'Payment processing would be implemented here'
+      })
   }
 
   const handleDownloadReceipt = async (payment: Payment) => {
-    toast.info('Receipt download would be implemented here')
+    toast({
+        title: "Info",
+        description: 'Receipt download would be implemented here'
+      })
   }
 
   const getStatusColor = (status: string) => {

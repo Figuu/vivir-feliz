@@ -20,7 +20,7 @@ import {
   CheckCircle
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface RevenueReport {
   summary: {
@@ -127,7 +127,11 @@ export function ComprehensiveFinancialReports() {
       }
     } catch (err) {
       console.error('Error loading report:', err)
-      toast.error('Failed to load financial report')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load financial report'
+      })
     } finally {
       setLoading(false)
     }
@@ -160,10 +164,17 @@ export function ComprehensiveFinancialReports() {
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
 
-      toast.success('Report exported successfully')
+      toast({
+        title: "Success",
+        description: 'Report exported successfully'
+      })
     } catch (err) {
       console.error('Error exporting report:', err)
-      toast.error('Failed to export report')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to export report'
+      })
     }
   }
 

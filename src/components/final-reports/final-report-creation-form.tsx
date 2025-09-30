@@ -120,7 +120,7 @@ import {
   Activity as ActivityIcon
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface FinalReportCreationFormProps {
   patientId?: string
@@ -244,7 +244,11 @@ export function FinalReportCreationForm({
 
   const addOutcomeMeasurement = () => {
     if (metrics.length === 0) {
-      toast.error('No metrics available. Please select a therapeutic plan first.')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'No metrics available. Please select a therapeutic plan first.'
+      })
       return
     }
     
@@ -271,7 +275,11 @@ export function FinalReportCreationForm({
 
   const addObjectiveOutcome = () => {
     if (objectives.length === 0) {
-      toast.error('No objectives available. Please select a therapeutic plan first.')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'No objectives available. Please select a therapeutic plan first.'
+      })
       return
     }
     
@@ -352,37 +360,65 @@ export function FinalReportCreationForm({
 
   const validateForm = () => {
     if (!formData.title.trim()) {
-      toast.error('Please enter a report title')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please enter a report title'
+      })
       return false
     }
     
     if (!formData.reportDate) {
-      toast.error('Please select a report date')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please select a report date'
+      })
       return false
     }
     
     if (!formData.treatmentStartDate) {
-      toast.error('Please select a treatment start date')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please select a treatment start date'
+      })
       return false
     }
     
     if (!formData.treatmentEndDate) {
-      toast.error('Please select a treatment end date')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please select a treatment end date'
+      })
       return false
     }
     
     if (!formData.treatmentSummary.trim()) {
-      toast.error('Please enter a treatment summary')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please enter a treatment summary'
+      })
       return false
     }
     
     if (outcomeMeasurements.length === 0) {
-      toast.error('Please add at least one outcome measurement')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please add at least one outcome measurement'
+      })
       return false
     }
     
     if (objectiveOutcomes.length === 0) {
-      toast.error('Please add at least one objective outcome')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please add at least one objective outcome'
+      })
       return false
     }
     
@@ -419,14 +455,21 @@ export function FinalReportCreationForm({
         throw new Error(result.error || 'Failed to create final report')
       }
 
-      toast.success('Final report created successfully')
+      toast({
+        title: "Success",
+        description: 'Final report created successfully'
+      })
       if (onReportCreated) {
         onReportCreated(result.data)
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create final report'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error creating final report:', err)
     } finally {
       setLoading(false)

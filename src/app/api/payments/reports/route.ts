@@ -85,28 +85,73 @@ export async function GET(request: NextRequest) {
     
     const { reportType, startDate, endDate, generatedBy, page, limit } = validationResult.data
     
-    // In a real implementation, you would fetch reports from database
-    // For now, return mock data
-    const mockReports = [
-      {
-        id: 'report_1',
-        reportType: 'MONTHLY',
-        period: {
-          start: new Date('2024-01-01'),
-          end: new Date('2024-01-31')
+    // Fetch payment data from database for the specified period
+    const where: any = {}
+    
+    if (startDate) {
+      where.createdAt = { ...where.createdAt, gte: new Date(startDate) }
+    }
+    if (endDate) {
+      where.createdAt = { ...where.createdAt, lte: new Date(endDate) }
+    }
+    
+    const payments = await db.payment.findMany({
+      where,
+      include: {
+        parent: {
+          select: {
+            firstName: true,
+            lastName: true
+          }
         },
-        generatedAt: new Date('2024-02-01'),
-        generatedBy: 'system',
-        summary: {
-          totalRevenue: 50000,
-          totalPayments: 150,
-          averagePayment: 333.33,
-          growthRate: 12.5,
-          topPerformingTherapist: 'Dr. Smith',
-          topService: 'Individual Therapy'
+        consultationRequest: {
+          select: {
+            id: true,
+            type: true
+          }
+        },
+        therapeuticProposal: {
+          select: {
+            id: true,
+            therapist: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
+          }
         }
+      },
+      orderBy: {
+        createdAt: 'desc'
       }
-    ]
+    })
+    
+    // Calculate report statistics
+    const totalRevenue = payments
+      .filter(p => p.status === 'CONFIRMED')
+      .reduce((sum, p) => sum + Number(p.amount), 0)
+    const totalPayments = payments.filter(p => p.status === 'CONFIRMED').length
+    const averagePayment = totalPayments > 0 ? totalRevenue / totalPayments : 0
+    
+    const reports = [{
+      id: `report_${Date.now()}`,
+      reportType: reportType || 'CUSTOM',
+      period: {
+        start: startDate ? new Date(startDate) : new Date(),
+        end: endDate ? new Date(endDate) : new Date()
+      },
+      generatedAt: new Date(),
+      generatedBy: generatedBy || 'system',
+      summary: {
+        totalRevenue,
+        totalPayments,
+        averagePayment,
+        confirmedPayments: payments.filter(p => p.status === 'CONFIRMED').length,
+        pendingPayments: payments.filter(p => p.status === 'PENDING').length
+      },
+      payments: payments.slice((page - 1) * limit, page * limit)
+    }]
     
     // Apply filters
     let filteredReports = mockReports

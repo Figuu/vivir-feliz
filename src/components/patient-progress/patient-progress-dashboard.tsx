@@ -130,7 +130,7 @@ import {
   GripVertical
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface PatientProgressDashboardProps {
   patientId?: string
@@ -393,7 +393,11 @@ export function PatientProgressDashboard({
 
   const handleAddProgress = async () => {
     if (!newProgress.patientId || !newProgress.therapistId || !newProgress.title || !newProgress.description) {
-      toast.error('Please fill in all required fields')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please fill in all required fields'
+      })
       return
     }
 
@@ -473,7 +477,10 @@ export function PatientProgressDashboard({
         throw new Error(result.error || 'Failed to add progress entry')
       }
 
-      toast.success('Progress entry added successfully')
+      toast({
+        title: "Success",
+        description: 'Progress entry added successfully'
+      })
       
       // Reset form
       setNewProgress({
@@ -498,7 +505,11 @@ export function PatientProgressDashboard({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add progress entry'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error adding progress entry:', err)
     } finally {
       setLoading(false)

@@ -12,7 +12,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface FinancialData {
   overview: {
@@ -46,7 +46,11 @@ export function MobileFinancialOverview() {
       setData(result.data)
     } catch (err) {
       console.error('Error loading financial data:', err)
-      toast.error('Failed to load financial data')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load financial data'
+      })
     } finally {
       setLoading(false)
     }

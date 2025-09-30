@@ -44,7 +44,7 @@ import {
   Upload
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 import { TherapistRegistrationForm } from './therapist-registration-form'
 
 interface Therapist {
@@ -190,7 +190,10 @@ export function TherapistProfileManager({
         throw new Error(result.error || 'Failed to delete therapist')
       }
 
-      toast.success('Therapist deactivated successfully')
+      toast({
+        title: "Success",
+        description: 'Therapist deactivated successfully'
+      })
       loadTherapists()
       
       if (onTherapistDelete) {
@@ -199,7 +202,11 @@ export function TherapistProfileManager({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete therapist'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error deleting therapist:', err)
     } finally {
       setLoading(false)

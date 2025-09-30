@@ -26,7 +26,7 @@ import {
   Info
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface VersionControlInterfaceProps {
   reportId: string
@@ -109,7 +109,11 @@ export function VersionControlInterface({
 
   const loadComparison = async () => {
     if (!compareVersion1 || !compareVersion2) {
-      toast.error('Please select two versions to compare')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please select two versions to compare'
+      })
       return
     }
 
@@ -128,10 +132,18 @@ export function VersionControlInterface({
       if (response.ok) {
         setComparisonData(result.data)
       } else {
-        toast.error(result.error || 'Failed to compare versions')
+        toast({
+        variant: "destructive",
+        title: "Error",
+        description: result.error || 'Failed to compare versions'
+      })
       }
     } catch (err) {
-      toast.error('Failed to compare versions')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to compare versions'
+      })
       console.error('Error comparing versions:', err)
     } finally {
       setLoading(false)
@@ -164,7 +176,10 @@ export function VersionControlInterface({
         throw new Error(result.error || 'Failed to restore version')
       }
 
-      toast.success(`Version ${selectedVersion.versionNumber} restored successfully`)
+      toast({
+        title: "Success",
+        description: `Version ${selectedVersion.versionNumber} restored successfully`
+      })
       setRestoreDialog(false)
       setSelectedVersion(null)
       loadVersions()
@@ -174,7 +189,11 @@ export function VersionControlInterface({
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to restore version'
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error restoring version:', err)
     } finally {
       setLoading(false)

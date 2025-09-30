@@ -165,7 +165,7 @@ export default function CapacityWorkloadPage() {
                 {overview.filter(item => item.utilization > 90).length}
               </div>
               <p className="text-xs text-muted-foreground">
-                >90% utilization
+                90% utilization
               </p>
             </CardContent>
           </Card>

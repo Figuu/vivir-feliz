@@ -42,7 +42,7 @@ import {
   Activity
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface Session {
   id: string
@@ -207,7 +207,11 @@ export function RoleBasedCalendar({
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : `Failed to ${action} session`
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error(`Error ${action}ing session:`, err)
     }
   }
@@ -221,7 +225,10 @@ export function RoleBasedCalendar({
       throw new Error('Failed to confirm session')
     }
     
-    toast.success('Session confirmed successfully')
+    toast({
+        title: "Success",
+        description: 'Session confirmed successfully'
+      })
     loadSessions()
   }
 
@@ -238,7 +245,10 @@ export function RoleBasedCalendar({
       throw new Error('Failed to cancel session')
     }
     
-    toast.success('Session cancelled successfully')
+    toast({
+        title: "Success",
+        description: 'Session cancelled successfully'
+      })
     loadSessions()
   }
 
@@ -251,7 +261,10 @@ export function RoleBasedCalendar({
       throw new Error('Failed to start session')
     }
     
-    toast.success('Session started successfully')
+    toast({
+        title: "Success",
+        description: 'Session started successfully'
+      })
     loadSessions()
   }
 
@@ -271,7 +284,10 @@ export function RoleBasedCalendar({
       throw new Error('Failed to complete session')
     }
     
-    toast.success('Session completed successfully')
+    toast({
+        title: "Success",
+        description: 'Session completed successfully'
+      })
     loadSessions()
   }
 

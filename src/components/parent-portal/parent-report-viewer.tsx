@@ -18,7 +18,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface ParentReportViewerProps {
   patientId: string
@@ -112,7 +112,11 @@ export function ParentReportViewer({ patientId, parentEmail }: ParentReportViewe
       setReports(allReports)
     } catch (err) {
       console.error('Error loading reports:', err)
-      toast.error('Failed to load reports')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load reports'
+      })
     } finally {
       setLoading(false)
     }
@@ -125,7 +129,10 @@ export function ParentReportViewer({ patientId, parentEmail }: ParentReportViewe
 
   const handleDownloadReport = async (report: Report) => {
     try {
-      toast.info('Generating PDF...')
+      toast({
+        title: "Info",
+        description: 'Generating PDF...'
+      })
       
       // Call PDF generation API
       const response = await fetch('/api/progress-reports/pdf', {
@@ -166,10 +173,17 @@ export function ParentReportViewer({ patientId, parentEmail }: ParentReportViewe
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
 
-      toast.success('Report downloaded successfully')
+      toast({
+        title: "Success",
+        description: 'Report downloaded successfully'
+      })
     } catch (err) {
       console.error('Error downloading report:', err)
-      toast.error('Failed to download report')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to download report'
+      })
     }
   }
 

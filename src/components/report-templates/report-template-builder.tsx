@@ -125,7 +125,7 @@ import {
   PenTool
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface ReportTemplateBuilderProps {
   templateId?: string
@@ -305,17 +305,29 @@ export function ReportTemplateBuilder({
 
   const validateTemplate = () => {
     if (!template.name.trim()) {
-      toast.error('Please enter a template name')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please enter a template name'
+      })
       return false
     }
     
     if (!template.description.trim()) {
-      toast.error('Please enter a template description')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please enter a template description'
+      })
       return false
     }
     
     if (fields.length === 0) {
-      toast.error('Please add at least one field')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please add at least one field'
+      })
       return false
     }
     
@@ -323,38 +335,62 @@ export function ReportTemplateBuilder({
       const field = fields[i]
       
       if (!field.name.trim()) {
-        toast.error(`Please enter a name for field ${i + 1}`)
+        toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Please enter a name for field ${i + 1}`
+      })
         return false
       }
       
       if (!field.label.trim()) {
-        toast.error(`Please enter a label for field ${i + 1}`)
+        toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Please enter a label for field ${i + 1}`
+      })
         return false
       }
       
       // Check for duplicate field names
       const duplicateNames = fields.filter(f => f.name === field.name)
       if (duplicateNames.length > 1) {
-        toast.error(`Duplicate field name: ${field.name}`)
+        toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Duplicate field name: ${field.name}`
+      })
         return false
       }
       
       // Validate field type specific rules
       if ((field.type === 'select' || field.type === 'radio') && (!field.options || field.options.length === 0)) {
-        toast.error(`Field "${field.name}" of type ${field.type} requires options`)
+        toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Field "${field.name}" of type ${field.type} requires options`
+      })
         return false
       }
       
       if (field.type === 'number' && field.minValue !== undefined && field.maxValue !== undefined) {
         if (field.minValue >= field.maxValue) {
-          toast.error(`Field "${field.name}": minValue must be less than maxValue`)
+          toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Field "${field.name}": minValue must be less than maxValue`
+      })
           return false
         }
       }
       
       if ((field.type === 'text' || field.type === 'textarea') && field.minLength !== undefined && field.maxLength !== undefined) {
         if (field.minLength > field.maxLength) {
-          toast.error(`Field "${field.name}": minLength must be less than or equal to maxLength`)
+          toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Field "${field.name}": minLength must be less than or equal to maxLength`
+      })
           return false
         }
       }
@@ -388,14 +424,21 @@ export function ReportTemplateBuilder({
         throw new Error(result.error || 'Failed to save template')
       }
 
-      toast.success('Template saved successfully')
+      toast({
+        title: "Success",
+        description: 'Template saved successfully'
+      })
       if (onTemplateSaved) {
         onTemplateSaved(result.data)
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save template'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error saving template:', err)
     } finally {
       setLoading(false)

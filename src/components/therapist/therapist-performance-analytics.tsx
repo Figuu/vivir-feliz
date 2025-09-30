@@ -75,7 +75,7 @@ import {
   Sparkles
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface Therapist {
   id: string
@@ -282,7 +282,11 @@ export function TherapistPerformanceAnalytics({
 
   const handleCreateGoal = async () => {
     if (!selectedTherapistId || !goalForm.targetValue || !goalForm.targetDate) {
-      toast.error('Please fill in all required fields')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please fill in all required fields'
+      })
       return
     }
 
@@ -307,7 +311,10 @@ export function TherapistPerformanceAnalytics({
         throw new Error(result.error || 'Failed to create performance goal')
       }
 
-      toast.success('Performance goal created successfully')
+      toast({
+        title: "Success",
+        description: 'Performance goal created successfully'
+      })
       setShowGoalForm(false)
       setGoalForm({
         goalType: 'sessions',
@@ -322,7 +329,11 @@ export function TherapistPerformanceAnalytics({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create performance goal'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error creating performance goal:', err)
     } finally {
       setLoading(false)

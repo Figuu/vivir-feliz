@@ -125,7 +125,7 @@ import {
   GripVertical
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface ProgressReportPDFGeneratorProps {
   patientId?: string
@@ -248,7 +248,11 @@ export function ProgressReportPDFGenerator({
 
   const handleGeneratePDF = async () => {
     if (!formData.patientId || !formData.startDate || !formData.endDate) {
-      toast.error('Please fill in all required fields')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please fill in all required fields'
+      })
       return
     }
 
@@ -297,7 +301,10 @@ export function ProgressReportPDFGenerator({
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
 
-      toast.success('PDF generated and downloaded successfully')
+      toast({
+        title: "Success",
+        description: 'PDF generated and downloaded successfully'
+      })
       
       if (onPDFGenerated) {
         onPDFGenerated({ success: true, filename })
@@ -305,7 +312,11 @@ export function ProgressReportPDFGenerator({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate PDF'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error generating PDF:', err)
     } finally {
       setLoading(false)

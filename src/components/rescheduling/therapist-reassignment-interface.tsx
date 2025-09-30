@@ -21,7 +21,7 @@ import {
   ArrowRight
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface TherapistReassignmentInterfaceProps {
   defaultSessionId?: string
@@ -125,7 +125,11 @@ export function TherapistReassignmentInterface({ defaultSessionId }: TherapistRe
       loadHistory()
     } catch (err) {
       console.error('Error loading data:', err)
-      toast.error('Failed to load data')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load data'
+      })
     } finally {
       setLoading(false)
     }
@@ -163,17 +167,29 @@ export function TherapistReassignmentInterface({ defaultSessionId }: TherapistRe
 
   const handleReassign = async () => {
     if (!formData.sessionId || !formData.newTherapistId) {
-      toast.error('Please select a session and new therapist')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please select a session and new therapist'
+      })
       return
     }
 
     if (!formData.reason.trim()) {
-      toast.error('Please provide a reason for reassignment')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please provide a reason for reassignment'
+      })
       return
     }
 
     if (formData.reason.length < 10) {
-      toast.error('Reason must be at least 10 characters')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Reason must be at least 10 characters'
+      })
       return
     }
 
@@ -198,7 +214,10 @@ export function TherapistReassignmentInterface({ defaultSessionId }: TherapistRe
 
       const result = await response.json()
 
-      toast.success('Therapist reassigned successfully')
+      toast({
+        title: "Success",
+        description: 'Therapist reassigned successfully'
+      })
       setReassignDialogOpen(false)
       setFormData({
         sessionId: '',
@@ -211,7 +230,11 @@ export function TherapistReassignmentInterface({ defaultSessionId }: TherapistRe
       await loadData()
     } catch (err: any) {
       console.error('Error reassigning therapist:', err)
-      toast.error(err.message || 'Failed to reassign therapist')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || 'Failed to reassign therapist'
+      })
     } finally {
       setLoading(false)
     }

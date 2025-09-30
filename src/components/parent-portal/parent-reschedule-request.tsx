@@ -22,7 +22,7 @@ import {
   Filter
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface ParentRescheduleRequestProps {
   patientId: string
@@ -106,7 +106,11 @@ export function ParentRescheduleRequest({ patientId, parentId }: ParentReschedul
       await Promise.all([loadUpcomingSessions(), loadRescheduleRequests()])
     } catch (err) {
       console.error('Error loading data:', err)
-      toast.error('Failed to load data')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load data'
+      })
     } finally {
       setLoading(false)
     }
@@ -169,12 +173,20 @@ export function ParentRescheduleRequest({ patientId, parentId }: ParentReschedul
 
   const handleSubmitRequest = async () => {
     if (!formData.reason.trim()) {
-      toast.error('Please provide a reason for rescheduling')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please provide a reason for rescheduling'
+      })
       return
     }
 
     if (!formData.preferredDate1 || !formData.preferredTime1) {
-      toast.error('Please provide at least one preferred date and time')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please provide at least one preferred date and time'
+      })
       return
     }
 
@@ -222,10 +234,17 @@ export function ParentRescheduleRequest({ patientId, parentId }: ParentReschedul
         urgency: 'medium'
       })
 
-      toast.success('Reschedule request submitted successfully')
+      toast({
+        title: "Success",
+        description: 'Reschedule request submitted successfully'
+      })
     } catch (err) {
       console.error('Error submitting request:', err)
-      toast.error('Failed to submit request')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to submit request'
+      })
     } finally {
       setLoading(false)
     }
@@ -239,10 +258,17 @@ export function ParentRescheduleRequest({ patientId, parentId }: ParentReschedul
           req.id === requestId ? { ...req, status: 'cancelled' as const } : req
         )
       )
-      toast.success('Request cancelled successfully')
+      toast({
+        title: "Success",
+        description: 'Request cancelled successfully'
+      })
     } catch (err) {
       console.error('Error cancelling request:', err)
-      toast.error('Failed to cancel request')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to cancel request'
+      })
     }
   }
 

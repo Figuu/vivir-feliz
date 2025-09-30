@@ -70,7 +70,7 @@ import {
   BarChart
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface Patient {
   id: string
@@ -240,7 +240,10 @@ export function PatientList({
         throw new Error(result.error || 'Failed to archive patient')
       }
 
-      toast.success('Patient archived successfully')
+      toast({
+        title: "Success",
+        description: 'Patient archived successfully'
+      })
       loadPatients() // Reload the list
       
       if (onPatientDelete) {
@@ -249,7 +252,11 @@ export function PatientList({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to archive patient'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error archiving patient:', err)
     } finally {
       setLoading(false)

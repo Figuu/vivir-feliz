@@ -68,7 +68,7 @@ import {
   RotateCcw as Reset
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface Session {
   id: string
@@ -244,7 +244,10 @@ export function SessionStartComplete({
       setIsTimerRunning(true)
       setSession(result.data.session)
       
-      toast.success('Session started successfully')
+      toast({
+        title: "Success",
+        description: 'Session started successfully'
+      })
       
       if (onSessionUpdate) {
         onSessionUpdate(result.data.session)
@@ -252,7 +255,11 @@ export function SessionStartComplete({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to start session'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error starting session:', err)
     } finally {
       setLoading(false)
@@ -285,7 +292,11 @@ export function SessionStartComplete({
 
     if (validationErrors.length > 0) {
       setShowValidationErrors(true)
-      toast.error('Please fix validation errors before completing session')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please fix validation errors before completing session'
+      })
       return
     }
 
@@ -322,7 +333,10 @@ export function SessionStartComplete({
       setIsTimerRunning(false)
       setSession(result.data.session)
       
-      toast.success('Session completed successfully')
+      toast({
+        title: "Success",
+        description: 'Session completed successfully'
+      })
       
       if (onSessionComplete) {
         onSessionComplete(result.data.session)
@@ -330,7 +344,11 @@ export function SessionStartComplete({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to complete session'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error completing session:', err)
     } finally {
       setLoading(false)

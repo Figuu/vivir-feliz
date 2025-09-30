@@ -36,7 +36,7 @@ import {
   Link as LinkIcon
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface TherapistReportSubmissionProps {
   therapistId?: string
@@ -204,7 +204,11 @@ export function TherapistReportSubmission({
 
   const handleSubmit = async (submissionType: 'draft' | 'final') => {
     if (!formData.reportId || !formData.title || !formData.description) {
-      toast.error('Please fill in all required fields')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please fill in all required fields'
+      })
       return
     }
 
@@ -238,7 +242,10 @@ export function TherapistReportSubmission({
         throw new Error(result.error || `Failed to ${editingSubmission ? 'update' : 'create'} submission`)
       }
 
-      toast.success(submissionType === 'draft' ? 'Report saved as draft' : 'Report submitted successfully')
+      toast({
+        title: "Success",
+        description: submissionType === 'draft' ? 'Report saved as draft' : 'Report submitted successfully'
+      })
       
       // Reset form
       resetForm()
@@ -252,7 +259,11 @@ export function TherapistReportSubmission({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to submit report'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error submitting report:', err)
     } finally {
       setLoading(false)
@@ -319,11 +330,18 @@ export function TherapistReportSubmission({
         throw new Error(result.error || 'Failed to delete draft')
       }
 
-      toast.success('Draft deleted successfully')
+      toast({
+        title: "Success",
+        description: 'Draft deleted successfully'
+      })
       loadSubmissions()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete draft'
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error deleting draft:', err)
     } finally {
       setLoading(false)

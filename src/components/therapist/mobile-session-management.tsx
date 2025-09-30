@@ -128,7 +128,7 @@ import {
   Percent as PercentIcon2
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface MobileSessionManagementProps {
   therapistId?: string
@@ -232,7 +232,10 @@ export function MobileSessionManagement({
         throw new Error(result.error || `Failed to ${action} session`)
       }
 
-      toast.success(`Session ${action}ed successfully`)
+      toast({
+        title: "Success",
+        description: `Session ${action}ed successfully`
+      })
       
       if (action === 'start') {
         setIsTimerRunning(true)
@@ -245,7 +248,11 @@ export function MobileSessionManagement({
       loadSessions()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : `Failed to ${action} session`
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error(`Error ${action}ing session:`, err)
     } finally {
       setLoading(false)
@@ -254,7 +261,11 @@ export function MobileSessionManagement({
 
   const handleCreateSession = async () => {
     if (!sessionForm.patientId || !sessionForm.scheduledDate || !sessionForm.scheduledTime) {
-      toast.error('Please fill in all required fields')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please fill in all required fields'
+      })
       return
     }
 
@@ -278,7 +289,10 @@ export function MobileSessionManagement({
         throw new Error(result.error || 'Failed to create session')
       }
 
-      toast.success('Session created successfully')
+      toast({
+        title: "Success",
+        description: 'Session created successfully'
+      })
       setShowSessionForm(false)
       setSessionForm({
         patientId: '',
@@ -291,7 +305,11 @@ export function MobileSessionManagement({
       loadSessions()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create session'
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error creating session:', err)
     } finally {
       setLoading(false)

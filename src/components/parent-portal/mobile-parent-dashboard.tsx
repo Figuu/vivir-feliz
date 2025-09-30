@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { 
   User, 
   Calendar,
@@ -23,7 +25,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface MobileParentDashboardProps {
   patientId: string
@@ -56,69 +58,105 @@ interface DashboardData {
 }
 
 export function MobileParentDashboard({ patientId, parentId }: MobileParentDashboardProps) {
-  const [loading, setLoading] = useState(false)
-  const [data, setData] = useState<DashboardData | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
 
-  useEffect(() => {
-    loadDashboardData()
-  }, [patientId])
-
-  const loadDashboardData = async () => {
-    try {
-      setLoading(true)
-      
-      // Mock data - in real app, this would be an API call
-      const mockData: DashboardData = {
-        patient: {
-          firstName: 'Emma',
-          lastName: 'Johnson',
-          age: 8
-        },
-        stats: {
-          completedSessions: 12,
-          upcomingSessions: 3,
-          totalReports: 2,
-          pendingPayments: 1,
-          lastSessionDate: '2025-09-28',
-          nextSessionDate: '2025-10-05'
-        },
-        recentActivity: [
-          {
-            id: '1',
-            type: 'session',
-            title: 'Session Completed',
-            description: 'Speech Therapy session with Dr. Smith',
-            date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-            icon: 'check'
-          },
-          {
-            id: '2',
-            type: 'report',
-            title: 'New Report Available',
-            description: 'Progress Report #2 has been approved',
-            date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-            icon: 'file'
-          },
-          {
-            id: '3',
-            type: 'payment',
-            title: 'Payment Received',
-            description: 'Payment for September processed',
-            date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-            icon: 'dollar'
-          }
-        ]
-      }
-
-      setData(mockData)
-    } catch (err) {
-      console.error('Error loading dashboard:', err)
-      toast.error('Failed to load dashboard')
-    } finally {
-      setLoading(false)
+  // Fetch patient data
+  const { data: patient, isLoading: patientLoading } = useQuery({
+    queryKey: ['patient', patientId],
+    queryFn: async () => {
+      const response = await fetch(`/api/patients/${patientId}`)
+      if (!response.ok) throw new Error('Failed to fetch patient')
+      return response.json()
     }
-  }
+  })
+
+  // Fetch session statistics
+  const { data: sessionStats, isLoading: statsLoading } = useQuery({
+    queryKey: ['patient-sessions-stats', patientId],
+    queryFn: async () => {
+      const response = await fetch(`/api/sessions?patientId=${patientId}&stats=true`)
+      if (!response.ok) throw new Error('Failed to fetch session stats')
+      const data = await response.json()
+      
+      const completed = data.sessions?.filter((s: any) => s.status === 'COMPLETED').length || 0
+      const upcoming = data.sessions?.filter((s: any) => s.status === 'SCHEDULED').length || 0
+      const lastSession = data.sessions?.filter((s: any) => s.status === 'COMPLETED')
+        .sort((a: any, b: any) => new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime())[0]
+      const nextSession = data.sessions?.filter((s: any) => s.status === 'SCHEDULED')
+        .sort((a: any, b: any) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())[0]
+      
+      return {
+        completedSessions: completed,
+        upcomingSessions: upcoming,
+        lastSessionDate: lastSession?.scheduledDate || null,
+        nextSessionDate: nextSession?.scheduledDate || null
+      }
+    }
+  })
+
+  // Fetch reports count
+  const { data: reportsCount } = useQuery({
+    queryKey: ['patient-reports-count', patientId],
+    queryFn: async () => {
+      const [progress, final] = await Promise.all([
+        fetch(`/api/progress-reports?patientId=${patientId}`).then(r => r.json()),
+        fetch(`/api/final-reports?patientId=${patientId}`).then(r => r.json())
+      ])
+      return (progress.reports?.length || 0) + (final.reports?.length || 0)
+    }
+  })
+
+  // Fetch pending payments count
+  const { data: pendingPayments } = useQuery({
+    queryKey: ['pending-payments', parentId],
+    queryFn: async () => {
+      const response = await fetch(`/api/payments?parentId=${parentId}&status=PENDING,SUBMITTED`)
+      if (!response.ok) return 0
+      const data = await response.json()
+      return data.payments?.length || 0
+    }
+  })
+
+  // Fetch recent activity from audit logs
+  const { data: recentActivity = [] } = useQuery({
+    queryKey: ['parent-activity', patientId],
+    queryFn: async () => {
+      const response = await fetch(`/api/audit?limit=5&resource=patient&resourceId=${patientId}`)
+      if (!response.ok) return []
+      const data = await response.json()
+      return data.logs?.map((log: any) => ({
+        id: log.id,
+        type: log.action.toLowerCase().includes('session') ? 'session' 
+          : log.action.toLowerCase().includes('report') ? 'report' 
+          : log.action.toLowerCase().includes('payment') ? 'payment' 
+          : 'other',
+        title: log.action.replace(/_/g, ' '),
+        description: log.metadata?.description || 'Activity logged',
+        date: log.createdAt,
+        icon: log.action.toLowerCase().includes('session') ? 'check' 
+          : log.action.toLowerCase().includes('report') ? 'file' 
+          : 'dollar'
+      })) || []
+    }
+  })
+
+  const loading = patientLoading || statsLoading
+  
+  const data: DashboardData | null = patient && sessionStats ? {
+    patient: {
+      firstName: patient.firstName,
+      lastName: patient.lastName,
+      age: patient.dateOfBirth 
+        ? Math.floor((new Date().getTime() - new Date(patient.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+        : 0
+    },
+    stats: {
+      ...sessionStats,
+      totalReports: reportsCount || 0,
+      pendingPayments: pendingPayments || 0
+    },
+    recentActivity
+  } : null
 
   const getActivityIcon = (icon: string) => {
     switch (icon) {

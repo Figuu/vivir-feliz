@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Skeleton } from '@/components/ui/skeleton'
 import { 
   CheckCircle, 
   XCircle,
@@ -22,7 +23,7 @@ import {
   Filter
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface ReschedulingApprovalInterfaceProps {
   coordinatorId?: string
@@ -74,8 +75,7 @@ interface ApprovalFormData {
 }
 
 export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' }: ReschedulingApprovalInterfaceProps) {
-  const [loading, setLoading] = useState(false)
-  const [requests, setRequests] = useState<ReschedulingRequest[]>([])
+  const queryClient = useQueryClient()
   const [selectedRequest, setSelectedRequest] = useState<ReschedulingRequest | null>(null)
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -90,16 +90,88 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
     suggestedTime: ''
   })
 
-  useEffect(() => {
-    loadRequests()
-  }, [statusFilter])
+  // Fetch schedule requests from API
+  const { data: requests = [], isLoading: loading } = useQuery({
+    queryKey: ['schedule-requests', statusFilter],
+    queryFn: async () => {
+      const statusParam = statusFilter === 'all' ? '' : `&status=${statusFilter.toUpperCase()}`
+      const response = await fetch(`/api/schedule-requests?${statusParam}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch schedule requests')
+      }
+      const data = await response.json()
+      return data.scheduleRequests.map((req: any) => ({
+        id: req.id,
+        sessionId: req.sessionId,
+        session: req.session ? {
+          id: req.session.id,
+          scheduledDate: req.session.scheduledDate,
+          scheduledTime: req.session.scheduledTime,
+          duration: req.session.duration,
+          patient: {
+            firstName: req.session.patient.firstName,
+            lastName: req.session.patient.lastName
+          },
+          therapist: {
+            firstName: req.session.therapist.firstName,
+            lastName: req.session.therapist.lastName
+          },
+          service: {
+            name: req.session.serviceAssignment.service.name
+          }
+        } : null,
+        requestedDate: req.newDate,
+        requestedTime: req.newTime,
+        alternativeDates: req.newAvailability?.alternativeDates || [],
+        reason: req.reason,
+        requestedBy: req.parentId,
+        status: req.status.toLowerCase(),
+        comments: req.adminNotes,
+        approvedBy: req.processedBy,
+        approvedAt: req.processedAt,
+        rejectedBy: req.status === 'REJECTED' ? req.processedBy : undefined,
+        rejectedAt: req.status === 'REJECTED' ? req.processedAt : undefined,
+        createdAt: req.createdAt
+      }))
+    },
+    refetchInterval: 30000 // Refetch every 30 seconds
+  })
 
-  const loadRequests = async () => {
-    try {
-      setLoading(true)
-      
-      // Mock data - in real app, this would be an API call
-      const mockRequests: ReschedulingRequest[] = [
+  // Mutation for updating schedule request
+  const updateRequestMutation = useMutation({
+    mutationFn: async ({ requestId, status, notes }: { requestId: string, status: string, notes: string }) => {
+      const response = await fetch(`/api/schedule-requests?id=${requestId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: status.toUpperCase(),
+          adminNotes: notes
+        })
+      })
+      if (!response.ok) {
+        throw new Error('Failed to update schedule request')
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedule-requests'] })
+      toast({
+        title: "Success",
+        description: 'Request updated successfully'
+      })
+      setApprovalDialogOpen(false)
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to update request'
+      })
+    }
+  })
+
+  // Legacy mock data structure - not used anymore
+  const __legacyMockRequests: ReschedulingRequest[] = [
         {
           id: 'req-1',
           sessionId: 'session-1',
@@ -171,7 +243,11 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
       setRequests(filtered)
     } catch (err) {
       console.error('Error loading requests:', err)
-      toast.error('Failed to load requests')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load requests'
+      })
     } finally {
       setLoading(false)
     }
@@ -191,12 +267,20 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
 
   const handleSubmitApproval = async () => {
     if (!formData.comments.trim() && (formData.action === 'reject' || formData.action === 'suggest_alternative')) {
-      toast.error('Please provide comments for rejection or alternative suggestion')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please provide comments for rejection or alternative suggestion'
+      })
       return
     }
 
     if (formData.action === 'suggest_alternative' && (!formData.suggestedDate || !formData.suggestedTime)) {
-      toast.error('Please provide suggested date and time')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please provide suggested date and time'
+      })
       return
     }
 
@@ -221,7 +305,10 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
 
       const result = await response.json()
 
-      toast.success(`Request ${formData.action}d successfully`)
+      toast({
+        title: "Success",
+        description: `Request ${formData.action}d successfully`
+      })
       setApprovalDialogOpen(false)
       setFormData({
         requestId: '',
@@ -235,7 +322,11 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
       await loadRequests()
     } catch (err: any) {
       console.error('Error processing approval:', err)
-      toast.error(err.message || 'Failed to process approval')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || 'Failed to process approval'
+      })
     } finally {
       setLoading(false)
     }

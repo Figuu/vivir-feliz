@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Calendar, Clock } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 export function ManualReschedulingInterface() {
   const [loading, setLoading] = useState(false)
@@ -51,7 +51,11 @@ export function ManualReschedulingInterface() {
 
   const handleReschedule = async () => {
     if (!formData.sessionId || !formData.newDate || !formData.newTime || !formData.reason) {
-      toast.error('Please fill in all required fields')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please fill in all required fields'
+      })
       return
     }
 
@@ -69,7 +73,10 @@ export function ManualReschedulingInterface() {
         throw new Error(result.error || 'Failed to reschedule session')
       }
 
-      toast.success('Session rescheduled successfully')
+      toast({
+        title: "Success",
+        description: 'Session rescheduled successfully'
+      })
       setFormData({
         sessionId: '',
         newDate: '',
@@ -83,7 +90,11 @@ export function ManualReschedulingInterface() {
       loadData()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to reschedule'
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error:', err)
     } finally {
       setLoading(false)

@@ -24,7 +24,7 @@ import {
   Filter
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface SessionCommentsViewerProps {
   patientId: string
@@ -101,7 +101,11 @@ export function SessionCommentsViewer({ patientId, parentId }: SessionCommentsVi
       }
     } catch (err) {
       console.error('Error loading sessions:', err)
-      toast.error('Failed to load sessions')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load sessions'
+      })
     } finally {
       setLoading(false)
     }
@@ -140,7 +144,11 @@ export function SessionCommentsViewer({ patientId, parentId }: SessionCommentsVi
 
   const handleAddComment = async () => {
     if (!selectedSession || !newComment.trim()) {
-      toast.error('Please enter a comment')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please enter a comment'
+      })
       return
     }
 
@@ -163,10 +171,17 @@ export function SessionCommentsViewer({ patientId, parentId }: SessionCommentsVi
 
       setNewComment('')
       setCommentDialogOpen(false)
-      toast.success('Comment added successfully')
+      toast({
+        title: "Success",
+        description: 'Comment added successfully'
+      })
     } catch (err) {
       console.error('Error adding comment:', err)
-      toast.error('Failed to add comment')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to add comment'
+      })
     }
   }
 

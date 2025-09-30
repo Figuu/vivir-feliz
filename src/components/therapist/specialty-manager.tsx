@@ -41,7 +41,7 @@ import {
   Upload
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 // Validation schema
 const specialtySchema = z.object({
@@ -195,7 +195,10 @@ export function SpecialtyManager({
         throw new Error(result.error || 'Failed to save specialty')
       }
 
-      toast.success(editMode ? 'Specialty updated successfully' : 'Specialty created successfully')
+      toast({
+        title: "Success",
+        description: editMode ? 'Specialty updated successfully' : 'Specialty created successfully'
+      })
       
       if (editMode && onSpecialtyUpdate) {
         onSpecialtyUpdate(result.data.specialty)
@@ -210,7 +213,11 @@ export function SpecialtyManager({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save specialty'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error saving specialty:', err)
     } finally {
       setLoading(false)
@@ -257,7 +264,10 @@ export function SpecialtyManager({
         throw new Error(result.error || 'Failed to delete specialty')
       }
 
-      toast.success('Specialty deactivated successfully')
+      toast({
+        title: "Success",
+        description: 'Specialty deactivated successfully'
+      })
       loadSpecialties()
       
       if (onSpecialtyDelete) {
@@ -266,7 +276,11 @@ export function SpecialtyManager({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete specialty'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error deleting specialty:', err)
     } finally {
       setLoading(false)

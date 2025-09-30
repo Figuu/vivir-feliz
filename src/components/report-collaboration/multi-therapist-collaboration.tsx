@@ -126,7 +126,7 @@ import {
   GripVertical
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface MultiTherapistCollaborationProps {
   collaborationId?: string
@@ -279,7 +279,11 @@ export function MultiTherapistCollaboration({
 
   const handleAddComment = async () => {
     if (!newComment.content.trim()) {
-      toast.error('Please enter a comment')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please enter a comment'
+      })
       return
     }
 
@@ -309,7 +313,10 @@ export function MultiTherapistCollaboration({
         throw new Error(result.error || 'Failed to add comment')
       }
 
-      toast.success('Comment added successfully')
+      toast({
+        title: "Success",
+        description: 'Comment added successfully'
+      })
       
       // Reset form
       setNewComment({
@@ -328,7 +335,11 @@ export function MultiTherapistCollaboration({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add comment'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error adding comment:', err)
     } finally {
       setLoading(false)

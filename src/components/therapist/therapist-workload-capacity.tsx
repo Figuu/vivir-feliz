@@ -69,7 +69,7 @@ import {
   CheckSquare
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface Therapist {
   id: string
@@ -242,7 +242,10 @@ export function TherapistWorkloadCapacity({
         throw new Error(result.error || 'Failed to update capacity')
       }
 
-      toast.success('Capacity settings updated successfully')
+      toast({
+        title: "Success",
+        description: 'Capacity settings updated successfully'
+      })
       setEditingCapacity(null)
       loadWorkloadData()
       
@@ -252,7 +255,11 @@ export function TherapistWorkloadCapacity({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update capacity'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error updating capacity:', err)
     } finally {
       setLoading(false)

@@ -130,7 +130,7 @@ import {
   GripVertical
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface ProgressTimelineDashboardProps {
   patientId?: string
@@ -325,7 +325,11 @@ export function ProgressTimelineDashboard({
 
   const handleAddMilestone = async () => {
     if (!newMilestone.patientId || !newMilestone.therapistId || !newMilestone.title || !newMilestone.targetDate) {
-      toast.error('Please fill in all required fields')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please fill in all required fields'
+      })
       return
     }
 
@@ -350,7 +354,10 @@ export function ProgressTimelineDashboard({
         throw new Error(result.error || 'Failed to add milestone')
       }
 
-      toast.success('Milestone added successfully')
+      toast({
+        title: "Success",
+        description: 'Milestone added successfully'
+      })
       
       // Reset form
       setNewMilestone({
@@ -376,7 +383,11 @@ export function ProgressTimelineDashboard({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add milestone'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error adding milestone:', err)
     } finally {
       setLoading(false)

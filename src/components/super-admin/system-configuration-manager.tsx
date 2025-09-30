@@ -22,7 +22,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface SystemConfig {
   id: string
@@ -182,7 +182,11 @@ export function SystemConfigurationManager() {
       setConfigs(result.data || [])
     } catch (err) {
       console.error('Error loading configurations:', err)
-      toast.error('Failed to load system configurations')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load system configurations'
+      })
     } finally {
       setLoading(false)
     }
@@ -207,12 +211,19 @@ export function SystemConfigurationManager() {
         throw new Error(error.error || 'Failed to save settings')
       }
 
-      toast.success('Settings saved successfully')
+      toast({
+        title: "Success",
+        description: 'Settings saved successfully'
+      })
       setHasChanges(false)
       loadConfigurations()
     } catch (err: any) {
       console.error('Error saving settings:', err)
-      toast.error(err.message || 'Failed to save settings')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || 'Failed to save settings'
+      })
     } finally {
       setLoading(false)
     }

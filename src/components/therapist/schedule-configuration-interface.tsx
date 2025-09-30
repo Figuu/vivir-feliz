@@ -57,7 +57,7 @@ import {
   GripVertical
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 // Validation schema
 const scheduleConfigSchema = z.object({
@@ -260,13 +260,20 @@ export function ScheduleConfigurationInterface({
         if (response.status === 409 && result.conflicts) {
           setConflicts(result.conflicts)
           setSuggestions(result.suggestions)
-          toast.error('Schedule conflicts detected. Please review and resolve conflicts.')
+          toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Schedule conflicts detected. Please review and resolve conflicts.'
+      })
           return
         }
         throw new Error(result.error || 'Failed to save schedule configuration')
       }
 
-      toast.success(editMode ? 'Schedule configuration updated successfully' : 'Schedule configuration created successfully')
+      toast({
+        title: "Success",
+        description: editMode ? 'Schedule configuration updated successfully' : 'Schedule configuration created successfully'
+      })
       
       if (editMode && onScheduleUpdate) {
         onScheduleUpdate(result.data.scheduleConfig)
@@ -281,7 +288,11 @@ export function ScheduleConfigurationInterface({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save schedule configuration'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error saving schedule configuration:', err)
     } finally {
       setLoading(false)
@@ -337,7 +348,10 @@ export function ScheduleConfigurationInterface({
         throw new Error(result.error || 'Failed to delete schedule configuration')
       }
 
-      toast.success('Schedule configuration deleted successfully')
+      toast({
+        title: "Success",
+        description: 'Schedule configuration deleted successfully'
+      })
       loadScheduleConfigs()
       
       if (onScheduleDelete) {
@@ -346,7 +360,11 @@ export function ScheduleConfigurationInterface({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete schedule configuration'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error deleting schedule configuration:', err)
     } finally {
       setLoading(false)

@@ -23,7 +23,7 @@ import {
   Calendar
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface Backup {
   id: string
@@ -88,7 +88,11 @@ export function BackupDataManagement() {
       setStatistics(result.data.statistics)
     } catch (err) {
       console.error('Error loading backups:', err)
-      toast.error('Failed to load backups')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load backups'
+      })
     } finally {
       setLoading(false)
     }
@@ -112,7 +116,10 @@ export function BackupDataManagement() {
         throw new Error(error.error || 'Failed to create backup')
       }
 
-      toast.success('Backup process initiated')
+      toast({
+        title: "Success",
+        description: 'Backup process initiated'
+      })
       setCreateDialogOpen(false)
       setBackupForm({
         backupType: 'full',
@@ -123,7 +130,11 @@ export function BackupDataManagement() {
       setTimeout(() => loadBackups(), 2000)
     } catch (err: any) {
       console.error('Error creating backup:', err)
-      toast.error(err.message || 'Failed to create backup')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || 'Failed to create backup'
+      })
     } finally {
       setLoading(false)
     }
@@ -150,7 +161,10 @@ export function BackupDataManagement() {
         throw new Error(error.error || 'Failed to restore backup')
       }
 
-      toast.success('Restore process initiated')
+      toast({
+        title: "Success",
+        description: 'Restore process initiated'
+      })
       setRestoreDialogOpen(false)
       setRestoreForm({
         restoreType: 'full',
@@ -160,7 +174,11 @@ export function BackupDataManagement() {
       setTimeout(() => loadBackups(), 2000)
     } catch (err: any) {
       console.error('Error restoring backup:', err)
-      toast.error(err.message || 'Failed to restore backup')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || 'Failed to restore backup'
+      })
     } finally {
       setLoading(false)
     }
@@ -183,11 +201,18 @@ export function BackupDataManagement() {
         throw new Error('Failed to delete backup')
       }
 
-      toast.success('Backup deleted successfully')
+      toast({
+        title: "Success",
+        description: 'Backup deleted successfully'
+      })
       loadBackups()
     } catch (err) {
       console.error('Error deleting backup:', err)
-      toast.error('Failed to delete backup')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to delete backup'
+      })
     } finally {
       setLoading(false)
     }
@@ -195,11 +220,18 @@ export function BackupDataManagement() {
 
   const handleDownloadBackup = (backup: Backup) => {
     if (!backup.filePath) {
-      toast.error('Backup file not available')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Backup file not available'
+      })
       return
     }
 
-    toast.info('Backup download would be implemented here')
+    toast({
+        title: "Info",
+        description: 'Backup download would be implemented here'
+      })
     // In real app, this would download the actual backup file
   }
 

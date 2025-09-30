@@ -99,7 +99,7 @@ import {
   Zap
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface TherapeuticPlanCreationFormProps {
   patientId?: string
@@ -273,22 +273,38 @@ export function TherapeuticPlanCreationForm({
 
   const validateForm = () => {
     if (!formData.title.trim()) {
-      toast.error('Please enter a plan title')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please enter a plan title'
+      })
       return false
     }
     
     if (!formData.description.trim()) {
-      toast.error('Please enter a plan description')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please enter a plan description'
+      })
       return false
     }
     
     if (!formData.treatmentApproach.trim()) {
-      toast.error('Please enter a treatment approach')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please enter a treatment approach'
+      })
       return false
     }
     
     if (objectives.length === 0) {
-      toast.error('Please add at least one objective')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please add at least one objective'
+      })
       return false
     }
     
@@ -296,22 +312,38 @@ export function TherapeuticPlanCreationForm({
       const objective = objectives[i]
       
       if (!objective.title.trim()) {
-        toast.error(`Please enter a title for objective ${i + 1}`)
+        toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Please enter a title for objective ${i + 1}`
+      })
         return false
       }
       
       if (!objective.description.trim()) {
-        toast.error(`Please enter a description for objective ${i + 1}`)
+        toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Please enter a description for objective ${i + 1}`
+      })
         return false
       }
       
       if (!objective.targetDate) {
-        toast.error(`Please select a target date for objective ${i + 1}`)
+        toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Please select a target date for objective ${i + 1}`
+      })
         return false
       }
       
       if (objective.metrics.length === 0) {
-        toast.error(`Please add at least one metric for objective ${i + 1}`)
+        toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Please add at least one metric for objective ${i + 1}`
+      })
         return false
       }
       
@@ -319,12 +351,20 @@ export function TherapeuticPlanCreationForm({
         const metric = objective.metrics[j]
         
         if (!metric.name.trim()) {
-          toast.error(`Please enter a name for metric ${j + 1} in objective ${i + 1}`)
+          toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Please enter a name for metric ${j + 1} in objective ${i + 1}`
+      })
           return false
         }
         
         if (!metric.description.trim()) {
-          toast.error(`Please enter a description for metric ${j + 1} in objective ${i + 1}`)
+          toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Please enter a description for metric ${j + 1} in objective ${i + 1}`
+      })
           return false
         }
         
@@ -332,7 +372,11 @@ export function TherapeuticPlanCreationForm({
         if (metric.type === 'numeric') {
           if (metric.minValue !== undefined && metric.maxValue !== undefined) {
             if (metric.minValue >= metric.maxValue) {
-              toast.error(`Metric "${metric.name}": minValue must be less than maxValue`)
+              toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Metric "${metric.name}": minValue must be less than maxValue`
+      })
               return false
             }
           }
@@ -342,7 +386,11 @@ export function TherapeuticPlanCreationForm({
         if (metric.type === 'scale') {
           if (metric.scaleMin !== undefined && metric.scaleMax !== undefined) {
             if (metric.scaleMin >= metric.scaleMax) {
-              toast.error(`Metric "${metric.name}": scaleMin must be less than scaleMax`)
+              toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Metric "${metric.name}": scaleMin must be less than scaleMax`
+      })
               return false
             }
           }
@@ -350,7 +398,11 @@ export function TherapeuticPlanCreationForm({
         
         // Validate text metrics
         if (metric.type === 'text' && !metric.maxLength) {
-          toast.error(`Metric "${metric.name}": maxLength is required for text type`)
+          toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Metric "${metric.name}": maxLength is required for text type`
+      })
           return false
         }
       }
@@ -386,14 +438,21 @@ export function TherapeuticPlanCreationForm({
         throw new Error(result.error || 'Failed to create therapeutic plan')
       }
 
-      toast.success('Therapeutic plan created successfully')
+      toast({
+        title: "Success",
+        description: 'Therapeutic plan created successfully'
+      })
       if (onPlanCreated) {
         onPlanCreated(result.data)
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create therapeutic plan'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error creating therapeutic plan:', err)
     } finally {
       setLoading(false)

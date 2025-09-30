@@ -27,7 +27,7 @@ import {
   Unlock
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface ParentDistributionInterfaceProps {
   onDistributionComplete?: (distribution: any) => void
@@ -136,12 +136,20 @@ export function ParentDistributionInterface({ onDistributionComplete }: ParentDi
 
   const handleDistribute = async () => {
     if (!formData.reportId || !formData.patientId || !formData.parentEmail || !formData.parentInfo.firstName || !formData.parentInfo.lastName) {
-      toast.error('Please fill in all required fields')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please fill in all required fields'
+      })
       return
     }
 
     if (formData.requiresPassword && !formData.password) {
-      toast.error('Please provide a password')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please provide a password'
+      })
       return
     }
 
@@ -163,7 +171,10 @@ export function ParentDistributionInterface({ onDistributionComplete }: ParentDi
         throw new Error(result.error || 'Failed to distribute report')
       }
 
-      toast.success('Report distributed to parent successfully')
+      toast({
+        title: "Success",
+        description: 'Report distributed to parent successfully'
+      })
       setGeneratedLink(result.data.accessLink)
       loadDistributions()
 
@@ -173,7 +184,11 @@ export function ParentDistributionInterface({ onDistributionComplete }: ParentDi
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to distribute report'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error distributing report:', err)
     } finally {
       setLoading(false)
@@ -183,7 +198,10 @@ export function ParentDistributionInterface({ onDistributionComplete }: ParentDi
   const copyLink = () => {
     if (generatedLink) {
       navigator.clipboard.writeText(generatedLink)
-      toast.success('Access link copied to clipboard')
+      toast({
+        title: "Success",
+        description: 'Access link copied to clipboard'
+      })
     }
   }
 

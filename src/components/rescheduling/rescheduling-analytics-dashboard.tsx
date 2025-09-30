@@ -19,7 +19,7 @@ import {
   FileText
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface ReschedulingAnalyticsDashboardProps {
   defaultStartDate?: string
@@ -72,7 +72,11 @@ export function ReschedulingAnalyticsDashboard({
       setAnalytics(result.data)
     } catch (err) {
       console.error('Error loading analytics:', err)
-      toast.error('Failed to load analytics')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load analytics'
+      })
     } finally {
       setLoading(false)
     }
@@ -112,10 +116,17 @@ ${analytics.topReasons.map((reason, idx) =>
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
 
-      toast.success('Report exported successfully')
+      toast({
+        title: "Success",
+        description: 'Report exported successfully'
+      })
     } catch (err) {
       console.error('Error exporting report:', err)
-      toast.error('Failed to export report')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to export report'
+      })
     }
   }
 

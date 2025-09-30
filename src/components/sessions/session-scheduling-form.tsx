@@ -22,7 +22,7 @@ import {
   FileText
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface ServiceAssignment {
   id: string
@@ -175,7 +175,11 @@ export function SessionSchedulingForm({
     e.preventDefault()
 
     if (!serviceAssignment) {
-      toast.error('Service assignment not loaded')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Service assignment not loaded'
+      })
       return
     }
 
@@ -205,7 +209,10 @@ export function SessionSchedulingForm({
         throw new Error(result.error || 'Failed to create session')
       }
 
-      toast.success('Session scheduled successfully')
+      toast({
+        title: "Success",
+        description: 'Session scheduled successfully'
+      })
       
       if (onSuccess) {
         onSuccess(result.session)
@@ -213,7 +220,11 @@ export function SessionSchedulingForm({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to schedule session'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error scheduling session:', err)
     } finally {
       setSaving(false)

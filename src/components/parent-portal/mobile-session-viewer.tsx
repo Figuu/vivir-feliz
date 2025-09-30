@@ -16,7 +16,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface MobileSessionViewerProps {
   patientId: string
@@ -73,7 +73,11 @@ export function MobileSessionViewer({ patientId }: MobileSessionViewerProps) {
       }
     } catch (err) {
       console.error('Error loading sessions:', err)
-      toast.error('Failed to load sessions')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load sessions'
+      })
     } finally {
       setLoading(false)
     }

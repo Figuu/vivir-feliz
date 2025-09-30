@@ -92,7 +92,7 @@ import {
   Upload
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface MobilePatientManagementProps {
   therapistId?: string

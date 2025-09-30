@@ -119,7 +119,7 @@ import {
   Activity as ActivityIcon
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface ProgressMetricsDashboardProps {
   patientId?: string
@@ -305,7 +305,11 @@ export function ProgressMetricsDashboard({
 
   const handleAddMetric = async () => {
     if (!newMetric.patientId || !newMetric.therapistId || !newMetric.metricId || !newMetric.value) {
-      toast.error('Please fill in all required fields')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please fill in all required fields'
+      })
       return
     }
 
@@ -327,7 +331,10 @@ export function ProgressMetricsDashboard({
         throw new Error(result.error || 'Failed to add metric')
       }
 
-      toast.success('Metric added successfully')
+      toast({
+        title: "Success",
+        description: 'Metric added successfully'
+      })
       
       // Reset form
       setNewMetric({
@@ -352,7 +359,11 @@ export function ProgressMetricsDashboard({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add metric'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error adding metric:', err)
     } finally {
       setLoading(false)

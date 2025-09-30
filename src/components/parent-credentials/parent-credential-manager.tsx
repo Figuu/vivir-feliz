@@ -27,7 +27,7 @@ import {
   Clock
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface ParentCredentialManagerProps {
   onCredentialGenerated?: (credential: any) => void
@@ -90,7 +90,11 @@ export function ParentCredentialManager({ onCredentialGenerated }: ParentCredent
 
   const handleGenerate = async () => {
     if (!formData.patientId || !formData.parentEmail) {
-      toast.error('Please select a patient and enter parent email')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please select a patient and enter parent email'
+      })
       return
     }
 
@@ -112,7 +116,10 @@ export function ParentCredentialManager({ onCredentialGenerated }: ParentCredent
         throw new Error(result.error || 'Failed to generate credentials')
       }
 
-      toast.success('Parent credentials generated successfully')
+      toast({
+        title: "Success",
+        description: 'Parent credentials generated successfully'
+      })
       setGeneratedInfo(result.data)
       loadCredentials()
 
@@ -122,7 +129,11 @@ export function ParentCredentialManager({ onCredentialGenerated }: ParentCredent
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate credentials'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error generating credentials:', err)
     } finally {
       setLoading(false)
@@ -152,11 +163,18 @@ export function ParentCredentialManager({ onCredentialGenerated }: ParentCredent
         throw new Error(result.error || `Failed to ${action}`)
       }
 
-      toast.success(result.message)
+      toast({
+        title: "Success",
+        description: result.message
+      })
       loadCredentials()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : `Failed to ${action}`
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error(`Error with ${action}:`, err)
     } finally {
       setLoading(false)
@@ -165,7 +183,10 @@ export function ParentCredentialManager({ onCredentialGenerated }: ParentCredent
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text)
-    toast.success(`${label} copied to clipboard`)
+    toast({
+        title: "Success",
+        description: `${label} copied to clipboard`
+      })
   }
 
   const getStatusColor = (status: string) => {

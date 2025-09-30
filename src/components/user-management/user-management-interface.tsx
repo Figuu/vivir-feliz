@@ -31,7 +31,7 @@ import {
   EyeOff
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface UserManagementInterfaceProps {
   onUserCreated?: (user: any) => void
@@ -122,17 +122,29 @@ export function UserManagementInterface({ onUserCreated }: UserManagementInterfa
 
   const handleSubmit = async () => {
     if (!formData.email || !formData.firstName || !formData.lastName) {
-      toast.error('Please fill in all required fields')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please fill in all required fields'
+      })
       return
     }
 
     if (!editingUser && !formData.password) {
-      toast.error('Password is required for new users')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Password is required for new users'
+      })
       return
     }
 
     if (!editingUser && formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Passwords do not match'
+      })
       return
     }
 
@@ -157,7 +169,10 @@ export function UserManagementInterface({ onUserCreated }: UserManagementInterfa
         throw new Error(result.error || `Failed to ${editingUser ? 'update' : 'create'} user`)
       }
 
-      toast.success(`User ${editingUser ? 'updated' : 'created'} successfully`)
+      toast({
+        title: "Success",
+        description: `User ${editingUser ? 'updated' : 'created'} successfully`
+      })
       resetForm()
       loadUsers()
       loadStatistics()
@@ -168,7 +183,11 @@ export function UserManagementInterface({ onUserCreated }: UserManagementInterfa
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save user'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error saving user:', err)
     } finally {
       setLoading(false)
@@ -207,12 +226,19 @@ export function UserManagementInterface({ onUserCreated }: UserManagementInterfa
         throw new Error(result.error || 'Failed to deactivate user')
       }
 
-      toast.success('User deactivated successfully')
+      toast({
+        title: "Success",
+        description: 'User deactivated successfully'
+      })
       loadUsers()
       loadStatistics()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to deactivate user'
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error deactivating user:', err)
     } finally {
       setLoading(false)
@@ -221,7 +247,11 @@ export function UserManagementInterface({ onUserCreated }: UserManagementInterfa
 
   const handlePasswordChange = async () => {
     if (!passwordData.newPassword || passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error('Passwords do not match')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Passwords do not match'
+      })
       return
     }
 
@@ -246,13 +276,20 @@ export function UserManagementInterface({ onUserCreated }: UserManagementInterfa
         throw new Error(result.error || 'Failed to update password')
       }
 
-      toast.success('Password updated successfully')
+      toast({
+        title: "Success",
+        description: 'Password updated successfully'
+      })
       setPasswordDialog(false)
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
       setSelectedUser(null)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update password'
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error updating password:', err)
     } finally {
       setLoading(false)

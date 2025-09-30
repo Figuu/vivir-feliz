@@ -23,7 +23,7 @@ import {
   DollarSign
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface SystemHealthData {
   overall: {
@@ -134,7 +134,11 @@ export function SystemHealthMonitor() {
       setLastUpdate(new Date())
     } catch (err) {
       console.error('Error loading system health:', err)
-      toast.error('Failed to load system health')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load system health'
+      })
     } finally {
       setLoading(false)
     }

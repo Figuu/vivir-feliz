@@ -41,7 +41,7 @@ import {
   MapPin
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 // Validation schema
 const therapistRegistrationSchema = z.object({
@@ -208,7 +208,10 @@ export function TherapistRegistrationForm({
         throw new Error(result.error || 'Failed to save therapist')
       }
 
-      toast.success(editMode ? 'Therapist updated successfully' : 'Therapist registered successfully')
+      toast({
+        title: "Success",
+        description: editMode ? 'Therapist updated successfully' : 'Therapist registered successfully'
+      })
       
       if (onSuccess) {
         onSuccess(result.data.therapist)
@@ -224,7 +227,11 @@ export function TherapistRegistrationForm({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save therapist'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error saving therapist:', err)
     } finally {
       setLoading(false)

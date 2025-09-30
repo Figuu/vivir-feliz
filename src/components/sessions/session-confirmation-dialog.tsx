@@ -25,7 +25,7 @@ import {
   Square
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface Session {
   id: string
@@ -112,43 +112,49 @@ export function SessionConfirmationDialog({
       setLoading(true)
       setError(null)
 
-      // In a real implementation, you would fetch session data using the confirmation token
-      // For now, we'll simulate the data
-      const mockSession: Session = {
-        id: 'session-123',
-        scheduledDate: '2024-01-15',
-        scheduledTime: '14:00',
-        duration: 60,
-        status: 'SCHEDULED',
+      // Fetch real session data from API using confirmation token
+      const response = await fetch(`/api/sessions/confirm?token=${confirmationToken}`)
+      
+      if (!response.ok) {
+        throw new Error('Invalid or expired confirmation link')
+      }
+
+      const data = await response.json()
+      const sessionData: Session = {
+        id: data.id,
+        scheduledDate: data.scheduledDate,
+        scheduledTime: data.scheduledTime,
+        duration: data.duration,
+        status: data.status,
         patient: {
-          id: 'patient-123',
-          firstName: 'John',
-          lastName: 'Doe',
+          id: data.patient.id,
+          firstName: data.patient.firstName,
+          lastName: data.patient.lastName,
           parent: {
-            id: 'parent-123',
-            firstName: 'Jane',
-            lastName: 'Doe',
-            email: 'jane.doe@example.com',
-            phone: '+1234567890'
+            id: data.patient.parent.id,
+            firstName: data.patient.parent.firstName,
+            lastName: data.patient.parent.lastName,
+            email: data.patient.parent.user?.email || '',
+            phone: data.patient.parent.phone || ''
           }
         },
         therapist: {
-          id: 'therapist-123',
-          firstName: 'Dr. Sarah',
-          lastName: 'Smith',
-          email: 'sarah.smith@therapy.com',
-          phone: '+1234567891'
+          id: data.therapist.id,
+          firstName: data.therapist.firstName,
+          lastName: data.therapist.lastName,
+          email: data.therapist.user?.email || '',
+          phone: data.therapist.phone || ''
         },
         serviceAssignment: {
           service: {
-            id: 'service-123',
+            id: data.serviceAssignment.service.id,
             name: 'Speech Therapy',
             type: 'SPEECH_THERAPY'
           }
         }
       }
 
-      setSession(mockSession)
+      setSession(sessionData)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load session data'
       setError(errorMessage)
@@ -182,7 +188,10 @@ export function SessionConfirmationDialog({
         throw new Error(result.error || 'Failed to confirm session')
       }
 
-      toast.success('Session confirmed successfully!')
+      toast({
+        title: "Success",
+        description: 'Session confirmed successfully!'
+      })
       
       if (onConfirmationComplete) {
         onConfirmationComplete(result.data)
@@ -190,7 +199,11 @@ export function SessionConfirmationDialog({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to confirm session'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error confirming session:', err)
     } finally {
       setLoading(false)
@@ -224,7 +237,10 @@ export function SessionConfirmationDialog({
         throw new Error(result.error || 'Failed to submit reschedule request')
       }
 
-      toast.success('Reschedule request submitted successfully!')
+      toast({
+        title: "Success",
+        description: 'Reschedule request submitted successfully!'
+      })
       
       if (onRescheduleRequest) {
         onRescheduleRequest(result.data)
@@ -232,7 +248,11 @@ export function SessionConfirmationDialog({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to submit reschedule request'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error submitting reschedule request:', err)
     } finally {
       setLoading(false)
@@ -264,7 +284,10 @@ export function SessionConfirmationDialog({
         throw new Error(result.error || 'Failed to cancel session')
       }
 
-      toast.success('Session cancelled successfully!')
+      toast({
+        title: "Success",
+        description: 'Session cancelled successfully!'
+      })
       
       if (onCancel) {
         onCancel()
@@ -272,7 +295,11 @@ export function SessionConfirmationDialog({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to cancel session'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error cancelling session:', err)
     } finally {
       setLoading(false)

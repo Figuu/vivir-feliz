@@ -71,7 +71,7 @@ import {
   Sparkles
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface Therapist {
   id: string
@@ -191,7 +191,11 @@ export function TherapistApiManagement({
 
   const handleCreateTherapist = async () => {
     if (!therapistForm.firstName || !therapistForm.lastName || !therapistForm.email || !therapistForm.password) {
-      toast.error('Please fill in all required fields')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please fill in all required fields'
+      })
       return
     }
 
@@ -213,7 +217,10 @@ export function TherapistApiManagement({
         throw new Error(result.error || 'Failed to create therapist')
       }
 
-      toast.success('Therapist created successfully')
+      toast({
+        title: "Success",
+        description: 'Therapist created successfully'
+      })
       setShowCreateForm(false)
       setTherapistForm({
         firstName: '',
@@ -232,7 +239,11 @@ export function TherapistApiManagement({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create therapist'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error creating therapist:', err)
     } finally {
       setLoading(false)
@@ -260,7 +271,10 @@ export function TherapistApiManagement({
         throw new Error(result.error || 'Failed to update therapist')
       }
 
-      toast.success('Therapist updated successfully')
+      toast({
+        title: "Success",
+        description: 'Therapist updated successfully'
+      })
       setShowEditForm(false)
       if (onTherapistUpdate) {
         onTherapistUpdate(result.data)
@@ -269,7 +283,11 @@ export function TherapistApiManagement({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update therapist'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error updating therapist:', err)
     } finally {
       setLoading(false)
@@ -293,7 +311,10 @@ export function TherapistApiManagement({
         throw new Error(result.error || 'Failed to delete therapist')
       }
 
-      toast.success('Therapist deactivated successfully')
+      toast({
+        title: "Success",
+        description: 'Therapist deactivated successfully'
+      })
       if (onTherapistDelete) {
         onTherapistDelete(therapistId)
       }
@@ -301,7 +322,11 @@ export function TherapistApiManagement({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete therapist'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error deleting therapist:', err)
     } finally {
       setLoading(false)
@@ -312,7 +337,11 @@ export function TherapistApiManagement({
     if (!selectedTherapist) return
 
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast.error('Passwords do not match')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Passwords do not match'
+      })
       return
     }
 
@@ -334,7 +363,10 @@ export function TherapistApiManagement({
         throw new Error(result.error || 'Failed to change password')
       }
 
-      toast.success('Password changed successfully')
+      toast({
+        title: "Success",
+        description: 'Password changed successfully'
+      })
       setShowPasswordForm(false)
       setPasswordForm({
         currentPassword: '',
@@ -344,7 +376,11 @@ export function TherapistApiManagement({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to change password'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error changing password:', err)
     } finally {
       setLoading(false)

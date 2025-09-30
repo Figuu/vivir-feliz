@@ -22,7 +22,7 @@ import {
   PieChart
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface FinancialOversightDashboardProps {
   superAdminId?: string
@@ -113,7 +113,11 @@ export function FinancialOversightDashboard({ superAdminId }: FinancialOversight
       setData(result.data)
     } catch (err) {
       console.error('Error loading financial data:', err)
-      toast.error('Failed to load financial oversight data')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load financial oversight data'
+      })
     } finally {
       setLoading(false)
     }
@@ -169,10 +173,17 @@ ${data.topPatients.map((tp, idx) =>
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
 
-      toast.success('Report exported successfully')
+      toast({
+        title: "Success",
+        description: 'Report exported successfully'
+      })
     } catch (err) {
       console.error('Error exporting report:', err)
-      toast.error('Failed to export report')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to export report'
+      })
     }
   }
 

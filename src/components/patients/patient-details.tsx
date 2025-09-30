@@ -68,7 +68,7 @@ import {
   Filter
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface Patient {
   id: string
@@ -226,7 +226,10 @@ export function PatientDetails({
       setPatient(result.data.patient)
       setEditing(false)
       setEditData({})
-      toast.success('Patient updated successfully')
+      toast({
+        title: "Success",
+        description: 'Patient updated successfully'
+      })
       
       if (onPatientUpdate) {
         onPatientUpdate(result.data.patient)
@@ -234,7 +237,11 @@ export function PatientDetails({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update patient'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error updating patient:', err)
     } finally {
       setLoading(false)

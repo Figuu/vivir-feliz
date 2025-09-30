@@ -33,7 +33,7 @@ import {
   BarChart3
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface AdminReportInterfaceProps {
   adminId?: string
@@ -166,7 +166,11 @@ export function AdminReportInterface({ adminId }: AdminReportInterfaceProps) {
 
     const validRecipients = distributionRecipients.filter(r => r.email && r.recipientType)
     if (validRecipients.length === 0) {
-      toast.error('Please add at least one recipient')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please add at least one recipient'
+      })
       return
     }
 
@@ -194,7 +198,10 @@ export function AdminReportInterface({ adminId }: AdminReportInterfaceProps) {
         throw new Error(result.error || 'Failed to distribute report')
       }
 
-      toast.success('Report distributed successfully')
+      toast({
+        title: "Success",
+        description: 'Report distributed successfully'
+      })
       setDistributionDialog(false)
       setSelectedReport(null)
       setDistributionRecipients([{
@@ -208,7 +215,11 @@ export function AdminReportInterface({ adminId }: AdminReportInterfaceProps) {
       loadReports()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to distribute report'
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error distributing report:', err)
     } finally {
       setLoading(false)
@@ -240,7 +251,10 @@ export function AdminReportInterface({ adminId }: AdminReportInterfaceProps) {
         throw new Error(result.error || `Failed to ${approvalAction} report`)
       }
 
-      toast.success(`Report ${approvalAction}d successfully`)
+      toast({
+        title: "Success",
+        description: `Report ${approvalAction}d successfully`
+      })
       setApprovalDialog(false)
       setSelectedReport(null)
       setApprovalComments('')
@@ -248,7 +262,11 @@ export function AdminReportInterface({ adminId }: AdminReportInterfaceProps) {
       loadStatistics()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : `Failed to ${approvalAction} report`
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error with approval:', err)
     } finally {
       setLoading(false)

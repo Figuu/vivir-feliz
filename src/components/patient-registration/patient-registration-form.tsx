@@ -26,7 +26,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface PatientRegistrationFormProps {
   onRegistrationComplete?: (patient: any) => void
@@ -100,7 +100,11 @@ export function PatientRegistrationForm({ onRegistrationComplete }: PatientRegis
 
   const handleSubmit = async () => {
     if (!validateCurrentStep()) {
-      toast.error('Please fill in all required fields')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please fill in all required fields'
+      })
       return
     }
 
@@ -122,7 +126,10 @@ export function PatientRegistrationForm({ onRegistrationComplete }: PatientRegis
         throw new Error(result.error || 'Failed to register patient')
       }
 
-      toast.success('Patient registered successfully')
+      toast({
+        title: "Success",
+        description: 'Patient registered successfully'
+      })
       
       if (onRegistrationComplete) {
         onRegistrationComplete(result.data)
@@ -130,7 +137,11 @@ export function PatientRegistrationForm({ onRegistrationComplete }: PatientRegis
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to register patient'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error registering patient:', err)
     } finally {
       setLoading(false)
@@ -159,7 +170,11 @@ export function PatientRegistrationForm({ onRegistrationComplete }: PatientRegis
     if (validateCurrentStep()) {
       setCurrentStep(prev => Math.min(prev + 1, totalSteps))
     } else {
-      toast.error('Please fill in all required fields before continuing')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please fill in all required fields before continuing'
+      })
     }
   }
 

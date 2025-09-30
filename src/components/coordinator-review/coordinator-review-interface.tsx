@@ -37,7 +37,7 @@ import {
   Zap
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface CoordinatorReviewInterfaceProps {
   coordinatorId?: string
@@ -206,12 +206,19 @@ export function CoordinatorReviewInterface({
         throw new Error(result.error || 'Failed to start review')
       }
 
-      toast.success('Review started successfully')
+      toast({
+        title: "Success",
+        description: 'Review started successfully'
+      })
       loadSubmissions()
       loadStatistics()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to start review'
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error starting review:', err)
     } finally {
       setLoading(false)
@@ -222,7 +229,11 @@ export function CoordinatorReviewInterface({
     if (!selectedSubmission || !reviewAction) return
 
     if (reviewAction === 'request_revision' && !revisionNotes) {
-      toast.error('Please provide revision notes')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please provide revision notes'
+      })
       return
     }
 
@@ -250,7 +261,10 @@ export function CoordinatorReviewInterface({
         throw new Error(result.error || `Failed to ${reviewAction} submission`)
       }
 
-      toast.success(reviewAction === 'approve' ? 'Report approved successfully' : 'Revision requested successfully')
+      toast({
+        title: "Success",
+        description: reviewAction === 'approve' ? 'Report approved successfully' : 'Revision requested successfully'
+      })
       
       // Reset state
       setIsReviewDialogOpen(false)
@@ -270,7 +284,11 @@ export function CoordinatorReviewInterface({
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to complete review'
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error completing review:', err)
     } finally {
       setLoading(false)
@@ -279,7 +297,11 @@ export function CoordinatorReviewInterface({
 
   const handleBulkAction = async (action: 'start_review' | 'mark_urgent') => {
     if (selectedIds.length === 0) {
-      toast.error('Please select at least one submission')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please select at least one submission'
+      })
       return
     }
 
@@ -304,13 +326,20 @@ export function CoordinatorReviewInterface({
         throw new Error(result.error || 'Failed to perform bulk action')
       }
 
-      toast.success(result.message)
+      toast({
+        title: "Success",
+        description: result.message
+      })
       setSelectedIds([])
       loadSubmissions()
       loadStatistics()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to perform bulk action'
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error performing bulk action:', err)
     } finally {
       setLoading(false)

@@ -31,7 +31,7 @@ import {
   Activity
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface Service {
   id: string
@@ -172,7 +172,10 @@ export function SessionDurationManager({
         throw new Error(result.error || 'Failed to save configuration')
       }
 
-      toast.success('Duration configuration saved successfully')
+      toast({
+        title: "Success",
+        description: 'Duration configuration saved successfully'
+      })
       
       if (onDurationChange) {
         onDurationChange({
@@ -183,7 +186,11 @@ export function SessionDurationManager({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save configuration'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error saving configuration:', err)
     } finally {
       setLoading(false)
@@ -217,7 +224,10 @@ export function SessionDurationManager({
       }
 
       setOptimizedSlots(result.data.optimizedSlots)
-      toast.success(`Found ${result.data.optimizedSlots.length} optimized time slots`)
+      toast({
+        title: "Success",
+        description: `Found ${result.data.optimizedSlots.length} optimized time slots`
+      })
       
       if (onOptimizationComplete) {
         onOptimizationComplete(result.data.optimizedSlots)
@@ -225,7 +235,11 @@ export function SessionDurationManager({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to optimize time slots'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error optimizing time slots:', err)
     } finally {
       setOptimizing(false)

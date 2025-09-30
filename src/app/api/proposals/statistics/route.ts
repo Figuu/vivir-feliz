@@ -1,65 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
 import { validateProposalStats } from '@/lib/proposal-validation'
+import { ProposalStatus } from '@prisma/client'
 
-// Mock data for demonstration
-const mockProposals = [
-  {
-    id: 'PROP-2024-001',
-    patientId: 'PAT-2024-001',
-    therapistId: 'THER-2024-001',
-    status: 'UNDER_REVIEW',
-    priority: 'HIGH',
-    estimatedCost: 150.00,
-    currency: 'USD',
-    createdAt: '2024-01-20T10:00:00Z',
-    updatedAt: '2024-01-20T14:30:00Z',
-    submittedAt: '2024-01-20T11:00:00Z',
-    reviewedAt: '2024-01-20T13:00:00Z'
-  },
-  {
-    id: 'PROP-2024-002',
-    patientId: 'PAT-2024-002',
-    therapistId: 'THER-2024-001',
-    status: 'APPROVED',
-    priority: 'MEDIUM',
-    estimatedCost: 800.00,
-    currency: 'USD',
-    createdAt: '2024-01-19T09:00:00Z',
-    updatedAt: '2024-01-19T16:00:00Z',
-    submittedAt: '2024-01-19T10:00:00Z',
-    reviewedAt: '2024-01-19T14:00:00Z'
-  },
-  {
-    id: 'PROP-2024-003',
-    patientId: 'PAT-2024-003',
-    therapistId: 'THER-2024-002',
-    status: 'COMPLETED',
-    priority: 'LOW',
-    estimatedCost: 1200.00,
-    currency: 'USD',
-    createdAt: '2024-01-18T08:00:00Z',
-    updatedAt: '2024-01-18T17:00:00Z',
-    submittedAt: '2024-01-18T09:00:00Z',
-    reviewedAt: '2024-01-18T15:00:00Z'
+// Helper function to get current user from Supabase
+async function getCurrentUser(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  
+  if (error || !user) {
+    return null
   }
-]
-
-// Helper function to get user role from request headers
-function getUserRole(request: NextRequest): string {
-  return request.headers.get('x-user-role') || 'THERAPIST'
-}
-
-// Helper function to get user ID from request headers
-function getUserId(request: NextRequest): string {
-  return request.headers.get('x-user-id') || 'user-1'
-}
-
-// Helper function to filter proposals based on user access
-function filterProposalsByAccess(proposals: any[], userRole: string, userId: string): any[] {
-  if (userRole === 'THERAPIST') {
-    return proposals.filter(proposal => proposal.therapistId === userId)
-  }
-  return proposals
+  
+  const dbUser = await db.user.findUnique({
+    where: { id: user.id },
+    select: {
+      id: true,
+      role: true,
+      therapist: {
+        select: { id: true }
+      }
+    }
+  })
+  
+  return dbUser
 }
 
 // Helper function to group data by time period
@@ -101,8 +66,17 @@ function groupByTimePeriod(data: any[], groupBy: string, dateField: string = 'cr
 // GET /api/proposals/statistics - Get proposal statistics
 export async function GET(request: NextRequest) {
   try {
-    const userRole = getUserRole(request)
-    const userId = getUserId(request)
+    const currentUser = await getCurrentUser(request)
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    const userRole = currentUser.role
+    const userId = currentUser.id
+    const therapistId = currentUser.therapist?.id
     
     // Parse query parameters
     const { searchParams } = new URL(request.url)
@@ -123,59 +97,68 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    const { dateFrom, dateTo, groupBy, therapistId, status } = validation.data
+    const { dateFrom, dateTo, groupBy, status } = validation.data
+    const filterTherapistId = statsData.therapistId
     
-    // Filter proposals based on user access
-    let filteredProposals = filterProposalsByAccess(mockProposals, userRole, userId)
+    // Build where clause
+    const where: any = {}
+    
+    // Filter by therapist access
+    if (userRole === 'THERAPIST') {
+      where.therapistId = therapistId
+    } else if (filterTherapistId) {
+      where.therapistId = filterTherapistId
+    }
     
     // Apply date filters
-    if (dateFrom) {
-      const fromDate = new Date(dateFrom)
-      filteredProposals = filteredProposals.filter(proposal =>
-        new Date(proposal.createdAt) >= fromDate
-      )
-    }
-    
-    if (dateTo) {
-      const toDate = new Date(dateTo)
-      filteredProposals = filteredProposals.filter(proposal =>
-        new Date(proposal.createdAt) <= toDate
-      )
-    }
-    
-    // Apply therapist filter
-    if (therapistId) {
-      filteredProposals = filteredProposals.filter(proposal =>
-        proposal.therapistId === therapistId
-      )
+    if (dateFrom || dateTo) {
+      where.createdAt = {}
+      if (dateFrom) where.createdAt.gte = new Date(dateFrom)
+      if (dateTo) where.createdAt.lte = new Date(dateTo)
     }
     
     // Apply status filter
     if (status && status.length > 0) {
-      filteredProposals = filteredProposals.filter(proposal =>
-        status.includes(proposal.status)
-      )
+      where.status = {
+        in: status as ProposalStatus[]
+      }
     }
     
-    // Calculate basic statistics
-    const totalProposals = filteredProposals.length
-    const totalCost = filteredProposals.reduce((sum, proposal) => sum + proposal.estimatedCost, 0)
+    // Fetch proposals from database
+    const proposals = await db.therapeuticProposal.findMany({
+      where,
+      select: {
+        id: true,
+        status: true,
+        therapistId: true,
+        proposalACost: true,
+        proposalBCost: true,
+        selectedProposal: true,
+        createdAt: true,
+        reviewedAt: true
+      }
+    })
+    
+    // Calculate statistics
+    const totalProposals = proposals.length
+    const totalCost = proposals.reduce((sum, proposal) => {
+      const cost = proposal.selectedProposal === 'PROPOSAL_A' 
+        ? proposal.proposalACost 
+        : proposal.selectedProposal === 'PROPOSAL_B'
+        ? proposal.proposalBCost
+        : proposal.proposalACost
+      return sum + (cost ? Number(cost) : 0)
+    }, 0)
     const averageCost = totalProposals > 0 ? totalCost / totalProposals : 0
     
     // Group by status
-    const statusGroups = filteredProposals.reduce((groups, proposal) => {
+    const statusGroups = proposals.reduce((groups, proposal) => {
       groups[proposal.status] = (groups[proposal.status] || 0) + 1
       return groups
     }, {} as Record<string, number>)
     
-    // Group by priority
-    const priorityGroups = filteredProposals.reduce((groups, proposal) => {
-      groups[proposal.priority] = (groups[proposal.priority] || 0) + 1
-      return groups
-    }, {} as Record<string, number>)
-    
     // Group by therapist
-    const therapistGroups = filteredProposals.reduce((groups, proposal) => {
+    const therapistGroups = proposals.reduce((groups, proposal) => {
       if (!groups[proposal.therapistId]) {
         groups[proposal.therapistId] = {
           count: 0,
@@ -183,40 +166,65 @@ export async function GET(request: NextRequest) {
           averageCost: 0
         }
       }
+      const cost = proposal.selectedProposal === 'PROPOSAL_A' 
+        ? proposal.proposalACost 
+        : proposal.selectedProposal === 'PROPOSAL_B'
+        ? proposal.proposalBCost
+        : proposal.proposalACost
+      const numCost = cost ? Number(cost) : 0
+      
       groups[proposal.therapistId].count++
-      groups[proposal.therapistId].totalCost += proposal.estimatedCost
+      groups[proposal.therapistId].totalCost += numCost
       groups[proposal.therapistId].averageCost = groups[proposal.therapistId].totalCost / groups[proposal.therapistId].count
       return groups
     }, {} as Record<string, any>)
     
     // Group by time period
-    const timeGroups = groupByTimePeriod(filteredProposals, groupBy)
-    const timeSeriesData = Object.entries(timeGroups).map(([period, proposals]) => ({
+    const timeGroups = groupByTimePeriod(proposals, groupBy)
+    const timeSeriesData = Object.entries(timeGroups).map(([period, groupProposals]) => ({
       period,
-      count: proposals.length,
-      totalCost: proposals.reduce((sum, proposal) => sum + proposal.estimatedCost, 0),
-      averageCost: proposals.length > 0 ? proposals.reduce((sum, proposal) => sum + proposal.estimatedCost, 0) / proposals.length : 0
+      count: groupProposals.length,
+      totalCost: groupProposals.reduce((sum, proposal) => {
+        const cost = proposal.selectedProposal === 'PROPOSAL_A' 
+          ? proposal.proposalACost 
+          : proposal.selectedProposal === 'PROPOSAL_B'
+          ? proposal.proposalBCost
+          : proposal.proposalACost
+        return sum + (cost ? Number(cost) : 0)
+      }, 0),
+      averageCost: groupProposals.length > 0 
+        ? groupProposals.reduce((sum, proposal) => {
+            const cost = proposal.selectedProposal === 'PROPOSAL_A' 
+              ? proposal.proposalACost 
+              : proposal.selectedProposal === 'PROPOSAL_B'
+              ? proposal.proposalBCost
+              : proposal.proposalACost
+            return sum + (cost ? Number(cost) : 0)
+          }, 0) / groupProposals.length
+        : 0
     })).sort((a, b) => a.period.localeCompare(b.period))
     
-    // Calculate completion rate
-    const completedProposals = filteredProposals.filter(p => p.status === 'COMPLETED').length
-    const completionRate = totalProposals > 0 ? (completedProposals / totalProposals) * 100 : 0
-    
     // Calculate approval rate
-    const approvedProposals = filteredProposals.filter(p => p.status === 'APPROVED').length
+    const approvedProposals = proposals.filter(p => 
+      ['COORDINATOR_APPROVED', 'ADMIN_APPROVED', 'CONFIRMED'].includes(p.status)
+    ).length
     const approvalRate = totalProposals > 0 ? (approvedProposals / totalProposals) * 100 : 0
     
     // Calculate rejection rate
-    const rejectedProposals = filteredProposals.filter(p => p.status === 'REJECTED').length
+    const rejectedProposals = proposals.filter(p => p.status === 'REJECTED').length
     const rejectionRate = totalProposals > 0 ? (rejectedProposals / totalProposals) * 100 : 0
     
+    // Calculate confirmation rate (equivalent to completion rate)
+    const confirmedProposals = proposals.filter(p => p.status === 'CONFIRMED').length
+    const confirmationRate = totalProposals > 0 ? (confirmedProposals / totalProposals) * 100 : 0
+    
     // Calculate average processing time
-    const processedProposals = filteredProposals.filter(p => p.reviewedAt)
+    const processedProposals = proposals.filter(p => p.reviewedAt && p.createdAt)
     const averageProcessingTime = processedProposals.length > 0 
       ? processedProposals.reduce((sum, proposal) => {
-          const submitted = new Date(proposal.submittedAt)
-          const reviewed = new Date(proposal.reviewedAt)
-          return sum + (reviewed.getTime() - submitted.getTime()) / (1000 * 60 * 60 * 24) // days
+          const created = new Date(proposal.createdAt)
+          const reviewed = new Date(proposal.reviewedAt!)
+          return sum + (reviewed.getTime() - created.getTime()) / (1000 * 60 * 60 * 24) // days
         }, 0) / processedProposals.length
       : 0
     
@@ -225,20 +233,19 @@ export async function GET(request: NextRequest) {
         totalProposals,
         totalCost,
         averageCost,
-        completionRate,
+        confirmationRate,
         approvalRate,
         rejectionRate,
         averageProcessingTime
       },
       statusDistribution: statusGroups,
-      priorityDistribution: priorityGroups,
       therapistPerformance: therapistGroups,
       timeSeriesData,
       filters: {
         dateFrom,
         dateTo,
         groupBy,
-        therapistId,
+        therapistId: filterTherapistId,
         status
       },
       generatedAt: new Date().toISOString()

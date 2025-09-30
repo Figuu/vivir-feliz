@@ -1,96 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
 import { 
   validateProposalStatusTransition,
   validateProposalStatusTransition as validateTransition
 } from '@/lib/proposal-validation'
 
-// Mock data for demonstration
-const mockProposals = [
-  {
-    id: 'PROP-2024-001',
-    patientId: 'PAT-2024-001',
-    therapistId: 'THER-2024-001',
-    selectedServices: [
-      {
-        service: {
-          id: 'service-1',
-          code: 'EVAL-001',
-          name: 'Evaluación Pediátrica Integral',
-          description: 'Evaluación completa del desarrollo infantil',
-          categoryId: 'cat-1',
-          category: {
-            id: 'cat-1',
-            name: 'Terapia Pediátrica',
-            color: '#3b82f6',
-            icon: 'baby'
-          },
-          type: 'EVALUATION',
-          duration: 120,
-          price: 150.00,
-          currency: 'USD',
-          isActive: true,
-          requiresApproval: false,
-          maxSessions: 1,
-          minSessions: 1,
-          ageRange: { min: 2, max: 18 },
-          prerequisites: ['Historial médico', 'Informes escolares'],
-          outcomes: ['Diagnóstico integral', 'Plan de tratamiento', 'Recomendaciones'],
-          tags: ['pediatric', 'evaluation', 'development']
-        },
-        sessionCount: 1,
-        notes: 'Evaluación inicial para determinar necesidades específicas',
-        priority: 'HIGH'
-      }
-    ],
-    totalSessions: 1,
-    estimatedDuration: 120,
-    estimatedCost: 150.00,
-    currency: 'USD',
-    status: 'UNDER_REVIEW',
-    priority: 'HIGH',
-    notes: 'Propuesta para paciente pediátrico con necesidades múltiples de terapia',
-    goals: [
-      'Mejorar las habilidades de comunicación y lenguaje',
-      'Desarrollar habilidades motoras finas y gruesas'
-    ],
-    expectedOutcomes: [
-      'Comunicación más efectiva con familiares y compañeros',
-      'Mejora en las habilidades motoras para actividades diarias'
-    ],
-    followUpRequired: true,
-    followUpNotes: 'Seguimiento mensual para evaluar progreso',
-    createdAt: '2024-01-20T10:00:00Z',
-    updatedAt: '2024-01-20T14:30:00Z',
-    submittedAt: '2024-01-20T11:00:00Z',
-    reviewedAt: '2024-01-20T13:00:00Z',
-    reviewedBy: 'coord-001',
-    coordinatorNotes: 'Propuesta bien estructurada con objetivos claros',
-    pricingNotes: 'Costos dentro del rango presupuestario',
-    approvalNotes: 'Aprobación pendiente de revisión final',
-    adminNotes: 'Verificar cobertura de seguro antes de aprobación final',
-    finalApprovalNotes: 'Aprobación final pendiente',
-    budgetApproval: true,
-    insuranceCoverage: {
-      covered: true,
-      percentage: 80,
-      notes: 'Cobertura del 80% por seguro médico'
-    },
-    paymentTerms: {
-      method: 'MIXED',
-      installments: 3,
-      notes: 'Pago en 3 cuotas: 40% inicial, 30% a mitad del tratamiento, 30% final'
-    }
+// Helper function to get current user from Supabase
+async function getCurrentUser(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  
+  if (error || !user) {
+    return null
   }
-]
-
-// Helper function to get user role from request headers
-function getUserRole(request: NextRequest): string {
-  return request.headers.get('x-user-role') || 'THERAPIST'
-}
-
-// Helper function to get user ID from request headers
-function getUserId(request: NextRequest): string {
-  return request.headers.get('x-user-id') || 'user-1'
+  
+  const dbUser = await db.user.findUnique({
+    where: { id: user.id },
+    select: {
+      id: true,
+      role: true,
+      therapist: {
+        select: { id: true }
+      }
+    }
+  })
+  
+  return dbUser
 }
 
 // Helper function to check if user can change proposal status
@@ -142,12 +78,40 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userRole = getUserRole(request)
-    const userId = getUserId(request)
-    const proposalId = params.id
+    const currentUser = await getCurrentUser(request)
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
     
-    // Find proposal
-    const proposal = mockProposals.find(p => p.id === proposalId)
+    const proposalId = params.id
+    const userRole = currentUser.role
+    const userId = currentUser.id
+    const therapistId = currentUser.therapist?.id
+    
+    // Find proposal from database
+    const proposal = await db.therapeuticProposal.findUnique({
+      where: { id: proposalId },
+      include: {
+        therapist: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true
+          }
+        },
+        patient: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true
+          }
+        }
+      }
+    })
+    
     if (!proposal) {
       return NextResponse.json(
         { error: 'Proposal not found' },
@@ -156,7 +120,7 @@ export async function GET(
     }
     
     // Check access permissions
-    if (userRole === 'THERAPIST' && proposal.therapistId !== userId) {
+    if (userRole === 'THERAPIST' && proposal.therapistId !== therapistId) {
       return NextResponse.json(
         { error: 'Access denied' },
         { status: 403 }
@@ -274,20 +238,30 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userRole = getUserRole(request)
-    const userId = getUserId(request)
-    const proposalId = params.id
+    const currentUser = await getCurrentUser(request)
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
     
-    // Find proposal
-    const proposalIndex = mockProposals.findIndex(p => p.id === proposalId)
-    if (proposalIndex === -1) {
+    const proposalId = params.id
+    const userRole = currentUser.role
+    const userId = currentUser.id
+    const therapistId = currentUser.therapist?.id
+    
+    // Find proposal from database
+    const proposal = await db.therapeuticProposal.findUnique({
+      where: { id: proposalId }
+    })
+    
+    if (!proposal) {
       return NextResponse.json(
         { error: 'Proposal not found' },
         { status: 404 }
       )
     }
-    
-    const proposal = mockProposals[proposalIndex]
     
     const body = await request.json()
     
@@ -327,34 +301,56 @@ export async function PUT(
       )
     }
     
-    // Update proposal status
-    const updatedProposal = {
-      ...proposal,
+    // Prepare update data
+    const updateData: any = {
       status: toStatus,
-      updatedAt: new Date().toISOString()
     }
     
-    // Set specific timestamps based on status
+    // Set specific fields based on status
     switch (toStatus) {
       case 'SUBMITTED':
-        updatedProposal.submittedAt = new Date().toISOString()
+        // No additional fields for SUBMITTED status in Prisma schema
         break
       case 'UNDER_REVIEW':
-        updatedProposal.reviewedAt = new Date().toISOString()
-        updatedProposal.reviewedBy = userId
+        updateData.reviewedAt = new Date()
         break
-      case 'APPROVED':
-        updatedProposal.approvalNotes = notes || 'Approved'
+      case 'COORDINATOR_APPROVED':
+        updateData.coordinatorNotes = notes || 'Approved by coordinator'
+        break
+      case 'ADMIN_APPROVED':
+        updateData.approvedAt = new Date()
+        updateData.adminNotes = notes || 'Approved by administrator'
         break
       case 'REJECTED':
-        updatedProposal.approvalNotes = notes || reason || 'Rejected'
+        updateData.coordinatorNotes = notes || reason || 'Rejected'
         break
-      case 'COMPLETED':
-        updatedProposal.finalApprovalNotes = notes || 'Completed'
+      case 'CONFIRMED':
+        updateData.approvedAt = new Date()
+        updateData.adminNotes = notes || 'Confirmed'
         break
     }
     
-    mockProposals[proposalIndex] = updatedProposal
+    // Update proposal in database
+    const updatedProposal = await db.therapeuticProposal.update({
+      where: { id: proposalId },
+      data: updateData,
+      include: {
+        therapist: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true
+          }
+        },
+        patient: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true
+          }
+        }
+      }
+    })
     
     // Filter data based on user role
     const filteredProposal = filterProposalData(updatedProposal, userRole)

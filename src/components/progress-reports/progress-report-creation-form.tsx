@@ -120,7 +120,7 @@ import {
   Activity as ActivityIcon
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface ProgressReportCreationFormProps {
   patientId?: string
@@ -236,7 +236,11 @@ export function ProgressReportCreationForm({
 
   const addAchievement = () => {
     if (objectives.length === 0) {
-      toast.error('No objectives available. Please select a therapeutic plan first.')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'No objectives available. Please select a therapeutic plan first.'
+      })
       return
     }
     
@@ -263,7 +267,11 @@ export function ProgressReportCreationForm({
 
   const addMetricProgress = () => {
     if (metrics.length === 0) {
-      toast.error('No metrics available. Please select a therapeutic plan first.')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'No metrics available. Please select a therapeutic plan first.'
+      })
       return
     }
     
@@ -343,27 +351,47 @@ export function ProgressReportCreationForm({
 
   const validateForm = () => {
     if (!formData.title.trim()) {
-      toast.error('Please enter a report title')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please enter a report title'
+      })
       return false
     }
     
     if (!formData.reportDate) {
-      toast.error('Please select a report date')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please select a report date'
+      })
       return false
     }
     
     if (!formData.progressDescription.trim()) {
-      toast.error('Please enter a progress description')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please enter a progress description'
+      })
       return false
     }
     
     if (achievements.length === 0) {
-      toast.error('Please add at least one achievement')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please add at least one achievement'
+      })
       return false
     }
     
     if (metricProgress.length === 0) {
-      toast.error('Please add at least one metric progress')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please add at least one metric progress'
+      })
       return false
     }
     
@@ -371,17 +399,29 @@ export function ProgressReportCreationForm({
       const achievement = achievements[i]
       
       if (!achievement.title.trim()) {
-        toast.error(`Please enter a title for achievement ${i + 1}`)
+        toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Please enter a title for achievement ${i + 1}`
+      })
         return false
       }
       
       if (!achievement.description.trim()) {
-        toast.error(`Please enter a description for achievement ${i + 1}`)
+        toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Please enter a description for achievement ${i + 1}`
+      })
         return false
       }
       
       if (achievement.progressPercentage < 0 || achievement.progressPercentage > 100) {
-        toast.error(`Progress percentage for achievement ${i + 1} must be between 0 and 100`)
+        toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Progress percentage for achievement ${i + 1} must be between 0 and 100`
+      })
         return false
       }
     }
@@ -390,12 +430,20 @@ export function ProgressReportCreationForm({
       const progress = metricProgress[i]
       
       if (progress.currentValue === '' || progress.currentValue === null || progress.currentValue === undefined) {
-        toast.error(`Please enter a current value for metric progress ${i + 1}`)
+        toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Please enter a current value for metric progress ${i + 1}`
+      })
         return false
       }
       
       if (!progress.measurementDate) {
-        toast.error(`Please select a measurement date for metric progress ${i + 1}`)
+        toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Please select a measurement date for metric progress ${i + 1}`
+      })
         return false
       }
     }
@@ -433,14 +481,21 @@ export function ProgressReportCreationForm({
         throw new Error(result.error || 'Failed to create progress report')
       }
 
-      toast.success('Progress report created successfully')
+      toast({
+        title: "Success",
+        description: 'Progress report created successfully'
+      })
       if (onReportCreated) {
         onReportCreated(result.data)
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create progress report'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error creating progress report:', err)
     } finally {
       setLoading(false)

@@ -105,28 +105,49 @@ export async function GET(request: NextRequest) {
       limit
     } = validationResult.data
     
-    // For now, return mock data since we don't have a list method in the manager
-    // In a real implementation, you would add a list method to TherapistMedicalFormManager
-    const mockForms = [
-      {
-        formId: '550e8400-e29b-41d4-a716-446655440000',
-        medicalFormId: medicalFormId || '550e8400-e29b-41d4-a716-446655440001',
-        therapistId: therapistId || '550e8400-e29b-41d4-a716-446655440002',
-        status: status || 'DRAFT',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    ]
-    
-    // Apply filters
-    let filteredForms = mockForms
+    // Fetch medical forms from database
+    const where: any = {}
     
     if (medicalFormId) {
-      filteredForms = filteredForms.filter(form => form.medicalFormId === medicalFormId)
+      where.id = medicalFormId
     }
     
+    // Filter by completion status
+    if (status === 'COMPLETED') {
+      where.isCompleted = true
+      where.filledByTherapist = true
+    } else if (status === 'DRAFT') {
+      where.isCompleted = false
+    }
+    
+    const medicalForms = await db.medicalForm.findMany({
+      where,
+      include: {
+        patient: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true
+          }
+        },
+        consultationRequest: {
+          select: {
+            id: true,
+            therapistId: true
+          }
+        }
+      },
+      orderBy: {
+        updatedAt: 'desc'
+      }
+    })
+    
+    // Apply therapist filter if provided
+    let filteredForms = medicalForms
     if (therapistId) {
-      filteredForms = filteredForms.filter(form => form.therapistId === therapistId)
+      filteredForms = medicalForms.filter(
+        form => form.consultationRequest?.therapistId === therapistId
+      )
     }
     
     if (status) {

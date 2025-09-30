@@ -22,7 +22,7 @@ import {
   Zap
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface AnalyticsData {
   overview: {
@@ -102,7 +102,11 @@ export function PaymentAnalyticsTracker() {
       setData(result.data)
     } catch (err) {
       console.error('Error loading analytics:', err)
-      toast.error('Failed to load payment analytics')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load payment analytics'
+      })
     } finally {
       setLoading(false)
     }
@@ -143,7 +147,10 @@ export function PaymentAnalyticsTracker() {
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
 
-    toast.success('Analytics exported successfully')
+    toast({
+        title: "Success",
+        description: 'Analytics exported successfully'
+      })
   }
 
   const formatCurrency = (amount: number) => {

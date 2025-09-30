@@ -44,7 +44,7 @@ import {
   Minimize2
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface AnalyticsData {
   overview: {
@@ -191,11 +191,18 @@ export function AnalyticsReportingDashboard({
         onReportGenerated(result.data)
       }
 
-      toast.success('Report generated successfully')
+      toast({
+        title: "Success",
+        description: 'Report generated successfully'
+      })
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate report'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error generating report:', err)
     } finally {
       setLoading(false)
@@ -224,11 +231,18 @@ export function AnalyticsReportingDashboard({
         onExportReport(result.data)
       }
 
-      toast.success(`Report exported as ${format.toUpperCase()}`)
+      toast({
+        title: "Success",
+        description: `Report exported as ${format.toUpperCase(
+      })}`)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to export report'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error exporting report:', err)
     } finally {
       setLoading(false)

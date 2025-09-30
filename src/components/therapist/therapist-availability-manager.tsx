@@ -68,7 +68,7 @@ import {
   Users
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface Therapist {
   id: string
@@ -214,7 +214,11 @@ export function TherapistAvailabilityManager({
 
   const handleCheckAvailability = async () => {
     if (!selectedDate || !checkTime.start || !checkTime.end) {
-      toast.error('Please select a date and time range')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please select a date and time range'
+      })
       return
     }
 
@@ -247,7 +251,11 @@ export function TherapistAvailabilityManager({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to check availability'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error checking availability:', err)
     } finally {
       setLoading(false)
@@ -302,7 +310,10 @@ export function TherapistAvailabilityManager({
         throw new Error(result.error || 'Failed to update availability')
       }
 
-      toast.success('Availability updated successfully')
+      toast({
+        title: "Success",
+        description: 'Availability updated successfully'
+      })
       setEditingDay(null)
       loadAvailabilityData()
       
@@ -312,7 +323,11 @@ export function TherapistAvailabilityManager({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update availability'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error updating availability:', err)
     } finally {
       setLoading(false)

@@ -25,7 +25,7 @@ import {
   RotateCcw
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface ScheduleEntry {
   id?: string
@@ -140,7 +140,10 @@ export function ScheduleConfiguration({
 
       setSchedules(result.schedules)
       setHasChanges(false)
-      toast.success('Schedule saved successfully')
+      toast({
+        title: "Success",
+        description: 'Schedule saved successfully'
+      })
       
       if (onScheduleUpdate) {
         onScheduleUpdate()
@@ -148,7 +151,11 @@ export function ScheduleConfiguration({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save schedules'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error saving schedules:', err)
     } finally {
       setSaving(false)
@@ -158,7 +165,11 @@ export function ScheduleConfiguration({
   const addSchedule = (dayOfWeek: typeof DAYS_OF_WEEK[number]['value']) => {
     const existingSchedule = schedules.find(s => s.dayOfWeek === dayOfWeek)
     if (existingSchedule) {
-      toast.error('Schedule already exists for this day')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Schedule already exists for this day'
+      })
       return
     }
 
@@ -194,7 +205,11 @@ export function ScheduleConfiguration({
     )
 
     if (availableDays.length === 0) {
-      toast.error('No available days to copy to')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'No available days to copy to'
+      })
       return
     }
 
@@ -207,7 +222,10 @@ export function ScheduleConfiguration({
 
     setSchedules(prev => [...prev, newSchedule])
     setHasChanges(true)
-    toast.success(`Schedule copied to ${availableDays[0].label}`)
+    toast({
+        title: "Success",
+        description: `Schedule copied to ${availableDays[0].label}`
+      })
   }
 
   const resetToDefaults = () => {

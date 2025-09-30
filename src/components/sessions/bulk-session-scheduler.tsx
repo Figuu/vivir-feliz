@@ -30,7 +30,7 @@ import {
   DollarSign
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface Proposal {
   id: string
@@ -220,7 +220,10 @@ export function BulkSessionScheduler({
         throw new Error(result.error || 'Failed to schedule sessions')
       }
 
-      toast.success(`Successfully created ${result.results.summary.totalSessionsCreated} sessions`)
+      toast({
+        title: "Success",
+        description: `Successfully created ${result.results.summary.totalSessionsCreated} sessions`
+      })
       
       if (onSuccess) {
         onSuccess(result.results)
@@ -228,7 +231,11 @@ export function BulkSessionScheduler({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to schedule sessions'
       setError(errorMessage)
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error scheduling sessions:', err)
     } finally {
       setScheduling(false)

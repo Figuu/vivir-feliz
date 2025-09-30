@@ -25,7 +25,7 @@ import {
   RefreshCw
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface User {
   id: string
@@ -104,7 +104,11 @@ export function AdvancedUserManagement() {
       setStatistics(result.data.statistics)
     } catch (err) {
       console.error('Error loading users:', err)
-      toast.error('Failed to load users')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load users'
+      })
     } finally {
       setLoading(false)
     }
@@ -117,7 +121,11 @@ export function AdvancedUserManagement() {
 
   const handleCreateUser = async () => {
     if (!formData.email || !formData.password || !formData.firstName || !formData.lastName) {
-      toast.error('Please fill all required fields')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please fill all required fields'
+      })
       return
     }
 
@@ -135,7 +143,10 @@ export function AdvancedUserManagement() {
         throw new Error(error.error || 'Failed to create user')
       }
 
-      toast.success('User created successfully')
+      toast({
+        title: "Success",
+        description: 'User created successfully'
+      })
       setCreateDialogOpen(false)
       setFormData({
         email: '',
@@ -149,7 +160,11 @@ export function AdvancedUserManagement() {
       loadUsers()
     } catch (err: any) {
       console.error('Error creating user:', err)
-      toast.error(err.message || 'Failed to create user')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || 'Failed to create user'
+      })
     } finally {
       setLoading(false)
     }
@@ -175,12 +190,19 @@ export function AdvancedUserManagement() {
         throw new Error(error.error || 'Failed to update user')
       }
 
-      toast.success('User updated successfully')
+      toast({
+        title: "Success",
+        description: 'User updated successfully'
+      })
       setEditDialogOpen(false)
       loadUsers()
     } catch (err: any) {
       console.error('Error updating user:', err)
-      toast.error(err.message || 'Failed to update user')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || 'Failed to update user'
+      })
     } finally {
       setLoading(false)
     }
@@ -188,12 +210,20 @@ export function AdvancedUserManagement() {
 
   const handleBulkAction = async () => {
     if (selectedUsers.length === 0) {
-      toast.error('Please select users first')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please select users first'
+      })
       return
     }
 
     if (!bulkAction) {
-      toast.error('Please select an action')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please select an action'
+      })
       return
     }
 
@@ -216,13 +246,20 @@ export function AdvancedUserManagement() {
         throw new Error(error.error || 'Failed to perform bulk action')
       }
 
-      toast.success(`Bulk action completed for ${selectedUsers.length} users`)
+      toast({
+        title: "Success",
+        description: `Bulk action completed for ${selectedUsers.length} users`
+      })
       setBulkActionDialogOpen(false)
       setSelectedUsers([])
       loadUsers()
     } catch (err: any) {
       console.error('Error performing bulk action:', err)
-      toast.error(err.message || 'Failed to perform bulk action')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || 'Failed to perform bulk action'
+      })
     } finally {
       setLoading(false)
     }
@@ -242,11 +279,18 @@ export function AdvancedUserManagement() {
         throw new Error('Failed to delete user')
       }
 
-      toast.success('User deleted successfully')
+      toast({
+        title: "Success",
+        description: 'User deleted successfully'
+      })
       loadUsers()
     } catch (err) {
       console.error('Error deleting user:', err)
-      toast.error('Failed to delete user')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to delete user'
+      })
     } finally {
       setLoading(false)
     }
@@ -290,7 +334,10 @@ export function AdvancedUserManagement() {
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
 
-    toast.success('Users exported successfully')
+    toast({
+        title: "Success",
+        description: 'Users exported successfully'
+      })
   }
 
   const toggleUserSelection = (userId: string) => {

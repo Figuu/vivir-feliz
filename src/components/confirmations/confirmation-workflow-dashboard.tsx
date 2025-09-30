@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { CheckCircle, XCircle, Clock, AlertTriangle, RefreshCw, Calendar, DollarSign, Edit } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 export function ConfirmationWorkflowDashboard() {
   const [loading, setLoading] = useState(false)
@@ -81,14 +81,21 @@ export function ConfirmationWorkflowDashboard() {
         throw new Error(result.error || 'Failed to process confirmation')
       }
 
-      toast.success(result.message)
+      toast({
+        title: "Success",
+        description: result.message
+      })
       setDialogOpen(false)
       setSelectedItem(null)
       setActionData({})
       loadData()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to process confirmation'
-      toast.error(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      })
       console.error('Error:', err)
     } finally {
       setLoading(false)

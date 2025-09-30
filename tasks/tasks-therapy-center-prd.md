@@ -322,13 +322,13 @@ Based on the comprehensive PRD analysis and current codebase assessment, this do
 
 - [ ] 12.0 Parent Portal and Patient Information Access
   - [x] 12.1 Create parent dashboard with patient overview
-  - [ ] 12.2 Build patient progress viewing interface
-  - [ ] 12.3 Implement session schedule and history viewing
-  - [ ] 12.4 Create payment information and history interface
-  - [ ] 12.5 Build approved report viewing system
+  - [x] 12.2 Build patient progress viewing interface
+  - [x] 12.3 Implement session schedule and history viewing
+  - [x] 12.4 Create payment information and history interface
+  - [x] 12.5 Build approved report viewing system
   - [ ] 12.6 Implement session comments and therapist notes viewing
   - [ ] 12.7 Create rescheduling request interface for parents
-  - [ ] 12.8 Implement parent API endpoints
+  - [x] 12.8 Implement parent API endpoints
   - [ ] 12.9 Create parent mobile-responsive interfaces
 
 - [ ] 13.0 Super Administrator Functions

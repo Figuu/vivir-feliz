@@ -1,75 +1,102 @@
 'use client'
 
+import { useQuery } from '@tanstack/react-query'
+import { formatDistanceToNow } from 'date-fns'
+import { es } from 'date-fns/locale'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Skeleton } from '@/components/ui/skeleton'
 
-const recentActivity = [
-  {
-    name: 'John Doe',
-    email: 'john@example.com',
-    avatar: null,
-    action: 'signed up',
-    time: '2 minutes ago',
-  },
-  {
-    name: 'Jane Smith',
-    email: 'jane@example.com',
-    avatar: null,
-    action: 'updated profile',
-    time: '5 minutes ago',
-  },
-  {
-    name: 'Bob Johnson',
-    email: 'bob@example.com',
-    avatar: null,
-    action: 'made a purchase',
-    time: '10 minutes ago',
-  },
-  {
-    name: 'Alice Brown',
-    email: 'alice@example.com',
-    avatar: null,
-    action: 'left a review',
-    time: '15 minutes ago',
-  },
-  {
-    name: 'Charlie Davis',
-    email: 'charlie@example.com',
-    avatar: null,
-    action: 'signed up',
-    time: '20 minutes ago',
-  },
-]
+interface AuditLog {
+  id: string
+  action: string
+  userId?: string
+  user?: {
+    name?: string
+    email?: string
+    avatar?: string
+  }
+  resource: string
+  success: boolean
+  createdAt: string
+}
+
+const formatActionText = (action: string): string => {
+  return action.toLowerCase().replace(/_/g, ' ')
+}
 
 export function RecentActivity() {
+  const { data: auditLogs, isLoading } = useQuery<AuditLog[]>({
+    queryKey: ['recent-activity'],
+    queryFn: async () => {
+      const response = await fetch('/api/audit?limit=5')
+      if (!response.ok) {
+        throw new Error('Failed to fetch recent activity')
+      }
+      const result = await response.json()
+      return result.logs || []
+    },
+    refetchInterval: 30000, // Refresh every 30 seconds
+  })
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent Activity</CardTitle>
+        <CardTitle>Actividad Reciente</CardTitle>
         <CardDescription>
-          Latest user activities in your application
+          Últimas actividades de usuarios en el sistema
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-8">
-          {recentActivity.map((activity, index) => (
-            <div key={index} className="flex items-center">
-              <Avatar className="h-9 w-9">
-                <AvatarImage src={activity.avatar || undefined} alt={activity.name} />
-                <AvatarFallback>
-                  {activity.name.split(' ').map(n => n[0]).join('')}
-                </AvatarFallback>
-              </Avatar>
-              <div className="ml-4 space-y-1">
-                <p className="text-sm font-medium leading-none">
-                  {activity.name}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {activity.action} • {activity.time}
-                </p>
-              </div>
-            </div>
-          ))}
+          {isLoading ? (
+            <>
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="flex items-center">
+                  <Skeleton className="h-9 w-9 rounded-full" />
+                  <div className="ml-4 space-y-2">
+                    <Skeleton className="h-4 w-[200px]" />
+                    <Skeleton className="h-3 w-[150px]" />
+                  </div>
+                </div>
+              ))}
+            </>
+          ) : auditLogs && auditLogs.length > 0 ? (
+            auditLogs.map((log) => {
+              const userName = log.user?.name || log.user?.email || 'Usuario desconocido'
+              const initials = userName
+                .split(' ')
+                .map(n => n[0])
+                .join('')
+                .toUpperCase()
+                .slice(0, 2)
+              const timeAgo = formatDistanceToNow(new Date(log.createdAt), {
+                addSuffix: true,
+                locale: es,
+              })
+
+              return (
+                <div key={log.id} className="flex items-center">
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={log.user?.avatar} alt={userName} />
+                    <AvatarFallback>{initials}</AvatarFallback>
+                  </Avatar>
+                  <div className="ml-4 space-y-1">
+                    <p className="text-sm font-medium leading-none">
+                      {userName}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatActionText(log.action)} • {timeAgo}
+                    </p>
+                  </div>
+                </div>
+              )
+            })
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No hay actividad reciente
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -321,7 +321,7 @@ Based on the comprehensive PRD analysis and current codebase assessment, this do
   - [x] 11.9 Create rescheduling analytics and reporting
 
 - [ ] 12.0 Parent Portal and Patient Information Access
-  - [ ] 12.1 Create parent dashboard with patient overview
+  - [x] 12.1 Create parent dashboard with patient overview
   - [ ] 12.2 Build patient progress viewing interface
   - [ ] 12.3 Implement session schedule and history viewing
   - [ ] 12.4 Create payment information and history interface

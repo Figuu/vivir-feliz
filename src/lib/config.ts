@@ -74,6 +74,13 @@ export const backupConfig = {
 } as const
 
 /**
+ * Get the application URL
+ */
+export function getAppUrl(): string {
+  return appConfig.url
+}
+
+/**
  * Validate required environment variables
  */
 export function validateEnvironment(): { isValid: boolean; missing: string[] } {

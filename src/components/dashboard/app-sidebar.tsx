@@ -15,6 +15,12 @@ import {
   BarChart3,
   Activity,
   TrendingUp,
+  Calendar,
+  Clock,
+  User,
+  Award,
+  Briefcase,
+  Smartphone,
 } from 'lucide-react'
 
 import {
@@ -78,8 +84,52 @@ const analyticsItems = [
 const adminItems = [
   {
     title: 'User Management',
-    url: '/dashboard/admin/users',
+    url: '/user-management',
     icon: Users,
+  },
+]
+
+// Therapist menu items
+const therapistItems = [
+  {
+    title: 'Dashboard',
+    url: '/therapist/dashboard',
+    icon: Home,
+  },
+  {
+    title: 'My Schedule',
+    url: '/therapist/schedule',
+    icon: Calendar,
+  },
+  {
+    title: 'Weekly Agenda',
+    url: '/therapist/weekly-agenda',
+    icon: Clock,
+  },
+  {
+    title: 'Availability',
+    url: '/therapist/availability',
+    icon: Clock,
+  },
+  {
+    title: 'My Profile',
+    url: '/therapist/profile',
+    icon: User,
+  },
+  {
+    title: 'Certifications',
+    url: '/therapist/specialty-certification',
+    icon: Award,
+  },
+  {
+    title: 'Workload & Capacity',
+    url: '/therapist/workload-capacity',
+    icon: Briefcase,
+  },
+  {
+    title: 'Performance',
+    url: '/therapist/performance-analytics',
+    icon: BarChart3,
   },
 ]
 
@@ -119,58 +169,80 @@ export const AppSidebar = React.memo(function AppSidebar({ ...props }: React.Com
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Application</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <Link href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-              
-              {/* Analytics Collapsible Menu */}
-              <Collapsible
-                open={isAnalyticsOpen}
-                onOpenChange={setIsAnalyticsOpen}
-                className="group/collapsible"
-              >
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton>
-                      <BarChart3 />
-                      <span>Analytics</span>
-                      {isAnalyticsOpen ? (
-                        <ChevronDown className="ml-auto transition-transform" />
-                      ) : (
-                        <ChevronRight className="ml-auto transition-transform" />
-                      )}
+        {/* Show different navigation based on role */}
+        {user?.role === 'THERAPIST' ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>Therapist Portal</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {therapistItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <Link href={item.url}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
                     </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {analyticsItems.map((item) => (
-                        <SidebarMenuSubItem key={item.title}>
-                          <SidebarMenuSubButton asChild>
-                            <Link href={item.url}>
-                              <item.icon />
-                              <span>{item.title}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : (
+          <SidebarGroup>
+            <SidebarGroupLabel>Application</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {items.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <Link href={item.url}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+                
+                {/* Analytics Collapsible Menu */}
+                <Collapsible
+                  open={isAnalyticsOpen}
+                  onOpenChange={setIsAnalyticsOpen}
+                  className="group/collapsible"
+                >
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton>
+                        <BarChart3 />
+                        <span>Analytics</span>
+                        {isAnalyticsOpen ? (
+                          <ChevronDown className="ml-auto transition-transform" />
+                        ) : (
+                          <ChevronRight className="ml-auto transition-transform" />
+                        )}
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {analyticsItems.map((item) => (
+                          <SidebarMenuSubItem key={item.title}>
+                            <SidebarMenuSubButton asChild>
+                              <Link href={item.url}>
+                                <item.icon />
+                                <span>{item.title}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+        
         {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
           <SidebarGroup>
             <SidebarGroupLabel>Admin</SidebarGroupLabel>
@@ -213,8 +285,8 @@ export const AppSidebar = React.memo(function AppSidebar({ ...props }: React.Com
                     <span className="truncate font-semibold">
                       {user?.name || user?.email}
                     </span>
-                    <span className="truncate text-xs">
-                      {user?.email}
+                    <span className="truncate text-xs text-muted-foreground">
+                      {user?.role?.replace('_', ' ')}
                     </span>
                   </div>
                   <ChevronUp className="ml-auto size-4" />

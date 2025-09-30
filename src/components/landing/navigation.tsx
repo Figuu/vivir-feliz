@@ -14,7 +14,7 @@ import { ConsultationModal } from './consultation-modal'
 import { Calendar } from 'lucide-react'
 export function Navigation() {
   const [open, setOpen] = useState(false)
-  const { user, signOut } = useAuth()
+  const { user, signOut, isInitialized } = useAuth()
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -78,7 +78,7 @@ export function Navigation() {
                     >
                       Docs
                     </Link>
-                    {!user && (
+                    {isInitialized && !user && (
                       <ConsultationModal>
                         <Button 
                           variant="outline" 
@@ -104,7 +104,7 @@ export function Navigation() {
           {/* Right side actions */}
           <nav className="flex items-center gap-2">
             <ThemeToggle />
-            {!user && (
+            {isInitialized && !user && (
               <ConsultationModal>
                 <motion.div
                   whileHover={{ scale: 1.05 }}
@@ -118,7 +118,7 @@ export function Navigation() {
                 </motion.div>
               </ConsultationModal>
             )}
-            {user ? (
+            {isInitialized && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -167,7 +167,7 @@ export function Navigation() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            ) : (
+            ) : isInitialized && (
               <>
                 <motion.div
                   whileHover={{ scale: 1.05 }}

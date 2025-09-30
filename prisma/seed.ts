@@ -1,6 +1,44 @@
 import { PrismaClient } from '@prisma/client'
+import { config } from 'dotenv'
+import { resolve } from 'path'
+import { existsSync } from 'fs'
+
+// Load environment variables - try .env.local first, then .env
+const envPath = resolve(__dirname, '../.env')
+
+if (existsSync(envPath)) {
+  console.log('📋 Loading environment from .env')
+  config({ path: envPath })
+} else {
+  console.error('❌ No .env or .env.local file found!')
+  console.error('Please create a .env.local file with your Supabase credentials.')
+  console.error('See env.example for the required variables.')
+  process.exit(1)
+}
+
+// Verify required environment variables
+const requiredEnvVars = [
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'DATABASE_URL'
+]
+
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName])
+
+if (missingVars.length > 0) {
+  console.error('❌ Missing required environment variables:')
+  missingVars.forEach(varName => console.error(`  - ${varName}`))
+  console.error('\nPlease add these to your .env.local or .env file.')
+  process.exit(1)
+}
+
+// Import after env vars are loaded
+import { createAdminClient } from '../src/lib/supabase/server'
 
 const prisma = new PrismaClient()
+
+// Default password for seed users (change after first login!)
+const DEFAULT_PASSWORD = '12345678'
 
 async function main() {
   console.log('🌱 Starting seed data creation...')
@@ -428,123 +466,367 @@ async function main() {
 
   console.log(`✅ Created ${services.length} services`)
 
+  const supabaseAdmin = createAdminClient()
+
   // ========== SUPER ADMIN USER ==========
-  console.log('Creating super admin user...')
+  console.log('Creating super admin profile...')
   
-  const superAdmin = await prisma.user.upsert({
-    where: { email: 'admin@vivirfeliz.com' },
-    update: {},
+  let superAdminId: string | undefined
+  const existingSuperAdminProfile = await prisma.profile.findUnique({
+    where: { email: 'superadmin@demo.com' }
+  })
+
+  if (existingSuperAdminProfile) {
+    superAdminId = existingSuperAdminProfile.id
+    console.log('  Super admin profile already exists in database')
+    
+    // Check if user exists in Supabase Auth
+    const { data: existingAuthUser, error: checkError } = await supabaseAdmin.auth.admin.getUserById(superAdminId)
+    
+    if (checkError || !existingAuthUser?.user) {
+      console.log('  User not found in Supabase Auth, creating...')
+      const { data: superAdminAuth, error: superAdminAuthError } = await supabaseAdmin.auth.admin.createUser({
+        email: 'superadmin@demo.com',
+        password: DEFAULT_PASSWORD,
+        email_confirm: true,
+        user_metadata: {
+          firstName: 'Super',
+          lastName: 'Administrador',
+          role: 'SUPER_ADMIN'
+        }
+      })
+
+      if (superAdminAuthError) {
+        console.error('Error creating super admin in Supabase Auth:', superAdminAuthError)
+        throw superAdminAuthError
+      }
+
+      if (superAdminAuth?.user?.id && superAdminAuth.user.id !== superAdminId) {
+        // Update profile ID to match Supabase Auth ID
+        await prisma.profile.update({
+          where: { id: superAdminId },
+          data: { id: superAdminAuth.user.id }
+        })
+        superAdminId = superAdminAuth.user.id
+        console.log('  Created user in Supabase Auth and synced ID')
+      }
+    } else {
+      console.log('  User already exists in Supabase Auth')
+    }
+  } else {
+    // Create user in Supabase Auth first
+    const { data: superAdminAuth, error: superAdminAuthError } = await supabaseAdmin.auth.admin.createUser({
+      email: 'superadmin@demo.com',
+      password: DEFAULT_PASSWORD,
+      email_confirm: true,
+      user_metadata: {
+        firstName: 'Super',
+        lastName: 'Administrador',
+        role: 'SUPER_ADMIN'
+      }
+    })
+
+    if (superAdminAuthError) {
+      console.error('Error creating super admin in Supabase Auth:', superAdminAuthError)
+      throw superAdminAuthError
+    }
+
+    if (!superAdminAuth?.user?.id) {
+      throw new Error('Failed to create super admin in Supabase Auth')
+    }
+
+    superAdminId = superAdminAuth.user.id
+  }
+
+  // Create or update Profile
+  await prisma.profile.upsert({
+    where: { id: superAdminId },
+    update: {
+      email: 'superadmin@demo.com',
+      firstName: 'Super',
+      lastName: 'Administrador',
+      role: 'SUPER_ADMIN',
+      isActive: true,
+    },
     create: {
-      email: 'admin@vivirfeliz.com',
-      name: 'Administrador del Sistema',
+      id: superAdminId,
+      email: 'superadmin@demo.com',
+      firstName: 'Super',
+      lastName: 'Administrador',
       role: 'SUPER_ADMIN',
       isActive: true,
     },
   })
 
-  console.log('✅ Created super admin user')
-
-  // ========== SAMPLE ADMIN USER ==========
-  console.log('Creating sample admin user...')
-  
-  const admin = await prisma.user.upsert({
-    where: { email: 'coordinador@vivirfeliz.com' },
+  // Create Admin record for super admin
+  await prisma.admin.upsert({
+    where: { profileId: superAdminId },
     update: {},
     create: {
-      email: 'coordinador@vivirfeliz.com',
-      name: 'Coordinador General',
+      profileId: superAdminId,
+      department: 'Dirección General',
+    },
+  })
+
+  console.log('✅ Created super admin (email: superadmin@demo.com, password: ' + DEFAULT_PASSWORD + ')')
+
+  // ========== ADMIN USER (Secretary) ==========
+  console.log('Creating admin profile...')
+  
+  let adminId: string | undefined
+  const existingAdminProfile = await prisma.profile.findUnique({
+    where: { email: 'admin@demo.com' }
+  })
+
+  if (existingAdminProfile) {
+    adminId = existingAdminProfile.id
+    console.log('  Admin profile already exists in database')
+    
+    const { data: existingAuthUser, error: checkError } = await supabaseAdmin.auth.admin.getUserById(adminId)
+    
+    if (checkError || !existingAuthUser?.user) {
+      console.log('  User not found in Supabase Auth, creating...')
+      const { data: adminAuth, error: adminAuthError } = await supabaseAdmin.auth.admin.createUser({
+        email: 'admin@demo.com',
+        password: DEFAULT_PASSWORD,
+        email_confirm: true,
+        user_metadata: {
+          firstName: 'Secretaria',
+          lastName: 'General',
+          role: 'ADMIN'
+        }
+      })
+
+      if (adminAuthError) {
+        console.error('Error creating admin in Supabase Auth:', adminAuthError)
+        throw adminAuthError
+      }
+
+      if (adminAuth?.user?.id && adminAuth.user.id !== adminId) {
+        await prisma.profile.update({
+          where: { id: adminId },
+          data: { id: adminAuth.user.id }
+        })
+        adminId = adminAuth.user.id
+        console.log('  Created user in Supabase Auth and synced ID')
+      }
+    } else {
+      console.log('  User already exists in Supabase Auth')
+    }
+  } else {
+    const { data: adminAuth, error: adminAuthError } = await supabaseAdmin.auth.admin.createUser({
+      email: 'admin@demo.com',
+      password: DEFAULT_PASSWORD,
+      email_confirm: true,
+      user_metadata: {
+        firstName: 'Secretaria',
+        lastName: 'General',
+        role: 'ADMIN'
+      }
+    })
+
+    if (adminAuthError) {
+      console.error('Error creating admin in Supabase Auth:', adminAuthError)
+      throw adminAuthError
+    }
+
+    if (!adminAuth?.user?.id) {
+      throw new Error('Failed to create admin in Supabase Auth')
+    }
+
+    adminId = adminAuth.user.id
+  }
+
+  // Create or update Profile
+  await prisma.profile.upsert({
+    where: { id: adminId },
+    update: {
+      email: 'admin@demo.com',
+      firstName: 'Secretaria',
+      lastName: 'General',
+      role: 'ADMIN',
+      isActive: true,
+    },
+    create: {
+      id: adminId,
+      email: 'admin@demo.com',
+      firstName: 'Secretaria',
+      lastName: 'General',
       role: 'ADMIN',
       isActive: true,
     },
   })
 
-  console.log('✅ Created sample admin user')
+  // Create Admin record
+  await prisma.admin.upsert({
+    where: { profileId: adminId },
+    update: {},
+    create: {
+      profileId: adminId,
+      department: 'Secretaría',
+    },
+  })
 
-  // ========== SAMPLE THERAPIST USERS ==========
-  console.log('Creating sample therapist users...')
+  console.log('✅ Created admin (email: admin@demo.com, password: ' + DEFAULT_PASSWORD + ')')
+
+  // ========== COORDINATOR (Super Therapist) ==========
+  console.log('Creating coordinator profile...')
   
-  const therapistUsers = await Promise.all([
-    prisma.user.upsert({
-      where: { email: 'psicologa@vivirfeliz.com' },
-      update: {},
-      create: {
-        email: 'psicologa@vivirfeliz.com',
-        name: 'Dra. María González',
-        role: 'THERAPIST',
-        isActive: true,
-      },
-    }),
-    prisma.user.upsert({
-      where: { email: 'fonoaudiologa@vivirfeliz.com' },
-      update: {},
-      create: {
-        email: 'fonoaudiologa@vivirfeliz.com',
-        name: 'Lic. Ana Rodríguez',
-        role: 'THERAPIST',
-        isActive: true,
-      },
-    }),
-    prisma.user.upsert({
-      where: { email: 'terapeuta@vivirfeliz.com' },
-      update: {},
-      create: {
-        email: 'terapeuta@vivirfeliz.com',
-        name: 'Lic. Carlos López',
-        role: 'THERAPIST',
-        isActive: true,
-      },
-    }),
-  ])
+  const therapistData = [
+    { 
+      email: 'coordinador@demo.com', 
+      firstName: 'María',
+      lastName: 'González',
+      role: 'COORDINATOR',
+      licenseNumber: 'COORD-001',
+      isCoordinator: true,
+      specialtyIndex: 0 // Psicología Clínica
+    },
+    { 
+      email: 'psicologa@demo.com', 
+      firstName: 'Ana',
+      lastName: 'Rodríguez',
+      role: 'THERAPIST',
+      licenseNumber: 'PSI-12345',
+      isCoordinator: false,
+      specialtyIndex: 0 // Psicología Clínica
+    },
+    { 
+      email: 'fonoaudiologa@demo.com', 
+      firstName: 'Carmen',
+      lastName: 'Martínez',
+      role: 'THERAPIST',
+      licenseNumber: 'FONO-67890',
+      isCoordinator: false,
+      specialtyIndex: 1 // Fonoaudiología
+    },
+    { 
+      email: 'terapeuta@demo.com', 
+      firstName: 'Carlos',
+      lastName: 'López',
+      role: 'THERAPIST',
+      licenseNumber: 'TO-54321',
+      isCoordinator: false,
+      specialtyIndex: 2 // Terapia Ocupacional
+    },
+  ]
 
   // Create therapist profiles
-  const therapists = await Promise.all([
-    prisma.therapist.upsert({
-      where: { userId: therapistUsers[0].id },
-      update: {},
-      create: {
-        userId: therapistUsers[0].id,
-        firstName: 'María',
-        lastName: 'González',
-        phone: '+54 11 1234-5678',
-        licenseNumber: 'PSI-12345',
-        isCoordinator: true,
-        canTakeConsultations: true,
-        isActive: true,
-      },
-    }),
-    prisma.therapist.upsert({
-      where: { userId: therapistUsers[1].id },
-      update: {},
-      create: {
-        userId: therapistUsers[1].id,
-        firstName: 'Ana',
-        lastName: 'Rodríguez',
-        phone: '+54 11 2345-6789',
-        licenseNumber: 'FONO-67890',
-        isCoordinator: false,
-        canTakeConsultations: true,
-        isActive: true,
-      },
-    }),
-    prisma.therapist.upsert({
-      where: { userId: therapistUsers[2].id },
-      update: {},
-      create: {
-        userId: therapistUsers[2].id,
-        firstName: 'Carlos',
-        lastName: 'López',
-        phone: '+54 11 3456-7890',
-        licenseNumber: 'TO-54321',
-        isCoordinator: false,
-        canTakeConsultations: true,
-        isActive: true,
-      },
-    }),
-  ])
+  const therapistProfiles = await Promise.all(
+    therapistData.map(async ({ email, firstName, lastName, role, licenseNumber, isCoordinator, specialtyIndex }) => {
+      let profileId: string | undefined
+      
+      // Check if profile exists
+      const existingProfile = await prisma.profile.findUnique({
+        where: { email }
+      })
+
+      if (existingProfile) {
+        profileId = existingProfile.id
+        console.log(`  Therapist profile ${email} already exists in database`)
+        
+        const { data: existingAuthUser, error: checkError } = await supabaseAdmin.auth.admin.getUserById(profileId)
+        
+        if (checkError || !existingAuthUser?.user) {
+          console.log(`  User ${email} not found in Supabase Auth, creating...`)
+          const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+            email,
+            password: DEFAULT_PASSWORD,
+            email_confirm: true,
+            user_metadata: {
+              firstName,
+              lastName,
+              role
+            }
+          })
+
+          if (authError) {
+            console.error(`Error creating therapist ${email} in Supabase Auth:`, authError)
+            throw authError
+          }
+
+          if (authUser?.user?.id && authUser.user.id !== profileId) {
+            await prisma.profile.update({
+              where: { id: profileId },
+              data: { id: authUser.user.id }
+            })
+            profileId = authUser.user.id
+            console.log(`  Created user ${email} in Supabase Auth and synced ID`)
+          }
+        } else {
+          console.log(`  User ${email} already exists in Supabase Auth`)
+        }
+      } else {
+        // Create in Supabase Auth first
+        const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email,
+          password: DEFAULT_PASSWORD,
+          email_confirm: true,
+          user_metadata: {
+            firstName,
+            lastName,
+            role
+          }
+        })
+
+        if (authError) {
+          console.error(`Error creating therapist ${email} in Supabase Auth:`, authError)
+          throw authError
+        }
+
+        if (!authUser?.user?.id) {
+          throw new Error(`Failed to create user in Supabase Auth for ${email}`)
+        }
+
+        profileId = authUser.user.id
+      }
+
+      // Create or update Profile
+      await prisma.profile.upsert({
+        where: { id: profileId },
+        update: {
+          email,
+          firstName,
+          lastName,
+          role: role as any,
+          isActive: true,
+        },
+        create: {
+          id: profileId,
+          email,
+          firstName,
+          lastName,
+          phone: '+54 11 1234-5678',
+          role: role as any,
+          isActive: true,
+        },
+      })
+
+      return { profileId, email, firstName, lastName, licenseNumber, isCoordinator, specialtyIndex }
+    })
+  )
+
+  // Create Therapist records
+  const therapists = await Promise.all(
+    therapistProfiles.map(async ({ profileId, licenseNumber, isCoordinator }) =>
+      prisma.therapist.upsert({
+        where: { profileId },
+        update: {},
+        create: {
+          profileId,
+          licenseNumber,
+          isCoordinator,
+          canTakeConsultations: true,
+        },
+      })
+    )
+  )
+
+  console.log('✅ Created therapist profiles')
 
   // Assign specialties to therapists
   await Promise.all([
-    // María González - Psicología Clínica (Coordinator)
+    // Coordinator - Psicología Clínica + Coordinación
     prisma.therapistSpecialty.upsert({
       where: {
         therapistId_specialtyId: {
@@ -574,33 +856,49 @@ async function main() {
       },
     }),
 
-    // Ana Rodríguez - Fonoaudiología
+    // Psicóloga - Psicología Clínica
     prisma.therapistSpecialty.upsert({
       where: {
         therapistId_specialtyId: {
           therapistId: therapists[1].id,
-          specialtyId: specialties[1].id,
+          specialtyId: specialties[0].id,
         },
       },
       update: {},
       create: {
         therapistId: therapists[1].id,
-        specialtyId: specialties[1].id,
+        specialtyId: specialties[0].id,
         isPrimary: true,
       },
     }),
 
-    // Carlos López - Terapia Ocupacional
+    // Fonoaudióloga - Fonoaudiología
     prisma.therapistSpecialty.upsert({
       where: {
         therapistId_specialtyId: {
           therapistId: therapists[2].id,
-          specialtyId: specialties[2].id,
+          specialtyId: specialties[1].id,
         },
       },
       update: {},
       create: {
         therapistId: therapists[2].id,
+        specialtyId: specialties[1].id,
+        isPrimary: true,
+      },
+    }),
+
+    // Terapeuta Ocupacional
+    prisma.therapistSpecialty.upsert({
+      where: {
+        therapistId_specialtyId: {
+          therapistId: therapists[3].id,
+          specialtyId: specialties[2].id,
+        },
+      },
+      update: {},
+      create: {
+        therapistId: therapists[3].id,
         specialtyId: specialties[2].id,
         isPrimary: true,
       },
@@ -609,7 +907,7 @@ async function main() {
 
   // Create therapist schedules
   await Promise.all([
-    // María González - Monday to Friday, 8:00-17:00
+    // Coordinator - Monday to Friday, 8:00-17:00
     ...['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'].map(day =>
       prisma.therapistSchedule.upsert({
         where: {
@@ -632,7 +930,7 @@ async function main() {
       })
     ),
 
-    // Ana Rodríguez - Monday to Thursday, 9:00-16:00
+    // Psicóloga - Monday to Thursday, 9:00-16:00
     ...['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY'].map(day =>
       prisma.therapistSchedule.upsert({
         where: {
@@ -655,7 +953,7 @@ async function main() {
       })
     ),
 
-    // Carlos López - Tuesday to Friday, 8:30-15:30
+    // Fonoaudióloga - Tuesday to Friday, 8:30-15:30
     ...['TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'].map(day =>
       prisma.therapistSchedule.upsert({
         where: {
@@ -677,9 +975,32 @@ async function main() {
         },
       })
     ),
+
+    // Terapeuta Ocupacional - Monday to Friday, 10:00-18:00
+    ...['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'].map(day =>
+      prisma.therapistSchedule.upsert({
+        where: {
+          therapistId_dayOfWeek: {
+            therapistId: therapists[3].id,
+            dayOfWeek: day as any,
+          },
+        },
+        update: {},
+        create: {
+          therapistId: therapists[3].id,
+          dayOfWeek: day as any,
+          startTime: '10:00',
+          endTime: '18:00',
+          breakStart: '13:00',
+          breakEnd: '14:00',
+          breakBetweenSessions: 10,
+          isActive: true,
+        },
+      })
+    ),
   ])
 
-  console.log('✅ Created sample therapist users with schedules')
+  console.log('✅ Created therapist schedules')
 
   console.log('🎉 Seed data creation completed successfully!')
   console.log(`
@@ -687,9 +1008,42 @@ async function main() {
 - ${specialties.length} specialties created
 - ${consultationReasons.length} consultation reasons created
 - ${services.length} services created
-- 1 super admin user created
-- 1 admin user created
-- 3 therapist users created with schedules and specialties
+- 1 super admin created
+- 1 admin (secretary) created
+- 4 therapists created (1 coordinator + 3 regular therapists)
+
+🔐 Login Credentials (Default password for all: ${DEFAULT_PASSWORD}):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Super Admin:
+    Email: superadmin@demo.com
+    Password: ${DEFAULT_PASSWORD}
+    Role: SUPER_ADMIN (Financial management, all users)
+    
+  Admin (Secretary):
+    Email: admin@demo.com
+    Password: ${DEFAULT_PASSWORD}
+    Role: ADMIN (Payment confirmation, schedules, patient management)
+    
+  Coordinator (Super Therapist):
+    Email: coordinador@demo.com
+    Password: ${DEFAULT_PASSWORD}
+    Role: COORDINATOR (Manages therapists, can also take sessions)
+    
+  Therapists:
+    1. Email: psicologa@demo.com (Ana Rodríguez - Psicología Clínica)
+       Password: ${DEFAULT_PASSWORD}
+       Role: THERAPIST
+    
+    2. Email: fonoaudiologa@demo.com (Carmen Martínez - Fonoaudiología)
+       Password: ${DEFAULT_PASSWORD}
+       Role: THERAPIST
+    
+    3. Email: terapeuta@demo.com (Carlos López - Terapia Ocupacional)
+       Password: ${DEFAULT_PASSWORD}
+       Role: THERAPIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  IMPORTANT: Change these passwords after first login!
   `)
 }
 
@@ -701,5 +1055,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect()
   })
-
-

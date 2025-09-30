@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useToast } from '@/hooks/use-toast'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -219,25 +220,30 @@ export function MedicalFormVersionControl({
   }
 
   // Compare versions
-  const handleCompareVersions = () => {
+  const handleCompareVersions = async () => {
     if (!selectedVersions.v1 || !selectedVersions.v2) return
+    
+    const { toast } = useToast()
 
     if (onCompareVersions) {
       onCompareVersions(selectedVersions.v1, selectedVersions.v2)
     }
 
-    // Mock compare result for demonstration
-    setCompareResult({
-      added: [
-        { field: 'Nuevo campo de alergias', value: 'Ninguna alergia conocida' }
-      ],
-      modified: [
-        { field: 'Fecha de nacimiento', oldValue: '2020-03-15', newValue: '2020-03-16' }
-      ],
-      deleted: [
-        { field: 'Campo obsoleto de medicamentos' }
-      ]
-    })
+    // Fetch real comparison from API
+    try {
+      const response = await fetch(`/api/medical-forms/compare?v1=${selectedVersions.v1}&v2=${selectedVersions.v2}`)
+      if (response.ok) {
+        const comparison = await response.json()
+        setCompareResult({
+          added: comparison.added || [],
+          modified: comparison.modified || [],
+          deleted: comparison.deleted || []
+        })
+      }
+    } catch (error) {
+      console.error('Error comparing versions:', error)
+      toast.error('Failed to compare versions')
+    }
   }
 
   // Delete version

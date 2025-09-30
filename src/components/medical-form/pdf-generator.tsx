@@ -44,7 +44,7 @@ export function PDFGenerator({
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const contentRef = useRef<HTMLDivElement>(null)
 
-  // Mock PDF generation function
+  // Real PDF generation function
   const generatePDF = async () => {
     setIsGenerating(true)
     setProgress(0)
@@ -52,78 +52,36 @@ export function PDFGenerator({
     setSuccess(false)
 
     try {
-      // Simulate PDF generation progress
-      const steps = [
-        { progress: 20, message: 'Preparando contenido...' },
-        { progress: 40, message: 'Aplicando estilos...' },
-        { progress: 60, message: 'Generando PDF...' },
-        { progress: 80, message: 'Optimizando documento...' },
-        { progress: 100, message: 'Completado' }
-      ]
+      // Call API to generate PDF from form data
+      setProgress(20)
+      
+      const response = await fetch('/api/medical-forms/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          formId,
+          formData,
+          options: {
+            format,
+            orientation,
+            includeMetadata,
+            watermark
+          }
+        })
+      })
 
-      for (const step of steps) {
-        await new Promise(resolve => setTimeout(resolve, 500))
-        setProgress(step.progress)
+      setProgress(60)
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF')
       }
 
-      // Create a mock PDF blob
-      const mockPdfContent = `
-        %PDF-1.4
-        1 0 obj
-        <<
-        /Type /Catalog
-        /Pages 2 0 R
-        >>
-        endobj
-        
-        2 0 obj
-        <<
-        /Type /Pages
-        /Kids [3 0 R]
-        /Count 1
-        >>
-        endobj
-        
-        3 0 obj
-        <<
-        /Type /Page
-        /Parent 2 0 R
-        /MediaBox [0 0 612 792]
-        /Contents 4 0 R
-        >>
-        endobj
-        
-        4 0 obj
-        <<
-        /Length 44
-        >>
-        stream
-        BT
-        /F1 12 Tf
-        72 720 Td
-        (${title}) Tj
-        ET
-        endstream
-        endobj
-        
-        xref
-        0 5
-        0000000000 65535 f 
-        0000000009 00000 n 
-        0000000058 00000 n 
-        0000000115 00000 n 
-        0000000204 00000 n 
-        trailer
-        <<
-        /Size 5
-        /Root 1 0 R
-        >>
-        startxref
-        297
-        %%EOF
-      `
+      setProgress(80)
 
-      const pdfBlob = new Blob([mockPdfContent], { type: 'application/pdf' })
+      // Get real PDF blob from API response
+      const pdfBlob = await response.blob()
       const url = URL.createObjectURL(pdfBlob)
       
       setPdfUrl(url)
@@ -379,10 +337,10 @@ export const generatePDFFromHTML = async (
     footerTemplate?: string
   }
 ): Promise<Blob> => {
-  // This would typically use a library like Puppeteer, jsPDF, or html2pdf
-  // For now, we'll return a mock PDF blob
+  // Fallback PDF generator for preview purposes only
+  // Real PDF generation happens via API endpoint /api/medical-forms/generate-pdf
   
-  const mockPdfContent = `
+  const minimalPdfContent = `
     %PDF-1.4
     1 0 obj
     <<
@@ -440,7 +398,7 @@ export const generatePDFFromHTML = async (
     %%EOF
   `
 
-  return new Blob([mockPdfContent], { type: 'application/pdf' })
+  return new Blob([minimalPdfContent], { type: 'application/pdf' })
 }
 
 // Utility function to generate CSV from form data

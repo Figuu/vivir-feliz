@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -123,14 +124,23 @@ export function MedicalFormSharing({
   const [commentSection, setCommentSection] = useState('')
   const [commentField, setCommentField] = useState('')
 
-  // Mock users for demonstration
-  const availableUsers: User[] = [
-    { id: '1', name: 'Dr. María González', email: 'maria@therapycenter.com', role: 'THERAPIST', isOnline: true },
-    { id: '2', name: 'Dr. Carlos Rodríguez', email: 'carlos@therapycenter.com', role: 'THERAPIST', isOnline: false },
-    { id: '3', name: 'Ana Martínez', email: 'ana@therapycenter.com', role: 'COORDINATOR', isOnline: true },
-    { id: '4', name: 'Luis Fernández', email: 'luis@therapycenter.com', role: 'THERAPIST', isOnline: true },
-    { id: '5', name: 'Sofia López', email: 'sofia@therapycenter.com', role: 'THERAPIST', isOnline: false }
-  ]
+  // Fetch available users from API
+  const { data: usersData } = useQuery({
+    queryKey: ['therapists-and-coordinators'],
+    queryFn: async () => {
+      const response = await fetch('/api/users?roles=THERAPIST,COORDINATOR')
+      if (!response.ok) throw new Error('Failed to fetch users')
+      return response.json()
+    }
+  })
+
+  const availableUsers: User[] = usersData?.users?.map((user: any) => ({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    isOnline: user.isOnline || false
+  })) || []
 
   // Get permission level color
   const getPermissionColor = (permission: string) => {

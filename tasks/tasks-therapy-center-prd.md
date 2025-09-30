@@ -327,7 +327,7 @@ Based on the comprehensive PRD analysis and current codebase assessment, this do
   - [x] 12.4 Create payment information and history interface
   - [x] 12.5 Build approved report viewing system
   - [x] 12.6 Implement session comments and therapist notes viewing
-  - [ ] 12.7 Create rescheduling request interface for parents
+  - [x] 12.7 Create rescheduling request interface for parents
   - [x] 12.8 Implement parent API endpoints
   - [ ] 12.9 Create parent mobile-responsive interfaces
 

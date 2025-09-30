@@ -233,8 +233,8 @@ export function AnalyticsReportingDashboard({
 
       toast({
         title: "Success",
-        description: `Report exported as ${format.toUpperCase(
-      })}`)
+        description: `Report exported as ${format.toUpperCase()}`
+      })
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to export report'
       setError(errorMessage)

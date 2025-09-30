@@ -382,6 +382,7 @@ export function ConsultationDetailsStep({
             </Button>
           </div>
         </form>
+        )}
       </CardContent>
     </Card>
   )

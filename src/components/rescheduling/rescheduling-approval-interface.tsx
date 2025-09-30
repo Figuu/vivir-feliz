@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -236,20 +237,6 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
         }
       ]
 
-      // Data is already filtered by useQuery hook
-      // No additional filtering needed
-    } catch (err) {
-      console.error('Error loading requests:', err)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: 'Failed to load requests'
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleReview = (request: ReschedulingRequest) => {
     setSelectedRequest(request)
     setFormData({
@@ -282,8 +269,6 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
     }
 
     try {
-      setLoading(true)
-
       const response = await fetch('/api/rescheduling-approval', {
         method: 'POST',
         headers: {
@@ -316,7 +301,7 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
       })
       
       // Reload data
-      await loadRequests()
+      queryClient.invalidateQueries({ queryKey: ['schedule-requests'] })
     } catch (err: any) {
       console.error('Error processing approval:', err)
       toast({
@@ -324,8 +309,6 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
         title: "Error",
         description: err.message || 'Failed to process approval'
       })
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -347,7 +330,7 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
     }
   }
 
-  const filteredRequests = requests.filter(request =>
+  const filteredRequests = requests.filter((request: ReschedulingRequest) =>
     searchTerm === '' ||
     request.session.patient.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     request.session.patient.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -356,9 +339,9 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
     request.session.service.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const pendingCount = requests.filter(r => r.status === 'pending').length
-  const approvedCount = requests.filter(r => r.status === 'approved').length
-  const rejectedCount = requests.filter(r => r.status === 'rejected').length
+  const pendingCount = requests.filter((r: ReschedulingRequest) => r.status === 'pending').length
+  const approvedCount = requests.filter((r: ReschedulingRequest) => r.status === 'approved').length
+  const rejectedCount = requests.filter((r: ReschedulingRequest) => r.status === 'rejected').length
 
   return (
     <div className="space-y-6">
@@ -456,7 +439,7 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
                   <p className="text-muted-foreground mt-2">Loading requests...</p>
                 </CardContent>
               </Card>
-            ) : filteredRequests.filter(r => r.status === tab).length === 0 ? (
+            ) : filteredRequests.filter((r: ReschedulingRequest) => r.status === tab).length === 0 ? (
               <Card>
                 <CardContent className="text-center py-8">
                   {getStatusIcon(tab)}
@@ -468,7 +451,7 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
               </Card>
             ) : (
               <div className="grid grid-cols-1 gap-4">
-                {filteredRequests.filter(r => r.status === tab).map((request, index) => (
+                {filteredRequests.filter((r: ReschedulingRequest) => r.status === tab).map((request: ReschedulingRequest, index: number) => (
                   <motion.div
                     key={request.id}
                     initial={{ opacity: 0, y: 10 }}
@@ -531,7 +514,7 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
                             <div className="pt-3 border-t">
                               <p className="text-xs text-muted-foreground mb-2">Alternative Dates</p>
                               <div className="space-y-1">
-                                {request.alternativeDates.map((alt, idx) => (
+                                {request.alternativeDates.map((alt: { date: string; time: string }, idx: number) => (
                                   <p key={idx} className="text-sm">
                                     {idx + 1}. {new Date(alt.date).toLocaleDateString()} at {alt.time}
                                   </p>
@@ -601,7 +584,6 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
                   value={formData.action}
                   onChange={(e) => setFormData({ ...formData, action: e.target.value as any })}
                   className="w-full border rounded-md px-3 py-2"
-                  disabled={loading}
                 >
                   <option value="approve">Approve Request</option>
                   <option value="reject">Reject Request</option>
@@ -620,7 +602,6 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
                       value={formData.suggestedDate}
                       onChange={(e) => setFormData({ ...formData, suggestedDate: e.target.value })}
                       min={new Date().toISOString().split('T')[0]}
-                      disabled={loading}
                     />
                   </div>
                   <div className="space-y-2">
@@ -630,7 +611,6 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
                       type="time"
                       value={formData.suggestedTime}
                       onChange={(e) => setFormData({ ...formData, suggestedTime: e.target.value })}
-                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -652,7 +632,6 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
                   }
                   rows={4}
                   maxLength={1000}
-                  disabled={loading}
                 />
                 <p className="text-xs text-muted-foreground text-right">
                   {formData.comments.length}/1000 characters
@@ -671,11 +650,11 @@ export function ReschedulingApprovalInterface({ coordinatorId = 'coordinator-1' 
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setApprovalDialogOpen(false)} disabled={loading}>
+            <Button variant="outline" onClick={() => setApprovalDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSubmitApproval} disabled={loading}>
-              {loading ? 'Processing...' : `${formData.action === 'approve' ? 'Approve' : formData.action === 'reject' ? 'Reject' : 'Send Suggestion'}`}
+            <Button onClick={handleSubmitApproval}>
+              {formData.action === 'approve' ? 'Approve' : formData.action === 'reject' ? 'Reject' : 'Send Suggestion'}
             </Button>
           </DialogFooter>
         </DialogContent>

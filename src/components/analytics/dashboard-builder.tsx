@@ -436,7 +436,7 @@ export function DashboardBuilder() {
                   {dashboard.widgets.map((widget) => (
                     <div key={widget.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center space-x-3">
-                        <Grip className="h-4 w-4 text-muted-foreground cursor-move" />
+                        <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
                         <div>
                           <div className="font-medium">{widget.title}</div>
                           <div className="text-sm text-muted-foreground">

@@ -128,11 +128,13 @@ export function ParentInfoStep({
           setIsValid(true)
         } else {
           const errors: Record<string, string[]> = {}
-          result.error.issues.forEach(error => {
-            const path = error.path.join('.')
-            errors[path] = errors[path] || []
-            errors[path].push(error.message)
-          })
+          if (result.error && 'issues' in result.error) {
+            result.error.issues.forEach((error: any) => {
+              const path = error.path?.join('.') || 'unknown'
+              errors[path] = errors[path] || []
+              errors[path].push(error.message || 'Validation error')
+            })
+          }
           setValidationErrors(errors)
           setIsValid(false)
         }

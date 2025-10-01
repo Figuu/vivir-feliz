@@ -49,7 +49,6 @@ import {
   Info,
   AlertTriangle,
   CheckSquare,
-  Square,
   GripVertical,
   Move,
   Copy,
@@ -270,7 +269,7 @@ export function SessionStartComplete({
     // Validate required fields
     const validationErrors = []
     
-    if (sessionNotes.length > 2000) {
+    if (notes.length > 2000) {
       validationErrors.push('Session notes cannot exceed 2000 characters')
     }
     
@@ -738,7 +737,7 @@ export function SessionStartComplete({
                 disabled={loading}
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                <Stop className="h-5 w-5 mr-2" />
+                <Square className="h-5 w-5 mr-2" />
                 Complete Session
               </Button>
             )}

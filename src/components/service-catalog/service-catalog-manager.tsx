@@ -674,7 +674,7 @@ export function ServiceCatalogManager({
                         className="w-10 h-10 rounded-full flex items-center justify-center"
                         style={{ backgroundColor: category.color + '20', color: category.color }}
                       >
-                        {getCategoryIcon(category.icon)}
+                        {getCategoryIcon(category.icon || 'default')}
                       </div>
                       <div>
                         <CardTitle className="text-lg">{category.name}</CardTitle>

@@ -111,22 +111,7 @@ import {
   FileLock,
   FileKey,
   FileUser,
-  FileCog,
-  FileText,
-  FileText,
-  FileText,
-  FileText,
-  FileText,
-  FileText,
-  FileText,
-  FileText,
-  FileText,
-  FileText,
-  FileText,
-  FileText,
-  FileText,
-  FileText,
-  FileText,
+  FileCog
 } from 'lucide-react'
 
 interface Service {

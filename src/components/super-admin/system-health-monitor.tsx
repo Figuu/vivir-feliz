@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Label } from '@/components/ui/label'
 import { 
   Activity, 
   Database,
@@ -20,8 +21,7 @@ import {
   Clock,
   Users,
   Calendar,
-  DollarSign,
-  Label
+  DollarSign
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { toast } from '@/hooks/use-toast'

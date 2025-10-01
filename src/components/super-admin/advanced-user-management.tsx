@@ -234,9 +234,8 @@ export function AdvancedUserManagement() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'bulk',
-          userIds: selectedUsers,
           action: bulkAction,
+          userIds: selectedUsers,
           newRole: bulkAction === 'change_role' ? formData.role : undefined
         })
       })

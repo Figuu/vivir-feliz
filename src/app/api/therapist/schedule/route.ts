@@ -69,7 +69,16 @@ export async function GET(request: NextRequest) {
     // Verify therapist exists
     const therapist = await db.therapist.findUnique({
       where: { id: therapistId },
-      select: { id: true, firstName: true, lastName: true, isActive: true }
+      select: { 
+        id: true, 
+        isActive: true,
+        profile: {
+          select: {
+            firstName: true,
+            lastName: true
+          }
+        }
+      }
     })
     
     if (!therapist) {
@@ -91,7 +100,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       therapist: {
         id: therapist.id,
-        name: `${therapist.firstName} ${therapist.lastName}`,
+        name: `${therapist.profile.firstName} ${therapist.profile.lastName}`,
         isActive: therapist.isActive
       },
       schedules
@@ -125,7 +134,16 @@ export async function POST(request: NextRequest) {
     // Verify therapist exists
     const therapist = await db.therapist.findUnique({
       where: { id: therapistId },
-      select: { id: true, firstName: true, lastName: true, isActive: true }
+      select: { 
+        id: true, 
+        isActive: true,
+        profile: {
+          select: {
+            firstName: true,
+            lastName: true
+          }
+        }
+      }
     })
     
     if (!therapist) {
@@ -248,7 +266,7 @@ export async function PUT(request: NextRequest) {
     // Check if schedule exists
     const existingSchedule = await db.therapistSchedule.findUnique({
       where: { id: scheduleId },
-      include: { therapist: { select: { id: true, firstName: true, lastName: true } } }
+        include: { therapist: { select: { id: true, profile: { select: { firstName: true, lastName: true } } } } }
     })
     
     if (!existingSchedule) {

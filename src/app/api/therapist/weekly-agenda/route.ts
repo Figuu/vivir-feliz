@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
             specialty: {
               select: {
                 id: true,
-                firstName: true,
+                name: true,
                 description: true
               }
             }
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
         id: therapist.id,
         firstName: therapist.profile.firstName,
         lastName: therapist.profile.lastName,
-        specialties: therapist.specialties.map(s => s.specialty)
+        specialties: therapist.specialties?.map(s => s.specialty) || []
       },
       week: {
         startDate: weekStartDate.toISOString(),
@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
         scheduledDate: new Date(sessionData.scheduledDate),
         scheduledTime: sessionData.scheduledTime,
         duration: sessionData.duration,
-        status: 'scheduled',
+        status: 'SCHEDULED',
         sessionNotes: sessionData.notes,
         serviceAssignments: {
           create: sessionData.serviceIds.map(serviceId => ({
@@ -191,8 +191,6 @@ export async function POST(request: NextRequest) {
             id: true,
             firstName: true,
             lastName: true,
-            firstName: true,
-            phone: true
           }
         },
         serviceAssignments: {
@@ -291,8 +289,6 @@ export async function PUT(request: NextRequest) {
             id: true,
             firstName: true,
             lastName: true,
-            firstName: true,
-            phone: true
           }
         },
         serviceAssignments: {
@@ -414,8 +410,6 @@ async function getWeeklySessions(therapistId: string, weekStart: Date, weekEnd: 
           id: true,
           firstName: true,
           lastName: true,
-          email: true,
-          phone: true
         }
       },
       serviceAssignments: {
@@ -425,7 +419,7 @@ async function getWeeklySessions(therapistId: string, weekStart: Date, weekEnd: 
               service: {
                 select: {
                   id: true,
-                  firstName: true,
+                  name: true,
                   description: true,
                   price: true
                 }
@@ -469,14 +463,14 @@ async function getWeeklyAvailability(therapistId: string, weekStart: Date, weekE
     where: {
       therapistId,
       OR: [
-        {
-          effectiveDate: { lte: weekEnd },
-          endDate: { gte: weekStart }
-        },
-        {
-          effectiveDate: { lte: weekEnd },
-          endDate: null
-        }
+        // {
+        //   effectiveDate: { lte: weekEnd },
+        //   endDate: { gte: weekStart }
+        // },
+        // {
+        //   effectiveDate: { lte: weekEnd },
+        //   endDate: null
+        // }
       ]
     }
   })
@@ -489,15 +483,15 @@ async function getWeeklyAvailability(therapistId: string, weekStart: Date, weekE
     const dayOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'][i]
     
     const daySchedule = schedules.find(s => s.dayOfWeek === dayOfWeek)
-    if (daySchedule && (daySchedule as any).isWorkingDay) {
+    if (daySchedule) {
       availability.set(date.toISOString().split('T')[0], {
         startTime: daySchedule.startTime,
         endTime: daySchedule.endTime,
         breakStartTime: daySchedule.breakStart,
         breakEndTime: daySchedule.breakEnd,
-        maxSessionsPerDay: (daySchedule as any).maxSessionsPerDay,
-        sessionDuration: (daySchedule as any).sessionDuration,
-        bufferTime: (daySchedule as any).bufferTime
+        maxSessionsPerDay: 8, // Default value
+        sessionDuration: 60, // Default value
+        bufferTime: 15 // Default value
       })
     }
   }

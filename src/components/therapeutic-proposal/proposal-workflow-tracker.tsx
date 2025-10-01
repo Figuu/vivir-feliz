@@ -21,6 +21,7 @@ import {
   MessageSquare,
   Bell,
   Users,
+  User,
   Calendar,
   FileText,
   ArrowRight,

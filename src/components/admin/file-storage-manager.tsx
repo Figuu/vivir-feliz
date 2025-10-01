@@ -80,7 +80,11 @@ export function FileStorageManager() {
       })
     } catch (err) {
       console.error('Error loading files:', err)
-      toast.error('Failed to load files')
+      toast({
+        title: "Error",
+        description: "Failed to load files",
+        variant: "destructive"
+      })
     } finally {
       setLoading(false)
     }
@@ -100,11 +104,18 @@ export function FileStorageManager() {
         throw new Error('Failed to delete file')
       }
 
-      toast.success('File deleted successfully')
+      toast({
+        title: "Success",
+        description: "File deleted successfully"
+      })
       loadFiles()
     } catch (err) {
       console.error('Error deleting file:', err)
-      toast.error('Failed to delete file')
+      toast({
+        title: "Error",
+        description: "Failed to delete file",
+        variant: "destructive"
+      })
     } finally {
       setLoading(false)
     }

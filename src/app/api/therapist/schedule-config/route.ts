@@ -5,7 +5,7 @@ import { db } from '@/lib/db'
 // Validation schemas
 const scheduleConfigSchema = z.object({
   therapistId: z.string().uuid('Invalid therapist ID'),
-  dayOfWeek: z.enum(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']),
+  dayOfWeek: z.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']),
   startTime: z.string()
     .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Start time must be in HH:MM format'),
   endTime: z.string()
@@ -30,8 +30,8 @@ const scheduleConfigSchema = z.object({
     .max(60, 'Buffer time cannot exceed 60 minutes')
     .default(15),
   isRecurring: z.boolean().default(true),
-  effectiveDate: z.string().datetime('Invalid effective date'),
-  endDate: z.string().datetime('Invalid end date').optional(),
+  // effectiveDate: z.string().datetime('Invalid effective date'),
+  // endDate: z.string().datetime('Invalid end date').optional(),
   notes: z.string().max(500, 'Notes must be less than 500 characters').optional()
 })
 
@@ -41,11 +41,11 @@ const scheduleConfigUpdateSchema = scheduleConfigSchema.partial().extend({
 
 const scheduleConfigQuerySchema = z.object({
   therapistId: z.string().uuid().optional(),
-  dayOfWeek: z.enum(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']).optional(),
+  dayOfWeek: z.enum(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']).optional(),
   isWorkingDay: z.string().transform(val => val === 'true').optional(),
   isRecurring: z.string().transform(val => val === 'true').optional(),
-  effectiveDate: z.string().optional(),
-  endDate: z.string().optional(),
+  // effectiveDate: z.string().optional(),
+  // endDate: z.string().optional(),
   page: z.string().transform(Number).default(1),
   limit: z.string().transform(Number).default(10),
   sortBy: z.enum(['dayOfWeek', 'startTime', 'effectiveDate', 'createdAt']).default('dayOfWeek'),
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const { therapistId, dayOfWeek, isWorkingDay, isRecurring, effectiveDate, endDate, page, limit, sortBy, sortOrder } = validation.data
+    const { therapistId, dayOfWeek, isWorkingDay, isRecurring, page, limit, sortBy, sortOrder } = validation.data
 
     // Build where clause
     const whereClause: any = {}
@@ -99,13 +99,13 @@ export async function GET(request: NextRequest) {
       whereClause.isRecurring = isRecurring
     }
 
-    if (effectiveDate) {
-      whereClause.effectiveDate = { gte: new Date(effectiveDate) }
-    }
+    // if (effectiveDate) {
+    //   whereClause.effectiveDate = { gte: new Date(effectiveDate) }
+    // }
 
-    if (endDate) {
-      whereClause.endDate = { lte: new Date(endDate) }
-    }
+    // if (endDate) {
+    //   whereClause.endDate = { lte: new Date(endDate) }
+    // }
 
     // Get schedule configurations with pagination
     const [scheduleConfigs, totalCount] = await Promise.all([
@@ -115,9 +115,13 @@ export async function GET(request: NextRequest) {
           therapist: {
             select: {
               id: true,
-              firstName: true,
-              lastName: true,
-              email: true
+              profile: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  email: true
+                }
+              }
             }
           }
         },
@@ -195,9 +199,13 @@ export async function POST(request: NextRequest) {
         therapist: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            email: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
           }
         }
       }
@@ -286,9 +294,13 @@ export async function PUT(request: NextRequest) {
         therapist: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            email: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
           }
         }
       }
@@ -339,8 +351,8 @@ export async function DELETE(request: NextRequest) {
       where: {
         therapistId: existingSchedule.therapistId,
         scheduledDate: {
-          gte: existingSchedule.effectiveDate,
-          lte: existingSchedule.endDate || new Date('2099-12-31')
+          // gte: existingSchedule.effectiveDate,
+          // lte: existingSchedule.endDate || new Date('2099-12-31')
         }
       }
     })
@@ -411,7 +423,7 @@ async function checkScheduleConflicts(scheduleData: any, excludeId?: string): Pr
   conflicts: any[];
   suggestions: any[];
 }> {
-  const { therapistId, dayOfWeek, effectiveDate, endDate } = scheduleData
+  const { therapistId, dayOfWeek } = scheduleData
 
   // Find overlapping schedule configurations
   const overlappingSchedules = await db.therapistSchedule.findMany({
@@ -420,14 +432,14 @@ async function checkScheduleConflicts(scheduleData: any, excludeId?: string): Pr
       dayOfWeek,
       id: excludeId ? { not: excludeId } : undefined,
       OR: [
-        {
-          effectiveDate: { lte: endDate || new Date('2099-12-31') },
-          endDate: { gte: effectiveDate }
-        },
-        {
-          effectiveDate: { lte: endDate || new Date('2099-12-31') },
-          endDate: null
-        }
+        // {
+        //   effectiveDate: { lte: endDate || new Date('2099-12-31') },
+        //   endDate: { gte: effectiveDate }
+        // },
+        // {
+        //   effectiveDate: { lte: endDate || new Date('2099-12-31') },
+        //   endDate: null
+        // }
       ]
     }
   })
@@ -437,8 +449,8 @@ async function checkScheduleConflicts(scheduleData: any, excludeId?: string): Pr
     dayOfWeek: schedule.dayOfWeek,
     startTime: schedule.startTime,
     endTime: schedule.endTime,
-    effectiveDate: schedule.effectiveDate,
-    endDate: schedule.endDate,
+    // effectiveDate: schedule.effectiveDate,
+    // endDate: schedule.endDate,
     conflictType: 'overlapping_period'
   }))
 

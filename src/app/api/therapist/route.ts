@@ -150,11 +150,11 @@ export async function GET(request: NextRequest) {
           specialties: therapist.specialties.map(s => s.specialty),
           certifications: therapist.certifications.map(c => c.certification),
           stats: {
-            totalSessions: therapist._count.patientSessions,
+            totalSessions: therapist._count?.patientSessions || 0,
           },
           createdAt: therapist.createdAt,
           updatedAt: therapist.updatedAt,
-          lastLogin: therapist.profile.updatedAt,
+          lastLogin: therapist.profile?.updatedAt,
         })),
         pagination: {
           page,

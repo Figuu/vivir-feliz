@@ -304,7 +304,13 @@ export function TherapistReportSubmission({
       title: submission.title,
       description: submission.description,
       submissionType: submission.submissionType,
-      content: submission.content,
+      content: {
+        summary: submission.content.summary || '',
+        findings: submission.content.findings || '',
+        recommendations: submission.content.recommendations || '',
+        attachments: submission.content.attachments || [],
+        customFields: submission.content.customFields || {}
+      },
       requiresCoordinatorReview: true,
       requiresAdminApproval: false,
       tags: submission.tags || [],

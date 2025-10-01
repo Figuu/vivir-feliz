@@ -196,12 +196,10 @@ export function AuditLogs() {
         return { icon: AlertTriangle, color: 'bg-red-500 text-white' }
       case AuditSeverity.HIGH:
         return { icon: AlertCircle, color: 'bg-orange-500 text-white' }
-      case AuditSeverity.WARNING:
+      case AuditSeverity.MEDIUM:
         return { icon: AlertTriangle, color: 'bg-yellow-500 text-black' }
-      case AuditSeverity.INFO:
-        return { icon: Info, color: 'bg-blue-500 text-white' }
       case AuditSeverity.LOW:
-        return { icon: Info, color: 'bg-gray-500 text-white' }
+        return { icon: Info, color: 'bg-blue-500 text-white' }
       default:
         return { icon: Info, color: 'bg-gray-500 text-white' }
     }

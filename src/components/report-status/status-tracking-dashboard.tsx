@@ -219,7 +219,7 @@ export function StatusTrackingDashboard({
                           Last updated: {new Date(statusData.currentStatus.updatedAt).toLocaleString()}
                         </p>
                       </div>
-                      <Badge className={getStatusColor(statusData.currentStatus.status)} className="text-lg px-4 py-2">
+                      <Badge className={`${getStatusColor(statusData.currentStatus.status)} text-lg px-4 py-2`}>
                         {statusData.currentStatus.status}
                       </Badge>
                     </div>

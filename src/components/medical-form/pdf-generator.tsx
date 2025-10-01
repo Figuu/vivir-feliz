@@ -262,7 +262,7 @@ export function PDFGenerator({
                 Imprimir
               </Button>
               
-              {typeof navigator !== 'undefined' && navigator.share && (
+              {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
                 <Button onClick={handleShare} variant="outline" size="sm">
                   <Share2 className="h-4 w-4 mr-2" />
                   Compartir

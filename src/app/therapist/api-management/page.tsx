@@ -58,7 +58,6 @@ import {
   Copy,
   Move,
   GripVertical,
-  Square,
   CheckSquare,
   Crown,
   Trophy,

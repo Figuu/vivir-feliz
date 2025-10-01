@@ -51,7 +51,6 @@ import {
   MessageSquare,
   Video,
   PhoneCall,
-  MapPin,
   CalendarIcon,
   ClockIcon,
   PieChart,

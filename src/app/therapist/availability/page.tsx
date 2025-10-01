@@ -49,7 +49,6 @@ import {
   Info,
   AlertTriangle,
   CheckSquare,
-  Square,
   GripVertical,
   Move,
   Copy,

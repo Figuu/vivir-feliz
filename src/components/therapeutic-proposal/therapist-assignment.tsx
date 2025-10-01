@@ -63,7 +63,8 @@ import {
   RefreshCw,
   Check,
   X,
-  AlertCircle
+  AlertCircle,
+  FileText
 } from 'lucide-react'
 
 interface Therapist {

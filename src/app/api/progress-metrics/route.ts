@@ -2,83 +2,28 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 
-// Comprehensive validation schemas
-const progressMetricCreateSchema = z.object({
-  // Basic Information
-  patientId: z.string().uuid('Invalid patient ID'),
-  therapistId: z.string().uuid('Invalid therapist ID'),
-  metricId: z.string().uuid('Invalid metric ID'),
-  sessionId: z.string().uuid('Invalid session ID').optional(),
-  
-  // Metric Data
-  value: z.union([
-    z.number(),
-    z.string(),
-    z.boolean()
-  ]),
-  
-  measurementDate: z.string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Measurement date must be in YYYY-MM-DD format')
-    .transform(val => new Date(val)),
-  
-  measurementTime: z.string()
-    .regex(/^\d{2}:\d{2}$/, 'Measurement time must be in HH:MM format')
-    .optional(),
-  
-  // Context
-  context: z.string()
-    .max(500, 'Context cannot exceed 500 characters')
-    .optional()
-    .transform(val => val?.trim()),
-  
-  notes: z.string()
-    .max(1000, 'Notes cannot exceed 1000 characters')
-    .optional()
-    .transform(val => val?.trim()),
-  
-  // Validation
-  isValidated: z.boolean().default(false),
-  validatedBy: z.string().uuid('Invalid validator ID').optional(),
-  validationDate: z.string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Validation date must be in YYYY-MM-DD format')
-    .transform(val => new Date(val))
-    .optional(),
-  
-  // Status
-  status: z.enum(['active', 'archived', 'flagged', 'corrected']).default('active'),
-  
-  isBaseline: z.boolean().default(false)
-})
-
-const progressMetricUpdateSchema = progressMetricCreateSchema.partial()
-
+// Simplified validation schemas
 const progressMetricQuerySchema = z.object({
   page: z.string().transform(val => parseInt(val) || 1).refine(val => val > 0, 'Page must be greater than 0'),
   limit: z.string().transform(val => parseInt(val) || 10).refine(val => val > 0 && val <= 100, 'Limit must be between 1 and 100'),
   patientId: z.string().uuid('Invalid patient ID').optional(),
   therapistId: z.string().uuid('Invalid therapist ID').optional(),
-  metricId: z.string().uuid('Invalid metric ID').optional(),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be in YYYY-MM-DD format').optional(),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be in YYYY-MM-DD format').optional(),
-  status: z.enum(['active', 'archived', 'flagged', 'corrected']).optional(),
-  isValidated: z.string().transform(val => val === 'true').optional(),
-  isBaseline: z.string().transform(val => val === 'true').optional(),
-  sortBy: z.enum(['measurementDate', 'createdAt', 'value', 'status']).optional().default('measurementDate'),
+  status: z.enum(['DRAFT', 'SUBMITTED', 'APPROVED']).optional(),
+  sortBy: z.enum(['createdAt', 'updatedAt', 'reportNumber']).optional().default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc')
 })
 
 const progressMetricAnalyticsSchema = z.object({
   patientId: z.string().uuid('Invalid patient ID').optional(),
   therapistId: z.string().uuid('Invalid therapist ID').optional(),
-  metricId: z.string().uuid('Invalid metric ID').optional(),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be in YYYY-MM-DD format').optional(),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be in YYYY-MM-DD format').optional(),
-  groupBy: z.enum(['day', 'week', 'month', 'quarter']).optional().default('week'),
-  includeTrends: z.string().transform(val => val === 'true').optional().default(true),
-  includeStatistics: z.string().transform(val => val === 'true').optional().default(true)
+  groupBy: z.enum(['day', 'week', 'month', 'quarter']).optional().default('week')
 })
 
-// GET /api/progress-metrics - Get progress metrics with filtering and pagination
+// GET /api/progress-metrics - Get progress metrics (using ProgressReport data)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -89,12 +34,9 @@ export async function GET(request: NextRequest) {
       const validation = progressMetricAnalyticsSchema.safeParse({
         patientId: searchParams.get('patientId'),
         therapistId: searchParams.get('therapistId'),
-        metricId: searchParams.get('metricId'),
         startDate: searchParams.get('startDate'),
         endDate: searchParams.get('endDate'),
-        groupBy: searchParams.get('groupBy'),
-        includeTrends: searchParams.get('includeTrends'),
-        includeStatistics: searchParams.get('includeStatistics')
+        groupBy: searchParams.get('groupBy')
       })
 
       if (!validation.success) {
@@ -104,7 +46,7 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      const { patientId, therapistId, metricId, startDate, endDate, groupBy, includeTrends, includeStatistics } = validation.data
+      const { patientId, therapistId, startDate, endDate, groupBy } = validation.data
 
       // Build where clause for analytics
       const whereClause: any = {}
@@ -117,55 +59,55 @@ export async function GET(request: NextRequest) {
         whereClause.therapistId = therapistId
       }
       
-      if (metricId) {
-        whereClause.metricId = metricId
-      }
-      
       if (startDate) {
-        whereClause.measurementDate = { gte: new Date(startDate) }
+        whereClause.createdAt = { gte: new Date(startDate) }
       }
       
       if (endDate) {
-        whereClause.measurementDate = { 
-          ...whereClause.measurementDate,
+        whereClause.createdAt = { 
+          ...whereClause.createdAt,
           lte: new Date(endDate) 
         }
       }
 
-      // Get metrics for analytics
-      const metrics = await db.progressMetric.findMany({
+      // Get progress reports for analytics
+      const progressReports = await db.progressReport.findMany({
         where: whereClause,
         include: {
           patient: {
             select: {
               id: true,
-              firstName: true,
-              lastName: true
+              profile: {
+                select: {
+                  firstName: true,
+                  lastName: true
+                }
+              }
             }
           },
           therapist: {
             select: {
               id: true,
-              firstName: true,
-              lastName: true
+              profile: {
+                select: {
+                  firstName: true,
+                  lastName: true
+                }
+              }
             }
           },
-          metric: {
+          therapeuticPlan: {
             select: {
               id: true,
-              name: true,
-              type: true,
-              unit: true,
-              minValue: true,
-              maxValue: true
+              title: true
             }
           }
         },
-        orderBy: { measurementDate: 'asc' }
+        orderBy: { createdAt: 'asc' }
       })
 
       // Process analytics data
-      const analytics = processAnalyticsData(metrics, groupBy, includeTrends, includeStatistics)
+      const analytics = processAnalyticsData(progressReports, groupBy)
 
       return NextResponse.json({
         success: true,
@@ -178,12 +120,9 @@ export async function GET(request: NextRequest) {
         limit: searchParams.get('limit'),
         patientId: searchParams.get('patientId'),
         therapistId: searchParams.get('therapistId'),
-        metricId: searchParams.get('metricId'),
         startDate: searchParams.get('startDate'),
         endDate: searchParams.get('endDate'),
         status: searchParams.get('status'),
-        isValidated: searchParams.get('isValidated'),
-        isBaseline: searchParams.get('isBaseline'),
         sortBy: searchParams.get('sortBy'),
         sortOrder: searchParams.get('sortOrder')
       })
@@ -195,7 +134,7 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      const { page, limit, patientId, therapistId, metricId, startDate, endDate, status, isValidated, isBaseline, sortBy, sortOrder } = validation.data
+      const { page, limit, patientId, therapistId, startDate, endDate, status, sortBy, sortOrder } = validation.data
 
       // Build where clause
       const whereClause: any = {}
@@ -208,17 +147,13 @@ export async function GET(request: NextRequest) {
         whereClause.therapistId = therapistId
       }
       
-      if (metricId) {
-        whereClause.metricId = metricId
-      }
-      
       if (startDate) {
-        whereClause.measurementDate = { gte: new Date(startDate) }
+        whereClause.createdAt = { gte: new Date(startDate) }
       }
       
       if (endDate) {
-        whereClause.measurementDate = { 
-          ...whereClause.measurementDate,
+        whereClause.createdAt = { 
+          ...whereClause.createdAt,
           lte: new Date(endDate) 
         }
       }
@@ -226,54 +161,41 @@ export async function GET(request: NextRequest) {
       if (status) {
         whereClause.status = status
       }
-      
-      if (isValidated !== undefined) {
-        whereClause.isValidated = isValidated
-      }
-      
-      if (isBaseline !== undefined) {
-        whereClause.isBaseline = isBaseline
-      }
 
       // Calculate pagination
       const skip = (page - 1) * limit
 
-      // Get progress metrics with related data
-      const [metrics, totalCount] = await Promise.all([
-        db.progressMetric.findMany({
+      // Get progress reports with related data
+      const [reports, totalCount] = await Promise.all([
+        db.progressReport.findMany({
           where: whereClause,
           include: {
             patient: {
               select: {
                 id: true,
-                firstName: true,
-                lastName: true,
-                email: true
+                profile: {
+                  select: {
+                    firstName: true,
+                    lastName: true
+                  }
+                }
               }
             },
             therapist: {
               select: {
                 id: true,
-                firstName: true,
-                lastName: true,
-                email: true
+                profile: {
+                  select: {
+                    firstName: true,
+                    lastName: true
+                  }
+                }
               }
             },
-            metric: {
+            therapeuticPlan: {
               select: {
                 id: true,
-                name: true,
-                type: true,
-                unit: true,
-                minValue: true,
-                maxValue: true
-              }
-            },
-            session: {
-              select: {
-                id: true,
-                scheduledDate: true,
-                scheduledTime: true
+                title: true
               }
             }
           },
@@ -281,7 +203,7 @@ export async function GET(request: NextRequest) {
           skip,
           take: limit,
         }),
-        db.progressMetric.count({ where: whereClause })
+        db.progressReport.count({ where: whereClause })
       ])
 
       // Calculate pagination metadata
@@ -292,24 +214,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: true,
         data: {
-          metrics: metrics.map(metric => ({
-            id: metric.id,
-            value: metric.value,
-            measurementDate: metric.measurementDate,
-            measurementTime: metric.measurementTime,
-            context: metric.context,
-            notes: metric.notes,
-            isValidated: metric.isValidated,
-            validatedBy: metric.validatedBy,
-            validationDate: metric.validationDate,
-            status: metric.status,
-            isBaseline: metric.isBaseline,
-            patient: metric.patient,
-            therapist: metric.therapist,
-            metric: metric.metric,
-            session: metric.session,
-            createdAt: metric.createdAt,
-            updatedAt: metric.updatedAt
+          reports: reports.map(report => ({
+            id: report.id,
+            reportNumber: report.reportNumber,
+            progress: report.progress,
+            observations: report.observations,
+            status: report.status,
+            coordinatorNotes: report.coordinatorNotes,
+            patient: report.patient,
+            therapist: report.therapist,
+            therapeuticPlan: report.therapeuticPlan,
+            createdAt: report.createdAt,
+            updatedAt: report.updatedAt
           })),
           pagination: {
             page,
@@ -322,12 +238,9 @@ export async function GET(request: NextRequest) {
           filters: {
             patientId,
             therapistId,
-            metricId,
             startDate,
             endDate,
             status,
-            isValidated,
-            isBaseline,
             sortBy,
             sortOrder
           }
@@ -344,217 +257,40 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/progress-metrics - Create a new progress metric
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    
-    // Validate request body
-    const validation = progressMetricCreateSchema.safeParse(body)
-    if (!validation.success) {
-      return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.issues },
-        { status: 400 }
-      )
-    }
-
-    const validatedData = validation.data
-
-    // Check if patient exists
-    const patient = await db.patient.findUnique({
-      where: { id: validatedData.patientId }
-    })
-
-    if (!patient) {
-      return NextResponse.json(
-        { error: 'Patient not found' },
-        { status: 404 }
-      )
-    }
-
-    // Check if therapist exists
-    const therapist = await db.therapist.findUnique({
-      where: { id: validatedData.therapistId }
-    })
-
-    if (!therapist) {
-      return NextResponse.json(
-        { error: 'Therapist not found' },
-        { status: 404 }
-      )
-    }
-
-    // Check if metric exists
-    const metric = await db.therapeuticMetric.findUnique({
-      where: { id: validatedData.metricId }
-    })
-
-    if (!metric) {
-      return NextResponse.json(
-        { error: 'Metric not found' },
-        { status: 404 }
-      )
-    }
-
-    // Validate metric value based on type
-    if (metric.type === 'numeric' && typeof validatedData.value !== 'number') {
-      return NextResponse.json(
-        { error: `Metric "${metric.name}" requires a numeric value` },
-        { status: 400 }
-      )
-    }
-
-    if (metric.type === 'boolean' && typeof validatedData.value !== 'boolean') {
-      return NextResponse.json(
-        { error: `Metric "${metric.name}" requires a boolean value` },
-        { status: 400 }
-      )
-    }
-
-    if (metric.type === 'text' && typeof validatedData.value !== 'string') {
-      return NextResponse.json(
-        { error: `Metric "${metric.name}" requires a text value` },
-        { status: 400 }
-      )
-    }
-
-    // Validate numeric ranges
-    if (metric.type === 'numeric' && typeof validatedData.value === 'number') {
-      if (metric.minValue !== undefined && validatedData.value < metric.minValue) {
-        return NextResponse.json(
-          { error: `Metric "${metric.name}" value must be at least ${metric.minValue}` },
-          { status: 400 }
-        )
-      }
-      if (metric.maxValue !== undefined && validatedData.value > metric.maxValue) {
-        return NextResponse.json(
-          { error: `Metric "${metric.name}" value cannot exceed ${metric.maxValue}` },
-          { status: 400 }
-        )
-      }
-    }
-
-    // Validate text length
-    if (metric.type === 'text' && typeof validatedData.value === 'string') {
-      if (metric.maxLength && validatedData.value.length > metric.maxLength) {
-        return NextResponse.json(
-          { error: `Metric "${metric.name}" text cannot exceed ${metric.maxLength} characters` },
-          { status: 400 }
-        )
-      }
-    }
-
-    // Create progress metric
-    const result = await db.progressMetric.create({
-      data: {
-        patientId: validatedData.patientId,
-        therapistId: validatedData.therapistId,
-        metricId: validatedData.metricId,
-        sessionId: validatedData.sessionId,
-        value: validatedData.value,
-        measurementDate: validatedData.measurementDate,
-        measurementTime: validatedData.measurementTime,
-        context: validatedData.context,
-        notes: validatedData.notes,
-        isValidated: validatedData.isValidated,
-        validatedBy: validatedData.validatedBy,
-        validationDate: validatedData.validationDate,
-        status: validatedData.status,
-        isBaseline: validatedData.isBaseline
-      },
-      include: {
-        patient: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true
-          }
-        },
-        therapist: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true
-          }
-        },
-        metric: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            unit: true
-          }
-        },
-        session: {
-          select: {
-            id: true,
-            scheduledDate: true,
-            scheduledTime: true
-          }
-        }
-      }
-    })
-
-    return NextResponse.json({
-      success: true,
-      message: 'Progress metric created successfully',
-      data: result
-    }, { status: 201 })
-
-  } catch (error) {
-    console.error('Error creating progress metric:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
-}
-
 // Helper function to process analytics data
-function processAnalyticsData(metrics: any[], groupBy: string, includeTrends: boolean, includeStatistics: boolean) {
+function processAnalyticsData(reports: any[], groupBy: string) {
   const analytics: any = {
     summary: {
-      totalMeasurements: metrics.length,
+      totalReports: reports.length,
       dateRange: {
-        start: metrics.length > 0 ? metrics[0].measurementDate : null,
-        end: metrics.length > 0 ? metrics[metrics.length - 1].measurementDate : null
+        start: reports.length > 0 ? reports[0].createdAt : null,
+        end: reports.length > 0 ? reports[reports.length - 1].createdAt : null
       }
     }
   }
 
-  if (includeStatistics) {
-    // Calculate basic statistics
-    const numericMetrics = metrics.filter(m => typeof m.value === 'number')
-    if (numericMetrics.length > 0) {
-      const values = numericMetrics.map(m => m.value as number)
-      analytics.statistics = {
-        mean: values.reduce((sum, val) => sum + val, 0) / values.length,
-        median: values.sort((a, b) => a - b)[Math.floor(values.length / 2)],
-        min: Math.min(...values),
-        max: Math.max(...values),
-        standardDeviation: calculateStandardDeviation(values)
-      }
-    }
-  }
+  // Calculate status distribution
+  const statusDistribution: any = {}
+  reports.forEach(report => {
+    statusDistribution[report.status] = (statusDistribution[report.status] || 0) + 1
+  })
 
-  if (includeTrends) {
-    // Group data by time period
-    analytics.trends = groupMetricsByTime(metrics, groupBy)
-  }
+  analytics.statusDistribution = statusDistribution
 
-  // Group by metric
-  analytics.byMetric = groupMetricsByMetric(metrics)
+  // Group data by time period
+  analytics.trends = groupReportsByTime(reports, groupBy)
+
+  // Group by patient
+  analytics.byPatient = groupReportsByPatient(reports)
 
   return analytics
 }
 
-function groupMetricsByTime(metrics: any[], groupBy: string) {
+function groupReportsByTime(reports: any[], groupBy: string) {
   const groups: any = {}
   
-  metrics.forEach(metric => {
-    const date = new Date(metric.measurementDate)
+  reports.forEach(report => {
+    const date = new Date(report.createdAt)
     let key: string
     
     switch (groupBy) {
@@ -578,34 +314,32 @@ function groupMetricsByTime(metrics: any[], groupBy: string) {
     }
     
     if (!groups[key]) {
-      groups[key] = []
-    }
-    groups[key].push(metric)
-  })
-  
-  return groups
-}
-
-function groupMetricsByMetric(metrics: any[]) {
-  const groups: any = {}
-  
-  metrics.forEach(metric => {
-    const metricId = metric.metricId
-    if (!groups[metricId]) {
-      groups[metricId] = {
-        metric: metric.metric,
-        measurements: []
+      groups[key] = {
+        period: key,
+        count: 0,
+        reports: []
       }
     }
-    groups[metricId].measurements.push(metric)
+    groups[key].count++
+    groups[key].reports.push(report)
+  })
+  
+  return Object.values(groups)
+}
+
+function groupReportsByPatient(reports: any[]) {
+  const groups: any = {}
+  
+  reports.forEach(report => {
+    const patientId = report.patientId
+    if (!groups[patientId]) {
+      groups[patientId] = {
+        patient: report.patient,
+        reports: []
+      }
+    }
+    groups[patientId].reports.push(report)
   })
   
   return groups
-}
-
-function calculateStandardDeviation(values: number[]): number {
-  const mean = values.reduce((sum, val) => sum + val, 0) / values.length
-  const squaredDiffs = values.map(val => Math.pow(val - mean, 2))
-  const avgSquaredDiff = squaredDiffs.reduce((sum, val) => sum + val, 0) / values.length
-  return Math.sqrt(avgSquaredDiff)
 }

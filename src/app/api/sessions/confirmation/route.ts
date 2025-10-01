@@ -59,8 +59,12 @@ export async function GET(request: NextRequest) {
         patient: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            },
             parent: {
               select: {
                 id: true,

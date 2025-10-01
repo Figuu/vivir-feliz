@@ -103,9 +103,10 @@ export class AvailabilityChecker {
     const therapist = await db.therapist.findUnique({
       where: { id: therapistId },
       include: {
-        user: {
+        profile: {
           select: {
-            name: true
+            firstName: true,
+            lastName: true
           }
         }
       }
@@ -119,7 +120,7 @@ export class AvailabilityChecker {
     }
 
     // Check if therapist has schedule for this day
-    const dayOfWeek = this.getDayOfWeek(date)
+    const dayOfWeek = this.getDayOfWeek(date) as any
     const schedule = await db.therapistSchedule.findUnique({
       where: {
         therapistId_dayOfWeek: {
@@ -155,7 +156,7 @@ export class AvailabilityChecker {
       return {
         ...conflictCheck,
         therapistId,
-        therapistName: therapist.user.name || `${therapist.firstName} ${therapist.lastName}`
+        therapistName: `${therapist.profile.firstName} ${therapist.profile.lastName}`
       }
     }
 
@@ -191,9 +192,10 @@ export class AvailabilityChecker {
         }
       },
       include: {
-        user: {
+        profile: {
           select: {
-            name: true
+            firstName: true,
+            lastName: true
           }
         }
       }
@@ -253,9 +255,10 @@ export class AvailabilityChecker {
         canTakeConsultations: true
       },
       include: {
-        user: {
+        profile: {
           select: {
-            name: true
+            firstName: true,
+            lastName: true
           }
         }
       }
@@ -428,14 +431,15 @@ export class AvailabilityChecker {
         }
       },
       include: {
-        user: {
+        profile: {
           select: {
-            name: true
+            firstName: true,
+            lastName: true
           }
         },
         schedules: {
           where: {
-            dayOfWeek: this.getDayOfWeek(date),
+            dayOfWeek: this.getDayOfWeek(date) as any,
             isActive: true
           }
         }
@@ -464,7 +468,7 @@ export class AvailabilityChecker {
           alternatives.push({
             time: slot,
             therapistId: therapist.id,
-            therapistName: therapist.user.name || `${therapist.firstName} ${therapist.lastName}`
+            therapistName: `${therapist.profile.firstName} ${therapist.profile.lastName}`
           })
         }
       }
@@ -609,7 +613,7 @@ export class AvailabilityChecker {
     const availability: TherapistAvailability[] = []
 
     for (const therapist of therapists) {
-      const dayOfWeek = this.getDayOfWeek(date)
+      const dayOfWeek = this.getDayOfWeek(date) as any
       const schedule = await db.therapistSchedule.findUnique({
         where: {
           therapistId_dayOfWeek: {
@@ -622,7 +626,7 @@ export class AvailabilityChecker {
       if (!schedule || !schedule.isActive) {
         availability.push({
           therapistId: therapist.id,
-          therapistName: therapist.user.name || `${therapist.firstName} ${therapist.lastName}`,
+          therapistName: `${therapist.profile.firstName} ${therapist.profile.lastName}`,
           specialties: therapist.specialties.map(ts => ts.specialty.name),
           isAvailable: false,
           reason: 'Not scheduled for this day'
@@ -654,7 +658,7 @@ export class AvailabilityChecker {
 
       availability.push({
         therapistId: therapist.id,
-        therapistName: therapist.user.name || `${therapist.firstName} ${therapist.lastName}`,
+        therapistName: `${therapist.profile.firstName} ${therapist.profile.lastName}`,
         specialties: therapist.specialties.map(ts => ts.specialty.name),
         isAvailable: hasAvailableSlots,
         reason: hasAvailableSlots ? undefined : 'No available slots',

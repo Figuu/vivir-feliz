@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PaymentAnalyticsManager, ReportType } from '@/lib/payment-analytics-manager'
+import { db } from '@/lib/db'
 import { z } from 'zod'
 
 const generateReportSchema = z.object({

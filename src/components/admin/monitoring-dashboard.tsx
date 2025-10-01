@@ -12,7 +12,8 @@ import {
   FileText,
   Shield,
   Clock,
-  Zap
+  Zap,
+  XCircle
 } from 'lucide-react'
 import { 
   LOGGING_CONFIG, 

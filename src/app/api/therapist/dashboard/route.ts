@@ -41,9 +41,13 @@ export async function GET(request: NextRequest) {
       where: { id: therapistId },
       select: {
         id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
+        profile: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true
+          }
+        },
         specialties: {
           include: {
             specialty: {
@@ -72,9 +76,9 @@ export async function GET(request: NextRequest) {
     const dashboardData: any = {
       therapist: {
         id: therapist.id,
-        firstName: therapist.firstName,
-        lastName: therapist.lastName,
-        email: therapist.email,
+        firstName: therapist.profile.firstName,
+        lastName: therapist.profile.lastName,
+        email: therapist.profile.email,
         specialties: therapist.specialties.map(s => s.specialty)
       },
       period: {

@@ -54,12 +54,11 @@ import {
   ChevronRight,
   Play,
   Pause,
-  Stop,
+  Square,
   RotateCcw,
   Copy,
   Move,
   GripVertical,
-  Square,
   CheckSquare
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -67,7 +66,6 @@ import { TherapistWorkloadCapacity } from '@/components/therapist/therapist-work
 import { useTherapistWorkloadCapacity } from '@/hooks/use-therapist-workload-capacity'
 
 export default function TherapistWorkloadCapacityPage() {
-  const [selectedTherapistId, setSelectedTherapistId] = useState<string>('')
   const [activeTab, setActiveTab] = useState('manager')
   
   const {
@@ -78,7 +76,7 @@ export default function TherapistWorkloadCapacityPage() {
     alerts,
     summary,
     therapists,
-    selectedTherapistId: hookSelectedTherapistId,
+    selectedTherapistId,
     selectedPeriod,
     loadWorkloadData,
     updateCapacity,

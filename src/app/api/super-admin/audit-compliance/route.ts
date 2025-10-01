@@ -72,10 +72,14 @@ export async function GET(request: NextRequest) {
         include: {
           user: {
             select: {
-              email: true,
-              firstName: true,
-              lastName: true,
-              role: true
+              profile: {
+                select: {
+                  email: true,
+                  firstName: true,
+                  lastName: true,
+                  role: true
+                }
+              }
             }
           }
         },

@@ -32,7 +32,6 @@ import {
   EyeOff,
   Lock,
   Unlock,
-  User,
   UserCheck,
   Crown,
   Settings,
@@ -66,14 +65,9 @@ import {
   FileAudio,
   FileCode,
   FileJson,
-  FilePdf,
-  FileWord,
-  FileExcel,
-  FilePowerpoint,
   FileArchive,
   FileMinus,
   FilePlus,
-  FileSlash,
   FileSymlink,
   FileType,
   FileUp,
@@ -82,29 +76,15 @@ import {
   FileHeart,
   FileWarning,
   FileQuestion,
-  FileInfo,
   FileLock,
-  FileUnlock,
-  FileShield,
   FileKey,
   FileUser,
-  FileUsers,
-  FileSettings,
   FileCog,
-  FileGear,
-  FileWrench,
-  FileHammer,
-  FileTool,
-  FileWrench2,
-  FileScrewdriver,
-  FileNut,
-  FileBolt,
-  FileRuler
 } from 'lucide-react'
 import { 
   ProposalWorkflowManager,
   type Proposal,
-  type User,
+  type User as WorkflowUser,
   type WorkflowStep,
   type WorkflowTransition,
   type WorkflowEvent,
@@ -114,7 +94,7 @@ import {
 
 interface ProposalWorkflowTrackerProps {
   proposal: Proposal
-  currentUser: User
+  currentUser: WorkflowUser
   onStatusChange?: (proposal: Proposal) => void
   onCommentAdded?: (comment: WorkflowComment) => void
   className?: string

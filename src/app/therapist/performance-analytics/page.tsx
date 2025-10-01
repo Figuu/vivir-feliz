@@ -54,12 +54,11 @@ import {
   ChevronRight,
   Play,
   Pause,
-  Stop,
+  Square,
   RotateCcw,
   Copy,
   Move,
   GripVertical,
-  Square,
   CheckSquare,
   Award,
   Trophy,
@@ -73,7 +72,6 @@ import { TherapistPerformanceAnalytics } from '@/components/therapist/therapist-
 import { useTherapistPerformanceAnalytics } from '@/hooks/use-therapist-performance-analytics'
 
 export default function TherapistPerformanceAnalyticsPage() {
-  const [selectedTherapistId, setSelectedTherapistId] = useState<string>('')
   const [activeTab, setActiveTab] = useState('manager')
   
   const {
@@ -84,7 +82,7 @@ export default function TherapistPerformanceAnalyticsPage() {
     trends,
     summary,
     therapists,
-    selectedTherapistId: hookSelectedTherapistId,
+    selectedTherapistId,
     selectedPeriod,
     loadPerformanceData,
     createPerformanceGoal,

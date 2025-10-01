@@ -1,6 +1,8 @@
 import { db } from './db'
 
 export type PaymentHistoryFilter = {
+  patientId?: string
+  therapistId?: string
   parentId?: string
   paymentMethod?: string
   status?: string

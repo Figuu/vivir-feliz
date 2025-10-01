@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     if (signInError) {
       // Log failed password change attempt
       await auditAuth({
-        action: AuditAction.PASSWORD_CHANGED,
+        action: AuditAction.PASSWORD_CHANGE,
         userId: user.id,
         success: false,
         errorMessage: 'Current password is incorrect',
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       
       // Log failed password update
       await auditAuth({
-        action: AuditAction.PASSWORD_CHANGED,
+        action: AuditAction.PASSWORD_CHANGE,
         userId: user.id,
         success: false,
         errorMessage: updateError.message,
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     // Log successful password change
     await auditAuth({
-      action: AuditAction.PASSWORD_CHANGED,
+      action: AuditAction.PASSWORD_CHANGE,
       userId: user.id,
       success: true,
       request,

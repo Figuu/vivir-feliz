@@ -75,7 +75,7 @@ export function PaymentConfirmationWorkflow({
   const loadConfirmationRequest = async () => {
     try {
       // First, try to get existing confirmation request
-      const requests = await getConfirmationRequests({ paymentId })
+      const requests = await getConfirmationRequests({ status: 'PENDING_REVIEW' })
       if (requests.requests.length > 0) {
         const request = requests.requests[0]
         const details = await getConfirmationRequestDetails(request.id)

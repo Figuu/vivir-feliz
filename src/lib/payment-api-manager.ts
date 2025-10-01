@@ -2,12 +2,15 @@ import { db } from './db'
 import { PaymentType, PaymentStatus } from '@prisma/client'
 
 export interface PaymentRequest {
-  parentId: string
+  patientId?: string
+  therapistId?: string
+  parentId?: string
   consultationRequestId?: string
   paymentPlanId?: string
   amount: number
   paymentMethod: string
-  type: PaymentType
+  paymentType?: string
+  type?: PaymentType
   description?: string
   reference?: string
   metadata?: Record<string, any>

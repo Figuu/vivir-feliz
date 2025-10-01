@@ -45,7 +45,7 @@ import {
   Moon,
   Coffee,
   Home,
-  Work,
+  Briefcase,
   School,
   Heart,
   Star,

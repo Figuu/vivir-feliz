@@ -6,7 +6,7 @@ import { db } from '@/lib/db'
 const updateProposalSchema = z.object({
   status: z.enum(['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED']).optional(),
   selectedProposal: z.enum(['A', 'B']).optional(),
-  paymentPlan: z.enum(['MONTHLY', 'QUARTERLY', 'ANNUAL', 'SINGLE_PAYMENT']).optional(),
+  paymentPlanType: z.enum(['MONTHLY', 'QUARTERLY', 'ANNUAL', 'SINGLE_PAYMENT']).optional(),
   notes: z.string().optional(),
   coordinatorNotes: z.string().optional(),
   adminNotes: z.string().optional()
@@ -24,16 +24,25 @@ export async function GET(
         patient: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            dateOfBirth: true,
-            parent: {
+            profile: {
               select: {
-                id: true,
                 firstName: true,
                 lastName: true,
                 email: true,
                 phone: true
+              }
+            },
+            parent: {
+              select: {
+                id: true,
+                profile: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    phone: true
+                  }
+                }
               }
             }
           }
@@ -41,10 +50,14 @@ export async function GET(
         therapist: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true
+              }
+            }
           }
         },
         consultationRequest: {
@@ -69,8 +82,12 @@ export async function GET(
             assignedTherapist: {
               select: {
                 id: true,
-                firstName: true,
-                lastName: true
+                profile: {
+                  select: {
+                    firstName: true,
+                    lastName: true
+                  }
+                }
               }
             },
             serviceAssignments: {
@@ -86,15 +103,7 @@ export async function GET(
             }
           }
         },
-        payments: {
-          select: {
-            id: true,
-            amount: true,
-            status: true,
-            dueDate: true,
-            paidAt: true
-          }
-        }
+        // Note: payments relation not directly available in TherapeuticProposal schema
       }
     })
 
@@ -167,15 +176,23 @@ export async function PATCH(
         patient: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
           }
         },
         therapist: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
           }
         },
         services: {

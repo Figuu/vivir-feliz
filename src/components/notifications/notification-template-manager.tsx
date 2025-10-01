@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { 
+import {
   Bell, 
   Mail,
   MessageSquare,
@@ -22,10 +22,11 @@ import {
   Search,
   RefreshCw,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  X
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 
 interface NotificationTemplate {
   id: string
@@ -88,7 +89,11 @@ export function NotificationTemplateManager() {
       setStatistics(result.data.statistics)
     } catch (err) {
       console.error('Error loading templates:', err)
-      toast.error('Failed to load notification templates')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to load notification templates'
+      })
     } finally {
       setLoading(false)
     }
@@ -96,7 +101,11 @@ export function NotificationTemplateManager() {
 
   const handleCreateTemplate = async () => {
     if (!formData.name || !formData.body) {
-      toast.error('Name and body are required')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Name and body are required'
+      })
       return
     }
 
@@ -117,13 +126,20 @@ export function NotificationTemplateManager() {
         throw new Error(error.error || 'Failed to create template')
       }
 
-      toast.success('Template created successfully')
+      toast({
+        title: "Success",
+        description: 'Template created successfully'
+      })
       setCreateDialogOpen(false)
       resetForm()
       loadTemplates()
     } catch (err: any) {
       console.error('Error creating template:', err)
-      toast.error(err.message || 'Failed to create template')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || 'Failed to create template'
+      })
     } finally {
       setLoading(false)
     }
@@ -150,12 +166,19 @@ export function NotificationTemplateManager() {
         throw new Error(error.error || 'Failed to update template')
       }
 
-      toast.success('Template updated successfully')
+      toast({
+        title: "Success",
+        description: 'Template updated successfully'
+      })
       setEditDialogOpen(false)
       loadTemplates()
     } catch (err: any) {
       console.error('Error updating template:', err)
-      toast.error(err.message || 'Failed to update template')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || 'Failed to update template'
+      })
     } finally {
       setLoading(false)
     }
@@ -175,11 +198,18 @@ export function NotificationTemplateManager() {
         throw new Error('Failed to delete template')
       }
 
-      toast.success('Template deleted successfully')
+      toast({
+        title: "Success",
+        description: 'Template deleted successfully'
+      })
       loadTemplates()
     } catch (err) {
       console.error('Error deleting template:', err)
-      toast.error('Failed to delete template')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to delete template'
+      })
     } finally {
       setLoading(false)
     }
@@ -599,7 +629,7 @@ export function NotificationTemplateManager() {
                 {formData.variables.map(variable => (
                   <Badge key={variable} variant="outline" className="cursor-pointer" onClick={() => removeVariable(variable)}>
                     {variable}
-                    <XCircle className="h-3 w-3 ml-1" />
+                    <X className="h-3 w-3 ml-1" />
                   </Badge>
                 ))}
               </div>

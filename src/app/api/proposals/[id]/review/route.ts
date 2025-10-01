@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
-import { validateProposalReview } from '@/lib/proposal-validation'
+import { z } from 'zod'
 
 // Helper function to get current user from Supabase
 async function getCurrentUser(request: NextRequest) {
@@ -17,6 +17,8 @@ async function getCurrentUser(request: NextRequest) {
     select: {
       id: true,
       role: true,
+      firstName: true,
+      lastName: true,
       therapist: {
         select: { id: true }
       }
@@ -26,211 +28,96 @@ async function getCurrentUser(request: NextRequest) {
   return dbUser
 }
 
-// Legacy mock data structure (not used anymore)
-const __legacyMockProposals = [
-  {
-    id: 'PROP-2024-001',
-    patientId: 'PAT-2024-001',
-    therapistId: 'THER-2024-001',
-    selectedServices: [
-      {
-        service: {
-          id: 'service-1',
-          code: 'EVAL-001',
-          name: 'Evaluación Pediátrica Integral',
-          description: 'Evaluación completa del desarrollo infantil',
-          categoryId: 'cat-1',
-          category: {
-            id: 'cat-1',
-            name: 'Terapia Pediátrica',
-            color: '#3b82f6',
-            icon: 'baby'
-          },
-          type: 'EVALUATION',
-          duration: 120,
-          price: 150.00,
-          currency: 'USD',
-          isActive: true,
-          requiresApproval: false,
-          maxSessions: 1,
-          minSessions: 1,
-          ageRange: { min: 2, max: 18 },
-          prerequisites: ['Historial médico', 'Informes escolares'],
-          outcomes: ['Diagnóstico integral', 'Plan de tratamiento', 'Recomendaciones'],
-          tags: ['pediatric', 'evaluation', 'development']
-        },
-        sessionCount: 1,
-        notes: 'Evaluación inicial para determinar necesidades específicas',
-        priority: 'HIGH'
-      }
-    ],
-    totalSessions: 1,
-    estimatedDuration: 120,
-    estimatedCost: 150.00,
-    currency: 'USD',
-    status: 'UNDER_REVIEW',
-    priority: 'HIGH',
-    notes: 'Propuesta para paciente pediátrico con necesidades múltiples de terapia',
-    goals: [
-      'Mejorar las habilidades de comunicación y lenguaje',
-      'Desarrollar habilidades motoras finas y gruesas'
-    ],
-    expectedOutcomes: [
-      'Comunicación más efectiva con familiares y compañeros',
-      'Mejora en las habilidades motoras para actividades diarias'
-    ],
-    followUpRequired: true,
-    followUpNotes: 'Seguimiento mensual para evaluar progreso',
-    createdAt: '2024-01-20T10:00:00Z',
-    updatedAt: '2024-01-20T14:30:00Z',
-    submittedAt: '2024-01-20T11:00:00Z',
-    reviewedAt: '2024-01-20T13:00:00Z',
-    reviewedBy: 'coord-001',
-    coordinatorNotes: 'Propuesta bien estructurada con objetivos claros',
-    pricingNotes: 'Costos dentro del rango presupuestario',
-    approvalNotes: 'Aprobación pendiente de revisión final',
-    adminNotes: 'Verificar cobertura de seguro antes de aprobación final',
-    finalApprovalNotes: 'Aprobación final pendiente',
-    budgetApproval: true,
-    insuranceCoverage: {
-      covered: true,
-      percentage: 80,
-      notes: 'Cobertura del 80% por seguro médico'
-    },
-    paymentTerms: {
-      method: 'MIXED',
-      installments: 3,
-      notes: 'Pago en 3 cuotas: 40% inicial, 30% a mitad del tratamiento, 30% final'
-    }
-  }
-]
+// Validation schema for proposal review
+const proposalReviewSchema = z.object({
+  action: z.enum(['APPROVE', 'REJECT', 'REQUEST_CHANGES', 'PENDING_REVIEW']),
+  notes: z.string().max(1000, 'Notes cannot exceed 1000 characters').optional(),
+  coordinatorNotes: z.string().max(1000, 'Coordinator notes cannot exceed 1000 characters').optional(),
+  adminNotes: z.string().max(1000, 'Admin notes cannot exceed 1000 characters').optional(),
+  selectedProposal: z.enum(['A', 'B']).optional()
+})
 
-// Helper function to get user role from request headers
-function getUserRole(request: NextRequest): string {
-  return request.headers.get('x-user-role') || 'THERAPIST'
-}
-
-// Helper function to get user ID from request headers
-function getUserId(request: NextRequest): string {
-  return request.headers.get('x-user-id') || 'user-1'
-}
-
-// Helper function to check if user can review proposal
-function canUserReviewProposal(proposal: any, userRole: string): boolean {
-  // Only coordinators and admins can review proposals
-  if (!['COORDINATOR', 'ADMIN'].includes(userRole)) {
-    return false
-  }
-  
-  // Proposal must be in reviewable status
-  return ['SUBMITTED', 'UNDER_REVIEW'].includes(proposal.status)
-}
-
-// Helper function to filter proposal data based on user role
-function filterProposalData(proposal: any, userRole: string): any {
-  const filteredProposal = { ...proposal }
-  
-  if (userRole === 'THERAPIST') {
-    delete filteredProposal.estimatedCost
-    delete filteredProposal.pricingNotes
-    delete filteredProposal.budgetApproval
-    delete filteredProposal.insuranceCoverage
-    delete filteredProposal.paymentTerms
-    delete filteredProposal.coordinatorNotes
-    delete filteredProposal.adminNotes
-    delete filteredProposal.finalApprovalNotes
-  }
-  
-  if (userRole === 'COORDINATOR') {
-    delete filteredProposal.adminNotes
-    delete filteredProposal.finalApprovalNotes
-  }
-  
-  return filteredProposal
-}
-
-// GET /api/proposals/[id]/review - Get proposal review information
+// GET /api/proposals/[id]/review - Get proposal review data
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const userRole = getUserRole(request)
-    const userId = getUserId(request)
-    const proposalId = params.id
+    const currentUser = await getCurrentUser(request)
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     
-    // Find proposal
+    const proposalId = params.id
+    const userRole = currentUser.role
+    
+    // Find proposal from database
     const proposal = await db.therapeuticProposal.findUnique({
       where: { id: proposalId },
       include: {
-        services: { include: { service: true } },
-        patient: true,
-        therapist: { include: { profile: true } }
+        patient: {
+          select: {
+            id: true,
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
+          }
+        },
+        therapist: {
+          select: {
+            id: true,
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
+          }
+        },
+        services: {
+          include: {
+            service: true
+          }
+        }
       }
     })
+    
     if (!proposal) {
-      return NextResponse.json(
-        { error: 'Proposal not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Proposal not found' }, { status: 404 })
     }
     
     // Check access permissions
-    if (!canUserReviewProposal(proposal, userRole)) {
-      return NextResponse.json(
-        { error: 'Access denied or proposal cannot be reviewed' },
-        { status: 403 }
-      )
+    if (userRole === 'THERAPIST' && proposal.therapistId !== currentUser.therapist?.id) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
     
-    // Get review information
-    const reviewInfo = {
-      proposalId,
-      currentStatus: proposal.status,
-      canReview: true,
-      reviewHistory: {
-        submittedAt: proposal.submittedAt,
-        reviewedAt: proposal.reviewedAt,
-        reviewedBy: proposal.reviewedBy,
-        coordinatorNotes: proposal.coordinatorNotes,
-        pricingNotes: proposal.pricingNotes,
-        approvalNotes: proposal.approvalNotes,
-        adminNotes: proposal.adminNotes,
-        budgetApproval: proposal.budgetApproval,
-        insuranceCoverage: proposal.insuranceCoverage,
-        paymentTerms: proposal.paymentTerms
-      },
-      availableActions: []
+    // Build review data
+    const reviewData = {
+      id: proposal.id,
+      patientId: proposal.patientId,
+      therapistId: proposal.therapistId,
+      status: proposal.status,
+      notes: proposal.notes,
+      coordinatorNotes: proposal.coordinatorNotes,
+      adminNotes: proposal.adminNotes,
+      selectedProposal: proposal.selectedProposal,
+      patient: proposal.patient,
+      therapist: proposal.therapist,
+      services: proposal.services,
+      createdAt: proposal.createdAt,
+      updatedAt: proposal.updatedAt
     }
     
-    // Determine available review actions based on user role and current status
-    if (userRole === 'COORDINATOR') {
-      if (proposal.status === 'SUBMITTED') {
-        reviewInfo.availableActions.push(
-          { action: 'START_REVIEW', description: 'Start review process' },
-          { action: 'REJECT', description: 'Reject proposal' }
-        )
-      } else if (proposal.status === 'UNDER_REVIEW') {
-        reviewInfo.availableActions.push(
-          { action: 'APPROVE', description: 'Approve proposal' },
-          { action: 'REJECT', description: 'Reject proposal' },
-          { action: 'REQUEST_REVISION', description: 'Request revision from therapist' }
-        )
-      }
-    }
-    
-    if (userRole === 'ADMIN') {
-      reviewInfo.availableActions.push(
-        { action: 'FINAL_APPROVE', description: 'Final administrative approval' },
-        { action: 'REJECT', description: 'Reject proposal' },
-        { action: 'CANCEL', description: 'Cancel proposal' }
-      )
-    }
-    
-    return NextResponse.json(reviewInfo)
+    return NextResponse.json({
+      success: true,
+      data: reviewData
+    })
     
   } catch (error) {
-    console.error('Error fetching proposal review:', error)
+    console.error('Error fetching proposal review data:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -238,40 +125,39 @@ export async function GET(
   }
 }
 
-// POST /api/proposals/[id]/review - Submit proposal review
+// POST /api/proposals/[id]/review - Review proposal
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const userRole = getUserRole(request)
-    const userId = getUserId(request)
-    const proposalId = params.id
+    const currentUser = await getCurrentUser(request)
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     
-    // Find proposal
+    const proposalId = params.id
+    const userRole = currentUser.role
+    const userId = currentUser.id
+    
+    // Check if user has permission to review
+    if (!['COORDINATOR', 'ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+    
+    // Find proposal from database
     const proposal = await db.therapeuticProposal.findUnique({
       where: { id: proposalId }
     })
     
     if (!proposal) {
-      return NextResponse.json(
-        { error: 'Proposal not found' },
-        { status: 404 }
-      )
-    }
-    
-    // Check access permissions
-    if (!canUserReviewProposal(proposal, userRole)) {
-      return NextResponse.json(
-        { error: 'Access denied or proposal cannot be reviewed' },
-        { status: 403 }
-      )
+      return NextResponse.json({ error: 'Proposal not found' }, { status: 404 })
     }
     
     const body = await request.json()
     
     // Validate review data
-    const validation = validateProposalReview(body)
+    const validation = proposalReviewSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json(
         { error: 'Invalid review data', details: validation.error.issues },
@@ -279,69 +165,77 @@ export async function POST(
       )
     }
     
-    const { 
-      status, 
-      notes, 
-      coordinatorNotes, 
-      pricingNotes, 
-      approvalNotes, 
-      adminNotes, 
-      budgetApproval, 
-      insuranceCoverage, 
-      paymentTerms 
-    } = validation.data
+    const { action, notes, coordinatorNotes, adminNotes, selectedProposal } = validation.data
     
-    // Update proposal with review information
-    const updatedProposal = {
-      ...proposal,
-      status: status === 'APPROVED' ? 'APPROVED' : status === 'REJECTED' ? 'REJECTED' : 'UNDER_REVIEW',
-      updatedAt: new Date().toISOString(),
-      reviewedAt: new Date().toISOString(),
-      reviewedBy: userId
+    // Prepare update data based on user role and action
+    const updateData: any = {
+      status: action === 'APPROVE' ? 'APPROVED' : 
+             action === 'REJECT' ? 'REJECTED' :
+             action === 'REQUEST_CHANGES' ? 'PENDING_CHANGES' : 'UNDER_REVIEW'
     }
     
-    // Add review-specific fields based on user role
+    // Update notes based on user role
     if (userRole === 'COORDINATOR') {
-      updatedProposal.coordinatorNotes = coordinatorNotes || notes
-      updatedProposal.pricingNotes = pricingNotes
-      updatedProposal.approvalNotes = approvalNotes
-      updatedProposal.budgetApproval = budgetApproval
-      updatedProposal.insuranceCoverage = insuranceCoverage
-      updatedProposal.paymentTerms = paymentTerms
+      if (coordinatorNotes) updateData.coordinatorNotes = coordinatorNotes
+      if (notes) updateData.coordinatorNotes = notes
+    } else if (['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+      if (adminNotes) updateData.adminNotes = adminNotes
+      if (notes) updateData.adminNotes = notes
     }
     
-    if (userRole === 'ADMIN') {
-      updatedProposal.adminNotes = adminNotes || notes
-      updatedProposal.finalApprovalNotes = status === 'APPROVED' ? notes : undefined
+    // Update selected proposal if provided
+    if (selectedProposal) {
+      updateData.selectedProposal = selectedProposal
     }
     
     // Update proposal in database
-    const savedProposal = await db.therapeuticProposal.update({
+    const updatedProposal = await db.therapeuticProposal.update({
       where: { id: proposalId },
-      data: updatedProposal,
+      data: updateData,
       include: {
-        therapist: { include: { profile: true } },
-        patient: true
+        patient: {
+          select: {
+            id: true,
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
+          }
+        },
+        therapist: {
+          select: {
+            id: true,
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
+          }
+        }
       }
     })
     
-    // Filter data based on user role
-    const filteredProposal = filterProposalData(updatedProposal, userRole)
-    
     return NextResponse.json({
-      proposal: filteredProposal,
-      review: {
-        status,
-        notes,
-        reviewedBy: userId,
-        reviewedAt: new Date().toISOString(),
-        userRole
-      },
-      message: `Proposal review submitted: ${status}`
+      success: true,
+      message: `Proposal ${action.toLowerCase()}d successfully`,
+      data: {
+        id: updatedProposal.id,
+        status: updatedProposal.status,
+        notes: updatedProposal.notes,
+        coordinatorNotes: updatedProposal.coordinatorNotes,
+        adminNotes: updatedProposal.adminNotes,
+        selectedProposal: updatedProposal.selectedProposal,
+        patient: updatedProposal.patient,
+        therapist: updatedProposal.therapist,
+        updatedAt: updatedProposal.updatedAt
+      }
     })
     
   } catch (error) {
-    console.error('Error submitting proposal review:', error)
+    console.error('Error reviewing proposal:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

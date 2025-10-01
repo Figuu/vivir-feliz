@@ -25,10 +25,9 @@ import {
   CheckCircle,
   AlertTriangle,
   Info,
-  DragHandleDots2Icon,
   GripVertical
 } from 'lucide-react'
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
+// import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 
 interface FormField {
   id: string
@@ -428,7 +427,7 @@ export function MedicalFormTemplateManager({
       </Card>
 
       {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs value={activeTab} onValueChange={(value: string) => setActiveTab(value as 'list' | 'edit' | 'preview')} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="list">Lista de Plantillas</TabsTrigger>
           <TabsTrigger value="edit" disabled={!editingTemplate}>
@@ -612,19 +611,14 @@ export function MedicalFormTemplateManager({
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <DragDropContext onDragEnd={handleSectionDragEnd}>
-                    <Droppable droppableId="sections">
-                      {(provided) => (
-                        <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
-                          {editingTemplate.sections.map((section, index) => (
-                            <Draggable key={section.id} draggableId={section.id} index={index}>
-                              {(provided) => (
-                                <Card ref={provided.innerRef} {...provided.draggableProps}>
-                                  <CardHeader>
-                                    <div className="flex items-center space-x-2">
-                                      <div {...provided.dragHandleProps}>
-                                        <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                      </div>
+                  <div className="space-y-4">
+                    {editingTemplate.sections.map((section, index) => (
+                      <Card key={section.id}>
+                        <CardHeader>
+                          <div className="flex items-center space-x-2">
+                            <div>
+                              <GripVertical className="h-4 w-4 text-muted-foreground" />
+                            </div>
                                       <Input
                                         value={section.title}
                                         onChange={(e) => setEditingTemplate(prev => prev ? {
@@ -744,15 +738,9 @@ export function MedicalFormTemplateManager({
                                       </div>
                                     </div>
                                   </CardContent>
-                                </Card>
-                              )}
-                            </Draggable>
-                          ))}
-                          {provided.placeholder}
-                        </div>
-                      )}
-                    </Droppable>
-                  </DragDropContext>
+                      </Card>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
 

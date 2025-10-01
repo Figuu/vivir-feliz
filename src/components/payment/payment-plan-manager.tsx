@@ -147,7 +147,7 @@ export function PaymentPlanManager({
       
       // Update selected plan if it's the same
       if (selectedPlan && selectedPlan.id === planId) {
-        setSelectedPlan(prev => ({ ...prev, status }))
+        setSelectedPlan((prev: any) => ({ ...prev, status }))
       }
     } catch (err) {
       console.error('Failed to update plan status:', err)

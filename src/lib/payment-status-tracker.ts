@@ -139,10 +139,9 @@ export class PaymentStatusTracker {
         const statusHistory = await tx.paymentStatusHistory.create({
           data: {
             paymentId,
-            status: newStatus,
-            updatedBy,
+            toStatus: newStatus,
+            changedBy: updatedBy,
             reason,
-            notes,
             metadata: metadata ? JSON.stringify(metadata) : null
           }
         })
@@ -156,7 +155,7 @@ export class PaymentStatusTracker {
         fromStatus: currentStatus,
         toStatus: newStatus,
         updatedBy,
-        updatedAt: result.statusHistory.updatedAt,
+        updatedAt: result.statusHistory.createdAt,
         reason,
         notes,
         metadata
@@ -185,7 +184,7 @@ export class PaymentStatusTracker {
         }),
         db.paymentStatusHistory.findMany({
           where: { paymentId },
-          orderBy: { updatedAt: 'desc' }
+          orderBy: { createdAt: 'desc' }
         })
       ])
 
@@ -197,7 +196,7 @@ export class PaymentStatusTracker {
       const canTransitionTo = this.STATUS_TRANSITIONS[currentStatus] || []
 
       // Calculate time in current status
-      const lastStatusChange = statusHistory[0]?.updatedAt || payment.createdAt
+      const lastStatusChange = statusHistory[0]?.createdAt || payment.createdAt
       const timeInCurrentStatus = Math.floor(
         (new Date().getTime() - lastStatusChange.getTime()) / (1000 * 60)
       )
@@ -218,16 +217,15 @@ export class PaymentStatusTracker {
         statusHistory: statusHistory.map(history => ({
           id: history.id,
           paymentId: history.paymentId,
-          status: history.status as PaymentStatus,
-          updatedBy: history.updatedBy,
-          updatedAt: history.updatedAt,
+          status: history.toStatus as PaymentStatus,
+          updatedBy: history.changedBy,
+          updatedAt: history.createdAt,
           reason: history.reason || undefined,
-          notes: history.notes || undefined,
-          metadata: history.metadata ? JSON.parse(history.metadata) : undefined
+          metadata: history.metadata ? JSON.parse(String(history.metadata)) : undefined
         })),
         canTransitionTo,
         lastUpdated: payment.updatedAt,
-        lastUpdatedBy: statusHistory[0]?.updatedBy || 'system',
+        lastUpdatedBy: statusHistory[0]?.changedBy || 'system',
         totalDuration,
         timeInCurrentStatus,
         nextAction,
@@ -253,12 +251,11 @@ export class PaymentStatusTracker {
       return history.map(record => ({
         id: record.id,
         paymentId: record.paymentId,
-        status: record.status as PaymentStatus,
-        updatedBy: record.updatedBy,
-        updatedAt: record.updatedAt,
+        status: record.toStatus as PaymentStatus,
+        updatedBy: record.changedBy,
+        updatedAt: record.createdAt,
         reason: record.reason || undefined,
-        notes: record.notes || undefined,
-        metadata: record.metadata ? JSON.parse(record.metadata) : undefined
+        metadata: record.metadata ? JSON.parse(String(record.metadata)) : undefined
       }))
 
     } catch (error) {
@@ -294,10 +291,14 @@ export class PaymentStatusTracker {
                 },
                 parent: {
                   select: {
-                    firstName: true,
-                    lastName: true,
-                    email: true,
-                    phone: true
+                    profile: {
+                      select: {
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        phone: true
+                      }
+                    }
                   }
                 },
                 specialty: {
@@ -347,11 +348,11 @@ export class PaymentStatusTracker {
             consultationRequest: {
               include: {
                 patient: { select: { firstName: true, lastName: true } },
-                parent: { select: { firstName: true, lastName: true, email: true } }
+                parent: { select: { profile: { select: { firstName: true, lastName: true, email: true } } } }
               }
             }
           },
-          orderBy: { updatedAt: 'desc' }
+          orderBy: { createdAt: 'desc' }
         }),
 
         // Processing payments older than 1 hour
@@ -364,7 +365,7 @@ export class PaymentStatusTracker {
             consultationRequest: {
               include: {
                 patient: { select: { firstName: true, lastName: true } },
-                parent: { select: { firstName: true, lastName: true, email: true } }
+                parent: { select: { profile: { select: { firstName: true, lastName: true, email: true } } } }
               }
             }
           },
@@ -381,7 +382,7 @@ export class PaymentStatusTracker {
             consultationRequest: {
               include: {
                 patient: { select: { firstName: true, lastName: true } },
-                parent: { select: { firstName: true, lastName: true, email: true } }
+                parent: { select: { profile: { select: { firstName: true, lastName: true, email: true } } } }
               }
             }
           },

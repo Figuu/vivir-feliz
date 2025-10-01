@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PaymentConfirmationWorkflow } from '@/lib/payment-confirmation-workflow'
+import { PaymentConfirmationWorkflowManager } from '@/lib/payment-confirmation-workflow'
 
 // GET - Get payment confirmation statistics
 export async function GET(request: NextRequest) {
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Get confirmation statistics
-    const statistics = await PaymentConfirmationWorkflow.getConfirmationStatistics(dateRange)
+    const statistics = await PaymentConfirmationWorkflowManager.getConfirmationStatistics(dateRange)
     
     return NextResponse.json({
       success: true,

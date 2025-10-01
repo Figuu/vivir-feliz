@@ -11,10 +11,6 @@ import {
   Wifi,
   Battery,
   Signal,
-  Touch,
-  Gesture,
-  Responsive,
-  Mobile,
   Globe,
   Shield,
   Zap,
@@ -59,12 +55,11 @@ import {
   ChevronRight,
   Play,
   Pause,
-  Stop,
+  Square,
   RotateCcw,
   Copy,
   Move,
   GripVertical,
-  Square,
   CheckSquare,
   Home,
   Bell,
@@ -87,9 +82,7 @@ import {
   AtSign,
   DollarSign,
   Percent,
-  Globe as GlobeIcon,
   Building,
-  Shield as ShieldIcon,
   Key,
   Lock,
   Unlock,
@@ -99,45 +92,12 @@ import {
   Calendar,
   Clock,
   Users,
-  User as UserIcon,
-  MessageSquare as MessageSquareIcon,
-  FileText as FileTextIcon,
-  Timer as TimerIcon,
-  AlertCircle as AlertCircleIcon,
-  Info as InfoIcon,
-  Edit as EditIcon,
-  Save as SaveIcon,
-  X as XIcon,
-  Plus as PlusIcon,
-  Minus as MinusIcon,
-  Filter as FilterIcon,
-  Search as SearchIcon,
-  AlertCircle as AlertCircleIcon2,
-  User as UserIcon2,
-  Timer as TimerIcon2,
-  Heart as HeartIcon,
-  Star as StarIcon,
-  Flame as FlameIcon,
-  Sparkles as SparklesIcon,
-  Crown as CrownIcon,
-  Trophy as TrophyIcon,
-  Medal as MedalIcon,
-  Award as AwardIcon,
-  Target as TargetIcon,
-  Activity as ActivityIcon,
-  BarChart3 as BarChart3Icon,
-  TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
-  BookOpen as BookOpenIcon,
-  MessageSquare as MessageSquareIcon2,
-  Phone as PhoneIcon,
-  Mail as MailIcon,
   MapPin as MapPinIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   Play as PlayIcon,
   Pause as PauseIcon,
-  Stop as StopIcon,
+  Square as SquareIcon,
   RotateCcw as RotateCcwIcon,
   Copy as CopyIcon,
   Move as MoveIcon,
@@ -215,7 +175,7 @@ import {
   ChevronRight as ChevronRightIcon2,
   Play as PlayIcon2,
   Pause as PauseIcon2,
-  Stop as StopIcon2,
+  Square as SquareIcon2,
   RotateCcw as RotateCcwIcon2,
   Copy as CopyIcon2,
   Move as MoveIcon2,
@@ -392,7 +352,7 @@ export default function TherapistMobilePage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Touch className="h-5 w-5 mr-2" />
+                  <Star className="h-5 w-5 mr-2" />
                   Touch Interactions
                 </CardTitle>
               </CardHeader>
@@ -425,7 +385,7 @@ export default function TherapistMobilePage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Responsive className="h-5 w-5 mr-2" />
+                  <Monitor className="h-5 w-5 mr-2" />
                   Responsive Design
                 </CardTitle>
               </CardHeader>

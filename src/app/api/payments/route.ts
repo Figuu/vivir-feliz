@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PaymentApiManager, PaymentRequest, PaymentMethod, PaymentType } from '@/lib/payment-api-manager'
+import { PaymentApiManager, PaymentRequest } from '@/lib/payment-api-manager'
+import { db } from '@/lib/db'
 import { z } from 'zod'
 
 const createPaymentSchema = z.object({

@@ -24,7 +24,6 @@ import {
   MessageSquare,
   Video,
   PhoneCall,
-  Location,
   CalendarIcon,
   ClockIcon,
   CheckCircle,
@@ -50,12 +49,11 @@ import {
   ChevronRight,
   Play,
   Pause,
-  Stop,
+  Square,
   Timer,
   Info,
   AlertTriangle,
   CheckSquare,
-  Square,
   GripVertical,
   Move,
   Copy,
@@ -187,7 +185,7 @@ export default function PatientsPage() {
     setSelectedPatientId('')
   }
 
-  const getPatientStatistics = () => {
+  const getGeneralStatistics = () => {
     const activePatients = getActivePatients(patients)
     const inactivePatients = getInactivePatients(patients)
     const archivedPatients = getArchivedPatients(patients)
@@ -202,7 +200,7 @@ export default function PatientsPage() {
     }
   }
 
-  const stats = getPatientStatistics()
+  const stats = getGeneralStatistics()
 
   return (
     <div className="container mx-auto py-6 space-y-6">

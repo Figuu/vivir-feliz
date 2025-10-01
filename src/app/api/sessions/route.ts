@@ -73,16 +73,24 @@ export async function GET(request: NextRequest) {
         patient: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            },
             dateOfBirth: true
           }
         },
         therapist: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
           }
         },
         serviceAssignment: {

@@ -146,7 +146,7 @@ export function ParentRescheduleRequest({ patientId, parentId }: ParentReschedul
       const response = await fetch(`/api/schedule-requests?parentId=${parentId}&type=RESCHEDULE_SESSION`)
       if (response.ok) {
         const data = await response.json()
-        setRequests(data.scheduleRequests || [])
+        setRescheduleRequests(data.scheduleRequests || [])
         return
       }
       
@@ -165,7 +165,7 @@ export function ParentRescheduleRequest({ patientId, parentId }: ParentReschedul
           createdAt: new Date().toISOString()
         }
       ]
-      setRescheduleRequests(mockRequests)
+      setRescheduleRequests([])
     } catch (err) {
       console.error('Error loading requests:', err)
     }

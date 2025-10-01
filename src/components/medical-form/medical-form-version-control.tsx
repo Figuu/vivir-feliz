@@ -242,7 +242,11 @@ export function MedicalFormVersionControl({
       }
     } catch (error) {
       console.error('Error comparing versions:', error)
-      toast.error('Failed to compare versions')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Failed to compare versions'
+      })
     }
   }
 

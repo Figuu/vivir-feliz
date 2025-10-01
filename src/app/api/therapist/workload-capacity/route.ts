@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
                 service: {
                   select: {
                     id: true,
-                    name: true,
+                    firstName: true,
                     price: true
                   }
                 }
@@ -156,8 +156,8 @@ export async function GET(request: NextRequest) {
         ...(therapistId ? { therapistId } : {}),
         effectiveDate: { lte: queryEndDate },
         OR: [
-          { endDate: { gte: queryStartDate } },
-          { endDate: null }
+          { endTime: { gte: queryStartDate } },
+          { endTime: null }
         ]
       },
       include: {
@@ -260,7 +260,7 @@ export async function POST(request: NextRequest) {
         effectiveDate: { lte: targetDate },
         OR: [
           { endDate: { gte: targetDate } },
-          { endDate: null }
+          { endTime: null }
         ]
       }
     })

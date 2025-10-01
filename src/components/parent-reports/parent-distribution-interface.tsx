@@ -24,7 +24,8 @@ import {
   Download,
   Share,
   Lock,
-  Unlock
+  Unlock,
+  AlertCircle
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { toast } from '@/hooks/use-toast'
@@ -466,7 +467,7 @@ export function ParentDistributionInterface({ onDistributionComplete }: ParentDi
               </div>
             </div>
             <Alert>
-              <Info className="h-4 w-4" />
+              <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 This link has been sent to the parent's email. They can use it to securely access the report.
               </AlertDescription>

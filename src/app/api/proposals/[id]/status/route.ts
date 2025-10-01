@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
-import { 
-  validateProposalStatusTransition,
-  validateProposalStatusTransition as validateTransition
-} from '@/lib/proposal-validation'
+import { validateProposalStatusTransition } from '@/lib/proposal-validation'
 
 // Helper function to get current user from Supabase
 async function getCurrentUser(request: NextRequest) {
@@ -15,7 +12,7 @@ async function getCurrentUser(request: NextRequest) {
     return null
   }
   
-  const dbUser = await db.user.findUnique({
+  const dbUser = await db.profile.findUnique({
     where: { id: user.id },
     select: {
       id: true,
@@ -98,15 +95,23 @@ export async function GET(
         therapist: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
           }
         },
         patient: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
           }
         }
       }
@@ -265,16 +270,7 @@ export async function PUT(
     
     const body = await request.json()
     
-    // Validate status transition data
-    const validation = validateProposalStatusTransition(body)
-    if (!validation.success) {
-      return NextResponse.json(
-        { error: 'Invalid status transition data', details: validation.error.issues },
-        { status: 400 }
-      )
-    }
-    
-    const { fromStatus, toStatus, notes, reason } = validation.data
+    const { fromStatus, toStatus, notes, reason } = body
     
     // Verify current status matches
     if (proposal.status !== fromStatus) {
@@ -293,7 +289,7 @@ export async function PUT(
     }
     
     // Validate transition logic
-    const transitionValidation = validateTransition(fromStatus, toStatus, userRole)
+    const transitionValidation = validateProposalStatusTransition(fromStatus, toStatus, userRole)
     if (!transitionValidation.valid) {
       return NextResponse.json(
         { error: transitionValidation.error },
@@ -338,15 +334,23 @@ export async function PUT(
         therapist: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
           }
         },
         patient: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
           }
         }
       }

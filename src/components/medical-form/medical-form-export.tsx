@@ -602,7 +602,11 @@ export function MedicalFormExport({
                             size="sm"
                             onClick={() => {
                               setSelectedTemplate(template)
-                              setExportOptions(template.settings)
+                              setExportOptions({
+                                ...template.settings,
+                                sections: template.sections,
+                                fields: template.fields
+                              })
                             }}
                           >
                             <Eye className="h-4 w-4 mr-2" />
@@ -614,7 +618,11 @@ export function MedicalFormExport({
                             onClick={() => {
                               setTemplateName(template.name)
                               setTemplateDescription(template.description)
-                              setTemplateSettings(template.settings)
+                              setTemplateSettings({
+                                ...template.settings,
+                                sections: template.sections,
+                                fields: template.fields
+                              })
                               setShowTemplateEditor(true)
                             }}
                           >

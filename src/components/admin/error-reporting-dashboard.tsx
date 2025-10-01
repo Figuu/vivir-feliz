@@ -104,10 +104,10 @@ export function ErrorReportingDashboard() {
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'critical': return <AlertTriangle className="h-4 w-4 text-red-500" />
-      case 'high': return <AlertCircle className="h-4 w-4 text-orange-500" />
+      case 'high': return <AlertTriangle className="h-4 w-4 text-orange-500" />
       case 'medium': return <AlertTriangle className="h-4 w-4 text-yellow-500" />
-      case 'low': return <AlertCircle className="h-4 w-4 text-blue-500" />
-      default: return <AlertCircle className="h-4 w-4 text-gray-500" />
+      case 'low': return <AlertTriangle className="h-4 w-4 text-blue-500" />
+      default: return <AlertTriangle className="h-4 w-4 text-gray-500" />
     }
   }
 

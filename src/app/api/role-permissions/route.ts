@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const role = searchParams.get('role')
 
     if (userId) {
-      const user = await db.user.findUnique({
+      const user = await db.profile.findUnique({
         where: { id: userId },
         select: { id: true, role: true, email: true, firstName: true, lastName: true }
       })
@@ -72,7 +72,7 @@ export async function PUT(request: NextRequest) {
 
     const { userId, role, updatedBy } = validation.data
 
-    const user = await db.user.update({
+    const user = await db.profile.update({
       where: { id: userId },
       data: { role, updatedAt: new Date() },
       select: { id: true, email: true, firstName: true, lastName: true, role: true }

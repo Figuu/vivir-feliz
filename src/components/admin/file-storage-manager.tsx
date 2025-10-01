@@ -20,7 +20,7 @@ import {
   Search
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 import { STORAGE_CONFIG, formatFileSize } from '@/lib/file-storage'
 
 interface StorageFile {

@@ -12,12 +12,13 @@ async function getCurrentUser(request: NextRequest) {
     return null
   }
   
-  const dbUser = await db.user.findUnique({
+  const dbUser = await db.profile.findUnique({
     where: { id: user.id },
     select: {
       id: true,
       role: true,
-      name: true,
+      firstName: true,
+      lastName: true,
       therapist: {
         select: { id: true }
       }
@@ -57,8 +58,8 @@ export async function GET(
         updatedAt: true,
         therapist: {
           select: {
-            user: {
-              select: { name: true }
+            profile: {
+              select: { firstName: true, lastName: true }
             }
           }
         }
@@ -82,7 +83,7 @@ export async function GET(
         id: `${proposal.id}-therapist-note`,
         proposalId: proposal.id,
         userId: proposal.therapistId,
-        userName: proposal.therapist.user.name || 'Therapist',
+        userName: proposal.therapist.profile ? `${proposal.therapist.profile.firstName} ${proposal.therapist.profile.lastName}` : 'Therapist',
         userRole: 'THERAPIST',
         content: proposal.notes,
         isInternal: false,
@@ -145,7 +146,7 @@ export async function POST(
     const proposalId = params.id
     const userRole = currentUser.role
     const userId = currentUser.id
-    const userName = currentUser.name || 'User'
+    const userName = currentUser.firstName && currentUser.lastName ? `${currentUser.firstName} ${currentUser.lastName}` : 'User'
     const therapistId = currentUser.therapist?.id
     
     // Find proposal from database

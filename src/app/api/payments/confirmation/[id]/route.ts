@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PaymentConfirmationWorkflow } from '@/lib/payment-confirmation-workflow'
+import { PaymentConfirmationWorkflowManager } from '@/lib/payment-confirmation-workflow'
 
 // GET - Get confirmation request details
 export async function GET(
@@ -18,7 +18,7 @@ export async function GET(
       )
     }
     
-    const confirmationRequest = await PaymentConfirmationWorkflow.getConfirmationRequestDetails(id)
+    const confirmationRequest = await PaymentConfirmationWorkflowManager.getConfirmationRequestDetails(id)
     
     return NextResponse.json({
       success: true,

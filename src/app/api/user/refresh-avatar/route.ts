@@ -17,7 +17,7 @@ export async function POST() {
     }
 
     // Get user from database
-    const dbUser = await db.user.findUnique({
+    const dbUser = await db.profile.findUnique({
       where: { id: user.id },
       select: { avatar: true }
     })
@@ -67,7 +67,7 @@ export async function POST() {
     }
 
     // Update user avatar with new signed URL
-    await db.user.update({
+    await db.profile.update({
       where: { id: user.id },
       data: { avatar: signedUrlData.signedUrl }
     })

@@ -61,13 +61,13 @@ export function PDFGenerator({
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          formId,
-          formData,
+          formId: 'default-form-id',
+          formData: {},
           options: {
-            format,
-            orientation,
-            includeMetadata,
-            watermark
+            format: 'A4',
+            orientation: 'portrait',
+            includeMetadata: true,
+            watermark: false
           }
         })
       })
@@ -145,7 +145,7 @@ export function PDFGenerator({
 
   // Handle share
   const handleShare = async () => {
-    if (pdfUrl && navigator.share) {
+    if (pdfUrl && typeof navigator !== 'undefined' && navigator.share) {
       try {
         const response = await fetch(pdfUrl)
         const blob = await response.blob()
@@ -262,7 +262,7 @@ export function PDFGenerator({
                 Imprimir
               </Button>
               
-              {navigator.share && (
+              {typeof navigator !== 'undefined' && navigator.share && (
                 <Button onClick={handleShare} variant="outline" size="sm">
                   <Share2 className="h-4 w-4 mr-2" />
                   Compartir

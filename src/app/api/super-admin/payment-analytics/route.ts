@@ -62,14 +62,14 @@ export async function GET(request: NextRequest) {
       
       // Paid payments
       db.payment.aggregate({
-        where: { ...whereClause, status: 'paid' },
+        where: { ...whereClause, status: 'PAID' },
         _count: true,
         _sum: { amount: true }
       }),
       
       // Pending payments
       db.payment.aggregate({
-        where: { ...whereClause, status: 'pending' },
+        where: { ...whereClause, status: 'PENDING' },
         _count: true,
         _sum: { amount: true }
       }),
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
       db.payment.aggregate({
         where: { 
           ...whereClause, 
-          status: 'pending',
+          status: 'PENDING',
           dueDate: { lt: new Date() }
         },
         _count: true,
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
       
       // Failed payments
       db.payment.aggregate({
-        where: { ...whereClause, status: 'failed' },
+        where: { ...whereClause, status: 'FAILED' },
         _count: true,
         _sum: { amount: true }
       }),
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
       db.payment.findMany({
         where: { 
           ...whereClause, 
-          status: 'paid',
+          status: 'PAID',
           paidDate: { not: null }
         },
         select: {
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
       // Distribution by payment method
       db.payment.groupBy({
         by: ['method'],
-        where: { ...whereClause, status: 'paid' },
+        where: { ...whereClause, status: 'PAID' },
         _count: true,
         _sum: { amount: true }
       }),
@@ -131,10 +131,21 @@ export async function GET(request: NextRequest) {
       
       // Largest payments
       db.payment.findMany({
-        where: { ...whereClause, status: 'paid' },
+        where: { ...whereClause, status: 'PAID' },
         include: {
-          patient: {
-            select: { firstName: true, lastName: true }
+          consultationRequest: {
+            select: {
+              patient: {
+                select: { 
+                  profile: {
+                    select: {
+                      firstName: true, 
+                      lastName: true 
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         orderBy: { amount: 'desc' },
@@ -145,8 +156,19 @@ export async function GET(request: NextRequest) {
       db.payment.findMany({
         where: whereClause,
         include: {
-          patient: {
-            select: { firstName: true, lastName: true }
+          consultationRequest: {
+            select: {
+              patient: {
+                select: { 
+                  profile: {
+                    select: {
+                      firstName: true, 
+                      lastName: true 
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         orderBy: { createdAt: 'desc' },
@@ -178,7 +200,7 @@ export async function GET(request: NextRequest) {
     const onTimePayments = await db.payment.count({
       where: {
         ...whereClause,
-        status: 'paid',
+        status: 'PAID',
         paidDate: { not: null }
       }
     })
@@ -242,7 +264,7 @@ export async function GET(request: NextRequest) {
         topPayments: largestPayments.map(p => ({
           id: p.id,
           amount: p.amount,
-          patientName: `${p.patient.firstName} ${p.patient.lastName}`,
+          patientName: `${p.consultationRequest.patient.profile.firstName} ${p.consultationRequest.patient.profile.lastName}`,
           status: p.status,
           method: p.method,
           dueDate: p.dueDate,
@@ -252,7 +274,7 @@ export async function GET(request: NextRequest) {
         recentActivity: recentActivity.map(p => ({
           id: p.id,
           amount: p.amount,
-          patientName: `${p.patient.firstName} ${p.patient.lastName}`,
+          patientName: `${p.consultationRequest.patient.profile.firstName} ${p.consultationRequest.patient.profile.lastName}`,
           status: p.status,
           method: p.method,
           createdAt: p.createdAt

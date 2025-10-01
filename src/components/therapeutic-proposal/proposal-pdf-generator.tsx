@@ -19,7 +19,6 @@ import {
   Loader2, 
   CheckCircle, 
   AlertCircle,
-  FilePdf,
   Printer,
   Share,
   Copy,
@@ -48,7 +47,7 @@ import {
   Sun,
   Moon,
   Home,
-  Work,
+  Briefcase,
   School,
   ArrowRight,
   ArrowLeft,
@@ -71,13 +70,9 @@ import {
   FileAudio,
   FileCode,
   FileJson,
-  FileWord,
-  FileExcel,
-  FilePowerpoint,
   FileArchive,
   FileMinus,
   FilePlus,
-  FileSlash,
   FileSymlink,
   FileType,
   FileUp,
@@ -86,24 +81,10 @@ import {
   FileHeart,
   FileWarning,
   FileQuestion,
-  FileInfo,
   FileLock,
-  FileUnlock,
-  FileShield,
   FileKey,
   FileUser,
-  FileUsers,
-  FileSettings,
   FileCog,
-  FileGear,
-  FileWrench,
-  FileHammer,
-  FileTool,
-  FileWrench2,
-  FileScrewdriver,
-  FileNut,
-  FileBolt,
-  FileRuler
 } from 'lucide-react'
 import { 
   ProposalPDFGenerator, 
@@ -293,7 +274,7 @@ export function ProposalPDFGeneratorComponent({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center">
-                <FilePdf className="h-5 w-5 mr-2" />
+                <FileText className="h-5 w-5 mr-2" />
                 Generador de PDF de Propuesta
               </CardTitle>
               <CardDescription>

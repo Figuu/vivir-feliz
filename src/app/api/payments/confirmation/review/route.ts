@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PaymentConfirmationWorkflow } from '@/lib/payment-confirmation-workflow'
+import { PaymentConfirmationWorkflowManager } from '@/lib/payment-confirmation-workflow'
 import { z } from 'zod'
 
 const reviewRequestSchema = z.object({
@@ -60,13 +60,11 @@ export async function POST(request: NextRequest) {
     }
     
     // Review confirmation request
-    const result = await PaymentConfirmationWorkflow.reviewConfirmationRequest(
+    const result = await PaymentConfirmationWorkflowManager.reviewConfirmationRequest(
       confirmationRequestId,
       action,
       reviewedBy,
-      reviewNotes,
-      escalationReason,
-      holdReason
+      reviewNotes
     )
     
     return NextResponse.json({

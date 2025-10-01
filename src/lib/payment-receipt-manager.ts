@@ -4,10 +4,14 @@ export type FileType = 'PDF' | 'JPG' | 'JPEG' | 'PNG' | 'DOC' | 'DOCX' | 'TXT'
 
 export interface ReceiptUploadRequest {
   paymentId: string
-  receiptNumber: string
+  receiptType?: 'PAYMENT_RECEIPT' | 'BANK_STATEMENT' | 'TRANSACTION_PROOF' | 'INVOICE' | 'OTHER'
+  receiptNumber?: string
+  fileName?: string
   fileSize: number
   fileType: FileType
   fileData: string // Base64 encoded file data
+  description?: string
+  metadata?: Record<string, any>
   generatedBy?: string
 }
 
@@ -40,6 +44,9 @@ export interface ReceiptValidationResult {
 
 export interface ReceiptSearchFilters {
   paymentId?: string
+  receiptType?: 'PAYMENT_RECEIPT' | 'BANK_STATEMENT' | 'TRANSACTION_PROOF' | 'INVOICE' | 'OTHER'
+  status?: 'PENDING' | 'UPLOADED' | 'VERIFIED' | 'REJECTED' | 'EXPIRED'
+  uploadedBy?: string
   generatedBy?: string
   dateRange?: { start: Date; end: Date }
   fileType?: FileType
@@ -553,6 +560,61 @@ export class PaymentReceiptManager {
       'TXT': 'txt'
     }
     return extensions[fileType] || 'bin'
+  }
+
+  /**
+   * Verify receipt
+   */
+  static async verifyReceipt(
+    receiptId: string,
+    verifiedBy: string,
+    isApproved: boolean,
+    comments?: string
+  ): Promise<ReceiptRecord> {
+    try {
+      if (!this.isValidUUID(receiptId)) {
+        throw new Error('Invalid receipt ID format')
+      }
+      
+      // Check if receipt exists
+      const existingReceipt = await db.paymentReceipt.findUnique({
+        where: { id: receiptId }
+      })
+      
+      if (!existingReceipt) {
+        throw new Error('Receipt not found')
+      }
+      
+      // Update receipt with verification
+      const updatedReceipt = await db.paymentReceipt.update({
+        where: { id: receiptId },
+        data: {
+          status: isApproved ? 'VERIFIED' : 'REJECTED',
+          verifiedBy,
+          verifiedAt: new Date(),
+          verificationComments: comments
+        }
+      })
+      
+      return {
+        id: updatedReceipt.id,
+        paymentId: updatedReceipt.paymentId,
+        receiptNumber: updatedReceipt.receiptNumber,
+        fileSize: updatedReceipt.fileSize,
+        fileType: updatedReceipt.fileType,
+        receiptUrl: updatedReceipt.receiptUrl,
+        generatedBy: updatedReceipt.generatedBy,
+        generatedAt: updatedReceipt.generatedAt,
+        emailSent: updatedReceipt.emailSent,
+        emailSentAt: updatedReceipt.emailSentAt,
+        createdAt: updatedReceipt.createdAt,
+        updatedAt: updatedReceipt.updatedAt
+      }
+      
+    } catch (error) {
+      console.error('Error verifying receipt:', error)
+      throw error
+    }
   }
 
   /**

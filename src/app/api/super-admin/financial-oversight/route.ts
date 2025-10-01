@@ -56,13 +56,13 @@ export async function GET(request: NextRequest) {
       
       // Total paid amount
       db.payment.aggregate({
-        where: { ...whereClause, status: 'paid' },
+        where: { ...whereClause, status: 'PAID' },
         _sum: { amount: true }
       }),
       
       // Total pending amount
       db.payment.aggregate({
-        where: { ...whereClause, status: 'pending' },
+        where: { ...whereClause, status: 'PENDING' },
         _sum: { amount: true }
       }),
       
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
       db.payment.aggregate({
         where: { 
           ...whereClause, 
-          status: 'pending',
+          status: 'PENDING',
           dueDate: { lt: new Date() }
         },
         _sum: { amount: true }
@@ -86,13 +86,12 @@ export async function GET(request: NextRequest) {
       
       // Revenue by service (via sessions)
       db.patientSession.groupBy({
-        by: ['serviceId'],
+        by: ['serviceAssignmentId'],
         where: {
           ...whereClause,
-          status: 'completed'
+          status: 'COMPLETED'
         },
-        _count: true,
-        _sum: { cost: true }
+        _count: true
       }),
       
       // Payment plan statistics
@@ -109,10 +108,18 @@ export async function GET(request: NextRequest) {
       db.payment.findMany({
         where: whereClause,
         include: {
-          patient: {
+          consultationRequest: {
             select: {
-              firstName: true,
-              lastName: true
+              patient: {
+                select: {
+                  profile: {
+                    select: {
+                      firstName: true,
+                      lastName: true
+                    }
+                  }
+                }
+              }
             }
           }
         },
@@ -123,7 +130,7 @@ export async function GET(request: NextRequest) {
       // Top paying patients
       db.payment.groupBy({
         by: ['patientId'],
-        where: { ...whereClause, status: 'paid' },
+        where: { ...whereClause, status: 'PAID' },
         _sum: { amount: true },
         _count: true,
         orderBy: {
@@ -153,9 +160,13 @@ export async function GET(request: NextRequest) {
       where: { id: { in: topPatientIds } },
       select: {
         id: true,
-        firstName: true,
-        lastName: true,
-        email: true
+        profile: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true
+          }
+        }
       }
     })
 
@@ -163,8 +174,8 @@ export async function GET(request: NextRequest) {
       const patient = patientDetails.find(pd => pd.id === tp.patientId)
       return {
         patientId: tp.patientId,
-        patientName: patient ? `${patient.firstName} ${patient.lastName}` : 'Unknown',
-        patientEmail: patient?.email,
+        patientName: patient ? `${patient.profile.firstName} ${patient.profile.lastName}` : 'Unknown',
+        patientEmail: patient?.profile.email,
         totalPaid: tp._sum.amount || 0,
         paymentCount: tp._count
       }
@@ -223,7 +234,7 @@ export async function GET(request: NextRequest) {
           id: p.id,
           amount: p.amount,
           status: p.status,
-          patientName: `${p.patient.firstName} ${p.patient.lastName}`,
+          patientName: `${p.consultationRequest.patient.profile.firstName} ${p.consultationRequest.patient.profile.lastName}`,
           dueDate: p.dueDate,
           paidDate: p.paidDate,
           createdAt: p.createdAt

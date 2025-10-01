@@ -282,7 +282,7 @@ export function APIDocumentationViewer() {
                         </Badge>
                         <code className="text-sm">{endpoint.path}</code>
                         {endpoint.auth && (
-                          <Shield className="h-4 w-4 text-yellow-500" title="Requires authentication" />
+                          <Shield className="h-4 w-4 text-yellow-500" />
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground">

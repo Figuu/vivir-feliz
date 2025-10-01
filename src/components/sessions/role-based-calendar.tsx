@@ -39,7 +39,9 @@ import {
   Zap,
   Target,
   TrendingUp,
-  Activity
+  Activity,
+  Play,
+  Label
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from '@/hooks/use-toast'

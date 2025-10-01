@@ -63,9 +63,12 @@ export async function GET(request: NextRequest) {
         where: { id: therapistId },
         select: {
           id: true,
-          firstName: true,
-          lastName: true,
-          preferences: true // Assuming preferences field exists
+          profile: {
+            select: {
+              firstName: true,
+              lastName: true
+            }
+          }
         }
       })
     }

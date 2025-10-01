@@ -76,16 +76,16 @@ export function MobilePaymentManager({ patientId, parentId }: MobilePaymentManag
 
   const handlePayNow = async (payment: Payment) => {
     toast({
-        title: "Info",
-        description: 'Payment processing would be implemented here'
-      })
+      title: "Info",
+      description: 'Payment processing would be implemented here'
+    })
   }
 
   const handleDownloadReceipt = async (payment: Payment) => {
     toast({
-        title: "Info",
-        description: 'Receipt download would be implemented here'
-      })
+      title: "Info",
+      description: 'Receipt download would be implemented here'
+    })
   }
 
   const getStatusColor = (status: string) => {
@@ -107,12 +107,12 @@ export function MobilePaymentManager({ patientId, parentId }: MobilePaymentManag
   }
 
   const totalPending = payments
-    .filter(p => p.status === 'pending')
-    .reduce((sum, p) => sum + p.amount, 0)
+    .filter((p: Payment) => p.status === 'pending')
+    .reduce((sum: number, p: Payment) => sum + p.amount, 0)
 
   const totalPaid = payments
-    .filter(p => p.status === 'paid')
-    .reduce((sum, p) => sum + p.amount, 0)
+    .filter((p: Payment) => p.status === 'paid')
+    .reduce((sum: number, p: Payment) => sum + p.amount, 0)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -174,7 +174,7 @@ export function MobilePaymentManager({ patientId, parentId }: MobilePaymentManag
             </CardContent>
           </Card>
         ) : (
-          payments.map((payment, index) => (
+          payments.map((payment: Payment, index: number) => (
             <motion.div
               key={payment.id}
               initial={{ opacity: 0, y: 20 }}

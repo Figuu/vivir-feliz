@@ -54,9 +54,8 @@ import {
   Menu,
   Play,
   Pause,
-  Stop,
-  RotateCcw,
   Square,
+  RotateCcw,
   CheckSquare,
   Crown,
   Trophy,
@@ -115,7 +114,8 @@ import {
   Trash2 as Trash2Icon,
   Copy,
   Move,
-  GripVertical
+  GripVertical,
+  Info
 } from 'lucide-react'
 import { ProgressReportPDFGenerator } from '@/components/progress-reports/progress-report-pdf-generator'
 

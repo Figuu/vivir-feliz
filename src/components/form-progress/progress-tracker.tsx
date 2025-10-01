@@ -21,7 +21,8 @@ import {
   Settings
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useFormProgress, type FormType, type ProgressStatus } from '@/hooks/use-form-progress'
+import { useFormProgress } from '@/hooks/use-form-progress'
+import type { FormType, ProgressStatus } from '@/lib/form-progress-tracker'
 
 interface ProgressTrackerProps {
   formType: FormType
@@ -229,7 +230,7 @@ export function ProgressTracker({
       'APPROVED': { color: 'bg-green-100 text-green-800', icon: CheckCircle }
     }
     
-    const config = statusConfig[status] || statusConfig.NOT_STARTED
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.NOT_STARTED
     const Icon = config.icon
     
     return (
@@ -311,7 +312,7 @@ export function ProgressTracker({
 
           {/* Step Navigation */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Steps</Label>
+            <div className="text-sm font-medium">Steps</div>
             <div className="grid grid-cols-6 gap-2">
               {Array.from({ length: totalSteps }, (_, index) => {
                 const step = index + 1

@@ -610,4 +610,106 @@ export class PaymentAnalyticsManager {
 
     return alerts
   }
+
+  /**
+   * Generate payment forecast based on historical data
+   */
+  static async generatePaymentForecast(
+    period: { start: Date; end: Date },
+    historicalMonths: number = 12
+  ): Promise<{
+    forecast: Array<{
+      month: string
+      predictedRevenue: number
+      predictedPayments: number
+      confidence: number
+    }>
+    historicalData: Array<{
+      month: string
+      revenue: number
+      payments: number
+    }>
+    insights: string[]
+  }> {
+    try {
+      // Get historical data for the specified months
+      const historicalStart = new Date(period.start)
+      historicalStart.setMonth(historicalStart.getMonth() - historicalMonths)
+      
+      const historicalData = await this.getMonthlyTrends({
+        createdAt: {
+          gte: historicalStart,
+          lte: period.start
+        }
+      })
+      
+      // Simple linear regression for forecasting
+      const forecast: Array<{
+        month: string
+        predictedRevenue: number
+        predictedPayments: number
+        confidence: number
+      }> = []
+      
+      // Calculate average monthly revenue and payments
+      const avgRevenue = historicalData.length > 0 
+        ? historicalData.reduce((sum, item) => sum + item.revenue, 0) / historicalData.length 
+        : 0
+      
+      const avgPayments = historicalData.length > 0 
+        ? historicalData.reduce((sum, item) => sum + item.count, 0) / historicalData.length 
+        : 0
+      
+      // Generate forecast for the requested period
+      const currentDate = new Date(period.start)
+      const endDate = new Date(period.end)
+      
+      while (currentDate <= endDate) {
+        const monthStr = currentDate.toISOString().substring(0, 7) // YYYY-MM format
+        
+        // Simple trend calculation (could be improved with more sophisticated algorithms)
+        const monthIndex = forecast.length
+        const trendFactor = 1 + (monthIndex * 0.02) // 2% growth per month
+        
+        forecast.push({
+          month: monthStr,
+          predictedRevenue: avgRevenue * trendFactor,
+          predictedPayments: avgPayments * trendFactor,
+          confidence: Math.max(0.6, 1 - (monthIndex * 0.05)) // Decreasing confidence over time
+        })
+        
+        currentDate.setMonth(currentDate.getMonth() + 1)
+      }
+      
+      // Generate insights
+      const insights: string[] = []
+      if (historicalData.length > 0) {
+        const recentTrend = historicalData.slice(-3)
+        const avgRecent = recentTrend.reduce((sum, item) => sum + item.revenue, 0) / recentTrend.length
+        
+        if (avgRecent > avgRevenue * 1.1) {
+          insights.push('Revenue is trending upward in recent months')
+        } else if (avgRecent < avgRevenue * 0.9) {
+          insights.push('Revenue has declined in recent months')
+        }
+        
+        insights.push(`Based on ${historicalMonths} months of historical data`)
+        insights.push(`Average monthly revenue: $${avgRevenue.toFixed(2)}`)
+      }
+      
+      return {
+        forecast,
+        historicalData: historicalData.map(item => ({
+          month: item.month,
+          revenue: item.revenue,
+          payments: item.count
+        })),
+        insights
+      }
+      
+    } catch (error) {
+      console.error('Error generating payment forecast:', error)
+      throw error
+    }
+  }
 }

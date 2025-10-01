@@ -50,32 +50,36 @@ export async function POST(
         patient: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true
+              }
+            }
           }
         },
         therapist: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            email: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
           }
         },
-        serviceAssignments: {
+        serviceAssignment: {
           include: {
-            proposalService: {
-              include: {
-                service: {
-                  select: {
-                    id: true,
-                    name: true,
-                    description: true,
-                    price: true
-                  }
-                }
+            service: {
+              select: {
+                id: true,
+                name: true,
+                type: true,
+                costPerSession: true
               }
             }
           }
@@ -90,7 +94,7 @@ export async function POST(
       )
     }
 
-    if (existingSession.status !== 'scheduled') {
+    if (existingSession.status !== 'SCHEDULED') {
       return NextResponse.json(
         { error: `Cannot start session with status: ${existingSession.status}` },
         { status: 409 }
@@ -132,42 +136,45 @@ export async function POST(
     const session = await db.patientSession.update({
       where: { id: sessionId },
       data: {
-        status: 'in-progress',
-        actualStartTime: actualStartTime,
-        sessionNotes: notes,
-        therapistComments: therapistComments,
+        status: 'IN_PROGRESS',
+        startedAt: actualStartTime,
+        therapistNotes: notes || therapistComments,
         updatedAt: new Date()
       },
       include: {
         patient: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true
+              }
+            }
           }
         },
         therapist: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            email: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
           }
         },
-        serviceAssignments: {
+        serviceAssignment: {
           include: {
-            proposalService: {
-              include: {
-                service: {
-                  select: {
-                    id: true,
-                    name: true,
-                    description: true,
-                    price: true
-                  }
-                }
+            service: {
+              select: {
+                id: true,
+                name: true,
+                type: true,
+                costPerSession: true
               }
             }
           }

@@ -22,7 +22,7 @@ export class PaymentConfirmationWorkflowManager {
   static async createConfirmationRequest(
     paymentId: string,
     requestedBy: string,
-    priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' = 'NORMAL',
+    priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' = 'MEDIUM',
     notes?: string
   ): Promise<PaymentConfirmationRequest> {
     try {

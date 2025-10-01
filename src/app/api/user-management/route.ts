@@ -108,13 +108,13 @@ export async function GET(request: NextRequest) {
         byRole,
         recentRegistrations
       ] = await Promise.all([
-        db.user.count(),
-        db.user.count({ where: { status: 'active' } }),
-        db.user.groupBy({
+        (db as any).user.count(),
+        (db as any).user.count({ where: { status: 'active' } }),
+        (db as any).user.groupBy({
           by: ['role'],
           _count: true
         }),
-        db.user.count({
+        (db as any).user.count({
           where: {
             createdAt: {
               gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
         data: {
           totalUsers,
           activeUsers,
-          byRole: byRole.reduce((acc: any, item) => {
+          byRole: byRole.reduce((acc: any, item: any) => {
             acc[item.role] = item._count
             return acc
           }, {}),
@@ -186,7 +186,7 @@ export async function GET(request: NextRequest) {
 
     // Get users (excluding password)
     const [users, totalCount] = await Promise.all([
-      db.user.findMany({
+      (db as any).user.findMany({
         where: whereClause,
         select: {
           id: true,
@@ -209,7 +209,7 @@ export async function GET(request: NextRequest) {
         skip,
         take: limit,
       }),
-      db.user.count({ where: whereClause })
+      (db as any).user.count({ where: whereClause })
     ])
 
     // Calculate pagination metadata
@@ -258,7 +258,7 @@ export async function POST(request: NextRequest) {
     const validatedData = validation.data
 
     // Check for duplicate email
-    const existingUser = await db.user.findUnique({
+    const existingUser = await (db as any).user.findUnique({
       where: { email: validatedData.email }
     })
 
@@ -270,7 +270,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if creator exists
-    const creator = await db.user.findUnique({
+    const creator = await (db as any).user.findUnique({
       where: { id: validatedData.createdBy }
     })
 
@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
     const hashedPassword = Buffer.from(validatedData.password).toString('base64')
 
     // Create user
-    const user = await db.user.create({
+    const user = await (db as any).user.create({
       data: {
         email: validatedData.email,
         password: hashedPassword,
@@ -364,7 +364,7 @@ export async function PUT(request: NextRequest) {
     const validatedData = validation.data
 
     // Check if user exists
-    const existingUser = await db.user.findUnique({
+    const existingUser = await (db as any).user.findUnique({
       where: { id: validatedData.id }
     })
 
@@ -455,7 +455,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check if user exists
-    const user = await db.user.findUnique({
+    const user = await (db as any).user.findUnique({
       where: { id }
     })
 
@@ -506,7 +506,7 @@ export async function PATCH(request: NextRequest) {
     const validatedData = validation.data
 
     // Get user with password
-    const user = await db.user.findUnique({
+    const user = await (db as any).user.findUnique({
       where: { id: validatedData.userId },
       select: {
         id: true,

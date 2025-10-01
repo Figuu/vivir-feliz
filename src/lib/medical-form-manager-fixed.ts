@@ -79,7 +79,7 @@ export class MedicalFormManager {
       }
 
       // Check if form already exists
-      const existingForm = await db.medicalForm.findUnique({
+      const existingForm = await db.medicalForm.findFirst({
         where: { consultationRequestId }
       })
 
@@ -107,9 +107,7 @@ export class MedicalFormManager {
         data: {
           consultationRequestId,
           patientId,
-          filledByParent: true,
-          filledByTherapist: false,
-          isCompleted: false,
+          isComplete: false,
           // Store form data in JSON fields
           birthComplications: JSON.stringify({}),
           developmentalMilestones: {},
@@ -163,8 +161,12 @@ export class MedicalFormManager {
               },
               parent: {
                 select: {
-                  firstName: true,
-                  lastName: true
+                  profile: {
+                    select: {
+                      firstName: true,
+                      lastName: true
+                    }
+                  }
                 }
               }
             }
@@ -204,8 +206,12 @@ export class MedicalFormManager {
               },
               parent: {
                 select: {
-                  firstName: true,
-                  lastName: true
+                  profile: {
+                    select: {
+                      firstName: true,
+                      lastName: true
+                    }
+                  }
                 }
               }
             }
@@ -260,7 +266,7 @@ export class MedicalFormManager {
         data: {
           ...updateData,
           updatedAt: new Date(),
-          isCompleted: step === 6 // Mark as completed when last step is updated
+          isComplete: step === 6 // Mark as completed when last step is updated
         }
       })
 
@@ -421,14 +427,14 @@ export class MedicalFormManager {
         throw new Error('Medical form not found')
       }
 
-      if (!form.isCompleted) {
+      if (!form.isComplete) {
         throw new Error('Form must be completed before submission')
       }
 
       const updatedForm = await db.medicalForm.update({
         where: { id: formId },
         data: {
-          isCompleted: true,
+          isComplete: true,
           completedAt: new Date(),
           updatedAt: new Date()
         }
@@ -459,7 +465,7 @@ export class MedicalFormManager {
         throw new Error('Medical form not found')
       }
 
-      if (!form.isCompleted) {
+      if (!form.isComplete) {
         throw new Error('Form must be completed before approval')
       }
 
@@ -498,8 +504,8 @@ export class MedicalFormManager {
         draftForms
       ] = await Promise.all([
         db.medicalForm.count({ where: whereClause }),
-        db.medicalForm.count({ where: { ...whereClause, isCompleted: true } }),
-        db.medicalForm.count({ where: { ...whereClause, isCompleted: false } })
+        db.medicalForm.count({ where: { ...whereClause, isComplete: true } }),
+        db.medicalForm.count({ where: { ...whereClause, isComplete: false } })
       ])
 
       // Calculate step completion rates (simplified)
@@ -511,7 +517,7 @@ export class MedicalFormManager {
       const completedFormsWithTime = await db.medicalForm.findMany({
         where: {
           ...whereClause,
-          isCompleted: true,
+          isComplete: true,
           completedAt: { not: null }
         },
         select: {
@@ -626,9 +632,9 @@ export class MedicalFormManager {
 
       if (status) {
         if (status === 'COMPLETED') {
-          whereClause.isCompleted = true
+          whereClause.isComplete = true
         } else if (status === 'DRAFT') {
-          whereClause.isCompleted = false
+          whereClause.isComplete = false
         }
       }
 
@@ -702,7 +708,7 @@ export class MedicalFormManager {
       currentConcerns: this.parseJsonField(form.behavioralConcerns) || {},
       familyInfo: this.parseJsonField(form.familyStructure) || {},
       goalsExpectations: this.parseJsonField(form.parentalConcerns) || {},
-      status: form.isCompleted ? 'COMPLETED' : 'DRAFT',
+      status: form.isComplete ? 'COMPLETED' : 'DRAFT',
       currentStep: 1,
       completedSteps: [],
       createdAt: form.createdAt,

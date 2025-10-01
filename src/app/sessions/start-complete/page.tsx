@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { 
   Play,
   Pause,
-  Stop,
+  Square as SquareIcon3,
   Timer,
   Clock,
   User,
@@ -45,11 +45,11 @@ import {
   Info,
   AlertTriangle,
   CheckSquare,
-  Square,
+  Square as SquareIcon3,
   GripVertical,
   Move,
   Copy,
-  RotateCcw,
+  RotateCcw as RotateCcwIcon3,
   TrendingUp,
   TrendingDown,
   PieChart,
@@ -61,7 +61,7 @@ import {
   Trash2,
   Plus,
   Minus,
-  Reset,
+  RotateCcw as RotateCcwIcon3,
   Users
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -192,7 +192,7 @@ export default function SessionStartCompletePage() {
     })
   }
 
-  const formatTime = (timeString: string) => {
+  const formatTimeString = (timeString: string) => {
     const [hours, minutes] = timeString.split(':')
     const hour = parseInt(hours)
     const ampm = hour >= 12 ? 'PM' : 'AM'
@@ -277,7 +277,7 @@ export default function SessionStartCompletePage() {
                     <SelectItem key={session.id} value={session.id}>
                       <div className="flex items-center justify-between w-full">
                         <span>
-                          {session.patient.firstName} {session.patient.lastName} - {formatDate(session.scheduledDate)} {formatTime(session.scheduledTime)}
+                          {session.patient.firstName} {session.patient.lastName} - {formatDate(session.scheduledDate)} {formatTimeString(session.scheduledTime)}
                         </span>
                         <Badge className={`ml-2 ${getSessionStatusColor(session.status)}`}>
                           {session.status}
@@ -393,7 +393,7 @@ export default function SessionStartCompletePage() {
                     <div className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center space-x-3">
                         <div className="p-2 rounded-full bg-purple-100">
-                          <DollarSign className="h-5 w-5 text-purple-600" />
+                          <Star className="h-5 w-5 text-purple-600" />
                         </div>
                         <div>
                           <div className="font-medium">Session Revenue</div>

@@ -100,7 +100,7 @@ export class PaymentTimeoutManager {
       }
 
       // Check if timeout already exists
-      const existingTimeout = await db.paymentTimeout.findUnique({
+      const existingTimeout = await db.paymentTimeout.findFirst({
         where: { paymentId }
       })
 
@@ -259,7 +259,6 @@ export class PaymentTimeoutManager {
         where: { id: paymentId },
         data: {
           status: 'CANCELLED',
-          cancelledAt: new Date(),
           cancellationReason: reason
         }
       })
@@ -375,10 +374,14 @@ export class PaymentTimeoutManager {
               amount: true,
               status: true,
               paymentMethod: true,
-              patient: {
+              consultationRequest: {
                 select: {
-                  firstName: true,
-                  lastName: true
+                  patient: {
+                    select: {
+                      firstName: true,
+                      lastName: true
+                    }
+                  }
                 }
               }
             }
@@ -430,10 +433,14 @@ export class PaymentTimeoutManager {
               amount: true,
               status: true,
               paymentMethod: true,
-              patient: {
+              consultationRequest: {
                 select: {
-                  firstName: true,
-                  lastName: true
+                  patient: {
+                    select: {
+                      firstName: true,
+                      lastName: true
+                    }
+                  }
                 }
               }
             }
@@ -482,10 +489,14 @@ export class PaymentTimeoutManager {
               amount: true,
               status: true,
               paymentMethod: true,
-              patient: {
+              consultationRequest: {
                 select: {
-                  firstName: true,
-                  lastName: true
+                  patient: {
+                    select: {
+                      firstName: true,
+                      lastName: true
+                    }
+                  }
                 }
               }
             }
@@ -709,7 +720,7 @@ export class PaymentTimeoutManager {
       await db.paymentTimeoutNotification.create({
         data: {
           paymentId,
-          type,
+          notificationType: type,
           scheduledFor,
           status: 'PENDING',
           message: this.generateNotificationMessage(type, paymentId)
@@ -734,7 +745,7 @@ export class PaymentTimeoutManager {
       
       // Update notification status
       await db.paymentTimeoutNotification.updateMany({
-        where: { paymentId, type, status: 'PENDING' },
+        where: { paymentId, notificationType: type, status: 'PENDING' },
         data: {
           status: 'SENT',
           sentAt: new Date(),

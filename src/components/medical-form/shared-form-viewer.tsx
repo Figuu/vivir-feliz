@@ -28,6 +28,7 @@ import {
   Bell,
   Send,
   ThumbsUp,
+  AlertCircle,
   ThumbsDown
 } from 'lucide-react'
 
@@ -323,7 +324,7 @@ export function SharedFormViewer({
 
       {/* Permission Info */}
       <Alert>
-        <Info className="h-4 w-4" />
+        <AlertCircle className="h-4 w-4" />
         <AlertDescription>
           <strong>Acceso compartido:</strong> Tienes permisos de {permission.permission.toLowerCase()} en este formulario. 
           Otorgado por {permission.grantedBy} el {new Date(permission.grantedAt).toLocaleDateString()}.
@@ -347,7 +348,7 @@ export function SharedFormViewer({
       )}
 
       {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="space-y-4">
+      <Tabs value={activeTab} onValueChange={(value: string) => setActiveTab(value as 'form' | 'comments' | 'activity')} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="form">Formulario</TabsTrigger>
           <TabsTrigger value="comments">Comentarios</TabsTrigger>

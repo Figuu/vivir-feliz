@@ -14,7 +14,7 @@ const customReportSchema = z.object({
   name: z.string().min(1, 'Report name is required'),
   description: z.string().optional(),
   dataSource: z.enum(['payments', 'sessions', 'patients', 'therapists', 'proposals']),
-  filters: z.record(z.any()).optional(),
+  filters: z.record(z.string(), z.any()).optional(),
   groupBy: z.array(z.string()).optional(),
   aggregations: z.array(z.object({
     field: z.string(),
@@ -147,17 +147,17 @@ async function generateRevenueReport(dateFilter: any, groupBy: string) {
       _sum: { amount: true }
     }),
     db.payment.aggregate({
-      where: { ...whereClause, status: 'paid' },
+      where: { ...whereClause, status: 'PAID' },
       _sum: { amount: true }
     }),
     db.payment.aggregate({
-      where: { ...whereClause, status: 'pending' },
+      where: { ...whereClause, status: 'PENDING' },
       _sum: { amount: true }
     }),
     db.payment.aggregate({
       where: { 
         ...whereClause, 
-        status: 'pending',
+        status: 'PENDING',
         dueDate: { lt: new Date() }
       },
       _sum: { amount: true }
@@ -194,7 +194,7 @@ async function generatePaymentsReport(dateFilter: any, groupBy: string) {
     }),
     db.payment.groupBy({
       by: ['method'],
-      where: { ...whereClause, status: 'paid' },
+      where: { ...whereClause, status: 'PAID' },
       _count: true,
       _sum: { amount: true }
     }),
@@ -205,8 +205,19 @@ async function generatePaymentsReport(dateFilter: any, groupBy: string) {
     db.payment.findMany({
       where: whereClause,
       include: {
-        patient: {
-          select: { firstName: true, lastName: true }
+        consultationRequest: {
+          select: {
+            patient: {
+              select: { 
+                profile: {
+                  select: {
+                    firstName: true, 
+                    lastName: true 
+                  }
+                }
+              }
+            }
+          }
         }
       },
       orderBy: { createdAt: 'desc' },
@@ -231,7 +242,7 @@ async function generatePaymentsReport(dateFilter: any, groupBy: string) {
       amount: p.amount,
       status: p.status,
       method: p.method,
-      patientName: `${p.patient.firstName} ${p.patient.lastName}`,
+      patientName: `${p.consultationRequest.patient.profile.firstName} ${p.consultationRequest.patient.profile.lastName}`,
       dueDate: p.dueDate,
       paidDate: p.paidDate,
       createdAt: p.createdAt
@@ -292,7 +303,16 @@ async function generateTherapistsReport(dateFilter: any, groupBy: string) {
   const sessions = await db.patientSession.findMany({
     where: whereClause,
     include: {
-      therapist: { select: { id: true, firstName: true, lastName: true } }
+      therapist: { 
+        select: { 
+          profile: {
+            select: {
+              firstName: true, 
+              lastName: true 
+            }
+          }
+        } 
+      }
     }
   })
 
@@ -301,7 +321,7 @@ async function generateTherapistsReport(dateFilter: any, groupBy: string) {
   
   sessions.forEach(session => {
     const therapistId = session.therapistId
-    const therapistName = `${session.therapist.firstName} ${session.therapist.lastName}`
+    const therapistName = `${session.therapist.profile.firstName} ${session.therapist.profile.lastName}`
     
     if (!therapistMap.has(therapistId)) {
       therapistMap.set(therapistId, { name: therapistName, sessions: 0, revenue: 0, completed: 0 })

@@ -34,19 +34,15 @@ export async function GET(request: NextRequest) {
     const whereClause: any = {}
     
     if (sessionId) {
-      whereClause.sessionId = sessionId
-    } else {
-      const sessionWhere: any = {}
-      if (patientId) sessionWhere.patientId = patientId
-      if (therapistId) sessionWhere.therapistId = therapistId
-      
-      if (Object.keys(sessionWhere).length > 0) {
-        const matchingSessions = await db.patientSession.findMany({
-          where: sessionWhere,
-          select: { id: true }
-        })
-        whereClause.sessionId = { in: matchingSessions.map(s => s.id) }
-      }
+      whereClause.id = sessionId
+    }
+    
+    if (patientId) {
+      whereClause.patientId = patientId
+    }
+    
+    if (therapistId) {
+      whereClause.therapistId = therapistId
     }
 
     if (startDate) {
@@ -57,22 +53,71 @@ export async function GET(request: NextRequest) {
       whereClause.createdAt = { ...whereClause.createdAt, lte: new Date(endDate) }
     }
 
-    const history = await db.reschedulingRequest.findMany({
-      where: whereClause,
+    // Since there's no reschedulingRequest table, we'll look at session history
+    // We'll focus on sessions that have been rescheduled or cancelled
+    const sessions = await db.session.findMany({
+      where: {
+        ...whereClause,
+        status: { in: ['RESCHEDULED', 'CANCELLED'] }
+      },
       include: {
-        session: {
-          include: {
-            patient: { select: { firstName: true, lastName: true } },
-            therapist: { select: { firstName: true, lastName: true } }
+        patient: {
+          select: {
+            id: true,
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
+          }
+        },
+        therapist: {
+          select: {
+            id: true,
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
           }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { updatedAt: 'desc' }
     })
+
+    // Transform session data to look like rescheduling history
+    const history = sessions.map(session => ({
+      id: session.id,
+      sessionId: session.id,
+      requestedDate: session.scheduledDate,
+      requestedTime: session.scheduledTime,
+      reason: 'Session rescheduled', // Default reason since we don't have specific rescheduling reasons
+      status: session.status === 'RESCHEDULED' ? 'approved' : 'rejected',
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+      session: {
+        id: session.id,
+        patient: session.patient,
+        therapist: session.therapist,
+        scheduledDate: session.scheduledDate,
+        scheduledTime: session.scheduledTime,
+        status: session.status
+      }
+    }))
 
     return NextResponse.json({
       success: true,
-      data: { history, totalCount: history.length }
+      data: { 
+        history, 
+        totalCount: history.length,
+        summary: {
+          totalRescheduled: sessions.filter(s => s.status === 'RESCHEDULED').length,
+          totalCancelled: sessions.filter(s => s.status === 'CANCELLED').length,
+          reschedulingRate: sessions.length > 0 ? (sessions.filter(s => s.status === 'RESCHEDULED').length / sessions.length) * 100 : 0
+        }
+      }
     })
 
   } catch (error) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PaymentConfirmationWorkflow, PaymentConfirmationStatus } from '@/lib/payment-confirmation-workflow'
+import { PaymentConfirmationWorkflowManager, PaymentConfirmationStatus } from '@/lib/payment-confirmation-workflow'
 import { z } from 'zod'
 
 const createConfirmationRequestSchema = z.object({
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     const { paymentId, requestedBy, priority } = validationResult.data
     
     // Create confirmation request
-    const confirmationRequest = await PaymentConfirmationWorkflow.createConfirmationRequest(
+    const confirmationRequest = await PaymentConfirmationWorkflowManager.createConfirmationRequest(
       paymentId,
       requestedBy,
       priority || 'MEDIUM'
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Get confirmation requests
-    const result = await PaymentConfirmationWorkflow.getConfirmationRequests(filters)
+    const result = await PaymentConfirmationWorkflowManager.getConfirmationRequests(filters)
     
     return NextResponse.json({
       success: true,

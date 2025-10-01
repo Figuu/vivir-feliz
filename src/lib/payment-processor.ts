@@ -60,9 +60,13 @@ export class PaymentProcessor {
           },
           parent: {
             select: {
-              firstName: true,
-              lastName: true,
-              email: true
+              profile: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  email: true
+                }
+              }
             }
           },
           specialty: {
@@ -78,7 +82,7 @@ export class PaymentProcessor {
       }
 
       // Check if payment already exists
-      const existingPayment = await db.payment.findUnique({
+      const existingPayment = await db.payment.findFirst({
         where: { consultationRequestId }
       })
 
@@ -104,7 +108,7 @@ export class PaymentProcessor {
             status: 'PROCESSING',
             description: paymentDetails.description,
             metadata: paymentDetails.metadata ? JSON.stringify(paymentDetails.metadata) : null,
-            processedBy
+            processedAt: new Date()
           }
         })
 
@@ -122,7 +126,7 @@ export class PaymentProcessor {
       return {
         paymentId: result.id,
         status: result.status as PaymentStatus,
-        amount: result.amount,
+        amount: Number(result.amount),
         currency: result.currency,
         paymentMethod: result.paymentMethod as PaymentMethod,
         transactionId: result.transactionId || undefined,
@@ -153,7 +157,7 @@ export class PaymentProcessor {
           transactionId,
           receiptUrl,
           paymentDate: new Date(),
-          completedBy
+          completedAt: new Date()
         }
       })
 
@@ -188,7 +192,7 @@ export class PaymentProcessor {
         data: {
           status: 'FAILED',
           errorMessage: error,
-          failedBy
+          failedAt: new Date()
         }
       })
 
@@ -221,7 +225,7 @@ export class PaymentProcessor {
         data: {
           status: 'CANCELLED',
           errorMessage: reason,
-          cancelledBy
+          cancelledAt: new Date()
         }
       })
 
@@ -262,7 +266,7 @@ export class PaymentProcessor {
         throw new Error('Only completed payments can be refunded')
       }
 
-      if (refundAmount > payment.amount) {
+      if (refundAmount > Number(payment.amount)) {
         throw new Error('Refund amount cannot exceed original payment amount')
       }
 
@@ -271,7 +275,7 @@ export class PaymentProcessor {
         data: {
           status: 'REFUNDED',
           refundAmount,
-          refundReason: reason,
+          refundedAt: new Date(),
           refundedBy,
           refundDate: new Date()
         }
@@ -337,7 +341,6 @@ export class PaymentProcessor {
         where: { id: paymentId },
         data: {
           receiptUrl,
-          receiptUploadedAt: new Date(),
           receiptUploadedBy: uploadedBy
         }
       })
@@ -376,19 +379,23 @@ export class PaymentProcessor {
               },
               parent: {
                 select: {
-                  firstName: true,
-                  lastName: true,
-                  email: true,
-                  phone: true
+                  profile: {
+                    select: {
+                      firstName: true,
+                      lastName: true,
+                      email: true,
+                      phone: true
+                    }
+                  }
                 }
               },
               therapist: {
                 select: {
-                  firstName: true,
-                  lastName: true,
-                  user: {
+                  profile: {
                     select: {
-                      name: true
+                      firstName: true,
+                      lastName: true,
+                      email: true
                     }
                   }
                 }
@@ -499,10 +506,10 @@ export class PaymentProcessor {
       }
 
       methodCounts.forEach(item => {
-        formattedMethodCounts[item.paymentMethod as PaymentMethod] = item._count.paymentMethod
+        formattedMethodCounts[item.paymentMethod as PaymentMethod] = Number(item._count.paymentMethod)
       })
 
-      const averageAmount = totalPayments > 0 ? (totalAmount._sum.amount || 0) / totalPayments : 0
+      const averageAmount = totalPayments > 0 ? Number(totalAmount._sum.amount || 0) / totalPayments : 0
       const completionRate = totalPayments > 0 ? (formattedStatusCounts.COMPLETED / totalPayments) * 100 : 0
 
       return {

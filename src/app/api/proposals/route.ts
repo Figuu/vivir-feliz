@@ -44,16 +44,25 @@ export async function GET(request: NextRequest) {
         patient: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            dateOfBirth: true,
-            parent: {
+            profile: {
               select: {
-                id: true,
                 firstName: true,
                 lastName: true,
                 email: true,
                 phone: true
+              }
+            },
+            parent: {
+              select: {
+                id: true,
+                profile: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    phone: true
+                  }
+                }
               }
             }
           }
@@ -61,10 +70,14 @@ export async function GET(request: NextRequest) {
         therapist: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true
+              }
+            }
           }
         },
         consultationRequest: {
@@ -89,8 +102,12 @@ export async function GET(request: NextRequest) {
             assignedTherapist: {
               select: {
                 id: true,
-                firstName: true,
-                lastName: true
+                profile: {
+                  select: {
+                    firstName: true,
+                    lastName: true
+                  }
+                }
               }
             }
           }

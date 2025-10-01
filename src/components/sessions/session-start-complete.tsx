@@ -13,7 +13,7 @@ import { Progress } from '@/components/ui/progress'
 import { 
   Play,
   Pause,
-  Stop,
+  Square,
   Timer,
   Clock,
   User,

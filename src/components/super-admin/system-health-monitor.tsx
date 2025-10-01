@@ -20,7 +20,8 @@ import {
   Clock,
   Users,
   Calendar,
-  DollarSign
+  DollarSign,
+  Label
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { toast } from '@/hooks/use-toast'

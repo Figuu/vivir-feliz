@@ -22,7 +22,7 @@ import {
   Trash2, 
   Save, 
   RotateCcw,
-  Grip,
+  GripVertical,
   Eye,
   Edit3
 } from 'lucide-react'

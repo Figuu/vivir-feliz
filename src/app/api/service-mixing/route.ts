@@ -37,11 +37,39 @@ export async function POST(request: NextRequest) {
       include: {
         services: {
           include: {
-            service: true
+            service: {
+              select: {
+                id: true,
+                name: true,
+                type: true,
+                sessionDuration: true,
+                costPerSession: true
+              }
+            }
           }
         },
-        patient: true,
-        therapist: true
+        patient: {
+          select: {
+            id: true,
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
+          }
+        },
+        therapist: {
+          select: {
+            id: true,
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
+          }
+        }
       }
     })
 
@@ -59,12 +87,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Date range must be at least 1 week' }, { status: 400 })
     }
 
-    // Calculate total sessions needed
-    const totalSessions = proposal.services.reduce((sum, s) => sum + s.sessions, 0)
+    // Calculate total sessions needed based on selected proposal
+    const totalSessions = proposal.services.reduce((sum, s) => {
+      const sessions = proposal.selectedProposal === 'A' ? s.sessionsProposalA : s.sessionsProposalB
+      return sum + sessions
+    }, 0)
     
     // Generate service distribution
     const distribution = distributeServices(
       proposal.services,
+      proposal.selectedProposal,
       data.startDate,
       data.endDate,
       data.distributionStrategy,
@@ -101,11 +133,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function distributeServices(services: any[], startDate: Date, endDate: Date, strategy: string, constraints: any) {
+function distributeServices(services: any[], selectedProposal: string | null, startDate: Date, endDate: Date, strategy: string, constraints: any) {
   const distribution: any[] = []
-  const serviceQueue = services.flatMap(s => 
-    Array(s.sessions).fill({ serviceId: s.serviceId, serviceName: s.service.name })
-  )
+  const serviceQueue = services.flatMap(s => {
+    const sessions = selectedProposal === 'A' ? s.sessionsProposalA : s.sessionsProposalB
+    return Array(sessions).fill({ serviceId: s.serviceId, serviceName: s.service.name })
+  })
 
   let currentDate = new Date(startDate)
   let sessionIndex = 0

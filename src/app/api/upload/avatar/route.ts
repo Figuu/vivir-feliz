@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
 
       // Log successful avatar upload
       await auditFile({
-        action: AuditAction.AVATAR_UPLOADED,
+        action: AuditAction.FILE_UPLOAD,
         userId: user.id,
         fileId: fileName,
         fileName: file.name,

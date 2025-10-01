@@ -57,9 +57,8 @@ import {
   ChevronRight,
   Play,
   Pause,
-  Stop,
-  RotateCcw,
   Square,
+  RotateCcw,
   CheckSquare,
   Crown,
   Trophy,
@@ -372,7 +371,7 @@ export function MultiTherapistCollaboration({
     switch (type) {
       case 'comment': return <MessageSquare className="h-4 w-4" />
       case 'suggestion': return <Lightbulb className="h-4 w-4" />
-      case 'question': return <HelpCircle className="h-4 w-4" />
+      case 'question': return <MessageSquare className="h-4 w-4" />
       case 'approval': return <CheckCircle className="h-4 w-4" />
       case 'rejection': return <XCircle className="h-4 w-4" />
       default: return <MessageSquare className="h-4 w-4" />

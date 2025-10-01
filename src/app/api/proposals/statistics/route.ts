@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
-import { validateProposalStats } from '@/lib/proposal-validation'
-import { ProposalStatus } from '@prisma/client'
+import { z } from 'zod'
 
 // Helper function to get current user from Supabase
 async function getCurrentUser(request: NextRequest) {
@@ -13,7 +12,7 @@ async function getCurrentUser(request: NextRequest) {
     return null
   }
   
-  const dbUser = await db.user.findUnique({
+  const dbUser = await db.profile.findUnique({
     where: { id: user.id },
     select: {
       id: true,
@@ -26,6 +25,15 @@ async function getCurrentUser(request: NextRequest) {
   
   return dbUser
 }
+
+// Validation schema for statistics parameters
+const statsSchema = z.object({
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  groupBy: z.enum(['day', 'week', 'month', 'year']).optional().default('month'),
+  therapistId: z.string().uuid().optional(),
+  status: z.array(z.string()).optional()
+})
 
 // Helper function to group data by time period
 function groupByTimePeriod(data: any[], groupBy: string, dateField: string = 'createdAt') {
@@ -89,7 +97,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Validate statistics parameters
-    const validation = validateProposalStats(statsData)
+    const validation = statsSchema.safeParse(statsData)
     if (!validation.success) {
       return NextResponse.json(
         { error: 'Invalid statistics parameters', details: validation.error.issues },
@@ -120,7 +128,7 @@ export async function GET(request: NextRequest) {
     // Apply status filter
     if (status && status.length > 0) {
       where.status = {
-        in: status as ProposalStatus[]
+        in: status
       }
     }
     
@@ -131,25 +139,15 @@ export async function GET(request: NextRequest) {
         id: true,
         status: true,
         therapistId: true,
-        proposalACost: true,
-        proposalBCost: true,
         selectedProposal: true,
+        treatmentPeriod: true,
         createdAt: true,
-        reviewedAt: true
+        updatedAt: true
       }
     })
     
     // Calculate statistics
     const totalProposals = proposals.length
-    const totalCost = proposals.reduce((sum, proposal) => {
-      const cost = proposal.selectedProposal === 'PROPOSAL_A' 
-        ? proposal.proposalACost 
-        : proposal.selectedProposal === 'PROPOSAL_B'
-        ? proposal.proposalBCost
-        : proposal.proposalACost
-      return sum + (cost ? Number(cost) : 0)
-    }, 0)
-    const averageCost = totalProposals > 0 ? totalCost / totalProposals : 0
     
     // Group by status
     const statusGroups = proposals.reduce((groups, proposal) => {
@@ -161,21 +159,10 @@ export async function GET(request: NextRequest) {
     const therapistGroups = proposals.reduce((groups, proposal) => {
       if (!groups[proposal.therapistId]) {
         groups[proposal.therapistId] = {
-          count: 0,
-          totalCost: 0,
-          averageCost: 0
+          count: 0
         }
       }
-      const cost = proposal.selectedProposal === 'PROPOSAL_A' 
-        ? proposal.proposalACost 
-        : proposal.selectedProposal === 'PROPOSAL_B'
-        ? proposal.proposalBCost
-        : proposal.proposalACost
-      const numCost = cost ? Number(cost) : 0
-      
       groups[proposal.therapistId].count++
-      groups[proposal.therapistId].totalCost += numCost
-      groups[proposal.therapistId].averageCost = groups[proposal.therapistId].totalCost / groups[proposal.therapistId].count
       return groups
     }, {} as Record<string, any>)
     
@@ -183,64 +170,46 @@ export async function GET(request: NextRequest) {
     const timeGroups = groupByTimePeriod(proposals, groupBy)
     const timeSeriesData = Object.entries(timeGroups).map(([period, groupProposals]) => ({
       period,
-      count: groupProposals.length,
-      totalCost: groupProposals.reduce((sum, proposal) => {
-        const cost = proposal.selectedProposal === 'PROPOSAL_A' 
-          ? proposal.proposalACost 
-          : proposal.selectedProposal === 'PROPOSAL_B'
-          ? proposal.proposalBCost
-          : proposal.proposalACost
-        return sum + (cost ? Number(cost) : 0)
-      }, 0),
-      averageCost: groupProposals.length > 0 
-        ? groupProposals.reduce((sum, proposal) => {
-            const cost = proposal.selectedProposal === 'PROPOSAL_A' 
-              ? proposal.proposalACost 
-              : proposal.selectedProposal === 'PROPOSAL_B'
-              ? proposal.proposalBCost
-              : proposal.proposalACost
-            return sum + (cost ? Number(cost) : 0)
-          }, 0) / groupProposals.length
-        : 0
+      count: groupProposals.length
     })).sort((a, b) => a.period.localeCompare(b.period))
     
     // Calculate approval rate
-    const approvedProposals = proposals.filter(p => 
-      ['COORDINATOR_APPROVED', 'ADMIN_APPROVED', 'CONFIRMED'].includes(p.status)
-    ).length
+    const approvedProposals = proposals.filter(p => p.status === 'APPROVED').length
     const approvalRate = totalProposals > 0 ? (approvedProposals / totalProposals) * 100 : 0
     
     // Calculate rejection rate
     const rejectedProposals = proposals.filter(p => p.status === 'REJECTED').length
     const rejectionRate = totalProposals > 0 ? (rejectedProposals / totalProposals) * 100 : 0
     
-    // Calculate confirmation rate (equivalent to completion rate)
-    const confirmedProposals = proposals.filter(p => p.status === 'CONFIRMED').length
-    const confirmationRate = totalProposals > 0 ? (confirmedProposals / totalProposals) * 100 : 0
+    // Calculate draft rate
+    const draftProposals = proposals.filter(p => p.status === 'DRAFT').length
+    const draftRate = totalProposals > 0 ? (draftProposals / totalProposals) * 100 : 0
     
-    // Calculate average processing time
-    const processedProposals = proposals.filter(p => p.reviewedAt && p.createdAt)
-    const averageProcessingTime = processedProposals.length > 0 
-      ? processedProposals.reduce((sum, proposal) => {
-          const created = new Date(proposal.createdAt)
-          const reviewed = new Date(proposal.reviewedAt!)
-          return sum + (reviewed.getTime() - created.getTime()) / (1000 * 60 * 60 * 24) // days
-        }, 0) / processedProposals.length
-      : 0
+    // Group by treatment period
+    const periodGroups = proposals.reduce((groups, proposal) => {
+      groups[proposal.treatmentPeriod] = (groups[proposal.treatmentPeriod] || 0) + 1
+      return groups
+    }, {} as Record<string, number>)
+    
+    // Group by selected proposal
+    const selectedProposalGroups = proposals.reduce((groups, proposal) => {
+      const key = proposal.selectedProposal || 'NONE'
+      groups[key] = (groups[key] || 0) + 1
+      return groups
+    }, {} as Record<string, number>)
     
     return NextResponse.json({
       summary: {
         totalProposals,
-        totalCost,
-        averageCost,
-        confirmationRate,
         approvalRate,
         rejectionRate,
-        averageProcessingTime
+        draftRate
       },
       statusDistribution: statusGroups,
       therapistPerformance: therapistGroups,
       timeSeriesData,
+      periodDistribution: periodGroups,
+      selectedProposalDistribution: selectedProposalGroups,
       filters: {
         dateFrom,
         dateTo,

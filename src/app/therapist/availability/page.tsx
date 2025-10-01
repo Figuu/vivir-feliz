@@ -25,7 +25,7 @@ import {
   ChevronRight,
   Play,
   Pause,
-  Stop,
+  Square,
   Timer,
   FileText,
   MessageSquare,

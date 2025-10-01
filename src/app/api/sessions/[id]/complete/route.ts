@@ -66,32 +66,36 @@ export async function POST(
         patient: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true
+              }
+            }
           }
         },
         therapist: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            email: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
           }
         },
-        serviceAssignments: {
+        serviceAssignment: {
           include: {
-            proposalService: {
-              include: {
-                service: {
-                  select: {
-                    id: true,
-                    name: true,
-                    description: true,
-                    price: true
-                  }
-                }
+            service: {
+              select: {
+                id: true,
+                name: true,
+                type: true,
+                costPerSession: true
               }
             }
           }
@@ -131,48 +135,45 @@ export async function POST(
     const session = await db.patientSession.update({
       where: { id: sessionId },
       data: {
-        status: 'completed',
-        actualEndTime: actualEndTime,
-        actualDuration: finalDuration,
-        sessionNotes: sessionNotes,
-        therapistComments: therapistComments,
-        patientProgress: patientProgress,
-        nextSessionRecommendations: nextSessionRecommendations,
-        sessionOutcome: sessionOutcome,
-        patientSatisfaction: patientSatisfaction,
-        therapistSatisfaction: therapistSatisfaction,
+        status: 'COMPLETED',
+        completedAt: actualEndTime,
+        therapistNotes: sessionNotes || therapistComments,
         updatedAt: new Date()
       },
       include: {
         patient: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true
+              }
+            }
           }
         },
         therapist: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            email: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
           }
         },
-        serviceAssignments: {
+        serviceAssignment: {
           include: {
-            proposalService: {
-              include: {
-                service: {
-                  select: {
-                    id: true,
-                    name: true,
-                    description: true,
-                    price: true
-                  }
-                }
+            service: {
+              select: {
+                id: true,
+                name: true,
+                type: true,
+                costPerSession: true
               }
             }
           }
@@ -185,24 +186,17 @@ export async function POST(
       id: session.id,
       scheduledDate: session.scheduledDate,
       scheduledTime: session.scheduledTime,
-      actualStartTime: session.actualStartTime,
-      actualEndTime: session.actualEndTime,
-      scheduledDuration: session.duration,
-      actualDuration: session.actualDuration,
+      startedAt: session.startedAt,
+      completedAt: session.completedAt,
+      duration: session.duration,
       status: session.status,
-      sessionNotes: session.sessionNotes,
-      therapistComments: session.therapistComments,
-      patientProgress: session.patientProgress,
-      nextSessionRecommendations: session.nextSessionRecommendations,
-      sessionOutcome: session.sessionOutcome,
-      patientSatisfaction: session.patientSatisfaction,
-      therapistSatisfaction: session.therapistSatisfaction,
+      therapistNotes: session.therapistNotes,
+      observations: session.observations,
       patient: session.patient,
       therapist: session.therapist,
-      services: session.serviceAssignments.map(sa => sa.proposalService.service),
-      revenue: session.serviceAssignments.reduce((total, assignment) => {
-        return total + (assignment.proposalService.service.price || 0)
-      }, 0)
+      service: session.serviceAssignment?.service,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt
     }
 
     return NextResponse.json({

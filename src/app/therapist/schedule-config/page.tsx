@@ -41,15 +41,15 @@ import {
   Timer,
   Pause,
   Play,
-  Stop,
+  Square,
   RotateCcw,
   Copy,
   Move,
   GripVertical,
   AlertCircle,
   Info,
-  CheckSquare,
-  Square
+  Check,
+  Square as SquareIcon
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ScheduleConfigurationInterface } from '@/components/therapist/schedule-configuration-interface'

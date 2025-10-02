@@ -277,7 +277,7 @@ export async function POST(request: NextRequest) {
             id: reportId,
             patientId,
             therapistId,
-            reportNumber: `PR-${Date.now()}`,
+            reportNumber: Math.floor(Date.now() / 1000),
             status,
             coordinatorNotes: notes
           },

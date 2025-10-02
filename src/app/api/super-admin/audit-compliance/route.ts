@@ -70,16 +70,12 @@ export async function GET(request: NextRequest) {
       db.auditLog.findMany({
         where: whereClause,
         include: {
-          user: {
+          profile: {
             select: {
-              profile: {
-                select: {
-                  email: true,
-                  firstName: true,
-                  lastName: true,
-                  role: true
-                }
-              }
+              email: true,
+              firstName: true,
+              lastName: true,
+              role: true
             }
           }
         },
@@ -88,7 +84,7 @@ export async function GET(request: NextRequest) {
       }),
       db.auditLog.count({ where: whereClause }),
       db.auditLog.groupBy({
-        by: ['severity'],
+        by: ['category'],
         where: whereClause,
         _count: true
       }),
@@ -103,12 +99,12 @@ export async function GET(request: NextRequest) {
         _count: true
       }),
       db.auditLog.groupBy({
-        by: ['userId'],
+        by: ['profileId'],
         where: whereClause,
         _count: true,
         orderBy: {
           _count: {
-            userId: 'desc'
+            profileId: 'desc'
           }
         },
         take: 10
@@ -116,8 +112,8 @@ export async function GET(request: NextRequest) {
     ])
 
     // Get user details for top users
-    const topUserIds = byUser.map(u => u.userId).filter(Boolean) as string[]
-    const topUsers = await db.user.findMany({
+    const topUserIds = byUser.map(u => u.profileId).filter(Boolean) as string[]
+    const topUsers = await db.profile.findMany({
       where: { id: { in: topUserIds } },
       select: {
         id: true,
@@ -129,9 +125,9 @@ export async function GET(request: NextRequest) {
     })
 
     const topUserActivity = byUser.map(u => {
-      const user = topUsers.find(tu => tu.id === u.userId)
+      const user = topUsers.find(tu => tu.id === u.profileId)
       return {
-        userId: u.userId,
+        userId: u.profileId,
         userName: user ? `${user.firstName} ${user.lastName}` : 'Unknown',
         userEmail: user?.email,
         userRole: user?.role,
@@ -153,11 +149,11 @@ export async function GET(request: NextRequest) {
           action: log.action,
           resource: log.resource,
           resourceId: log.resourceId,
-          userId: log.userId,
-          userName: log.user ? `${log.user.firstName} ${log.user.lastName}` : null,
-          userEmail: log.user?.email,
-          userRole: log.user?.role,
-          severity: log.severity,
+          userId: log.profileId,
+          userName: log.profile ? `${log.profile.firstName} ${log.profile.lastName}` : null,
+          userEmail: log.profile?.email,
+          userRole: log.profile?.role,
+          severity: log.category,
           success: log.success,
           errorMessage: log.errorMessage,
           ipAddress: log.ipAddress,
@@ -171,7 +167,7 @@ export async function GET(request: NextRequest) {
           failedActions,
           successRate,
           bySeverity: bySeverity.map(s => ({
-            severity: s.severity,
+            severity: s.category,
             count: s._count
           })),
           byAction: byAction.map(a => ({
@@ -239,9 +235,9 @@ export async function POST(request: NextRequest) {
     // Access control compliance
     if (checkType === 'access_control' || checkType === 'all') {
       const [totalUsers, usersWithoutRole, inactiveWithAccess] = await Promise.all([
-        db.user.count(),
-        db.user.count({ where: { role: null } }),
-        db.user.count({ where: { status: 'inactive', lastLogin: { not: null } } })
+        db.profile.count(),
+        db.profile.count({ where: { role: undefined } }),
+        db.profile.count({ where: { isActive: false } })
       ])
 
       complianceResults.accessControl = {
@@ -263,7 +259,7 @@ export async function POST(request: NextRequest) {
         db.auditLog.count({ 
           where: { 
             createdAt: { gte: last30Days },
-            severity: 'CRITICAL' 
+            category: 'CRITICAL' 
           } 
         }),
         db.auditLog.count({ 

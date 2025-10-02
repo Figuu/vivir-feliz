@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
 
     // Log the export action
     await auditLog({
-      action: 'AUDIT_LOG_EXPORTED',
+      action: 'READ',
       resource: 'reports',
       resourceId: templateId,
       userId: user.id,

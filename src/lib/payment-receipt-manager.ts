@@ -411,6 +411,7 @@ export class PaymentReceiptManager {
     receiptNumber: string
     fileType: string
     fileSize: number | null
+    fileName: string
   }> {
     try {
       const receipt = await db.paymentReceipt.findUnique({
@@ -434,7 +435,8 @@ export class PaymentReceiptManager {
         fileData,
         receiptNumber: receipt.receiptNumber,
         fileType: receipt.fileType,
-        fileSize: receipt.fileSize
+        fileSize: receipt.fileSize,
+        fileName: `receipt_${receipt.receiptNumber}.${receipt.fileType.toLowerCase()}`
       }
 
     } catch (error) {

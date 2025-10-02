@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import { UserRole } from '@prisma/client'
 
 const rolePermissionSchema = z.object({
   userId: z.string().uuid('Invalid user ID'),
-  role: z.enum(['admin', 'coordinator', 'therapist', 'parent', 'patient']),
+  role: z.enum(['ADMIN', 'COORDINATOR', 'THERAPIST', 'PARENT', 'PATIENT']),
   permissions: z.array(z.string()),
   updatedBy: z.string().uuid('Invalid updater ID')
 })
@@ -41,13 +42,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        roles: ['admin', 'coordinator', 'therapist', 'parent', 'patient'],
+        roles: ['ADMIN', 'COORDINATOR', 'THERAPIST', 'PARENT', 'PATIENT'],
         permissions: {
-          admin: getRolePermissions('admin'),
-          coordinator: getRolePermissions('coordinator'),
-          therapist: getRolePermissions('therapist'),
-          parent: getRolePermissions('parent'),
-          patient: getRolePermissions('patient')
+          ADMIN: getRolePermissions('ADMIN'),
+          COORDINATOR: getRolePermissions('COORDINATOR'),
+          THERAPIST: getRolePermissions('THERAPIST'),
+          PARENT: getRolePermissions('PARENT'),
+          PATIENT: getRolePermissions('PATIENT')
         }
       }
     })
@@ -74,7 +75,7 @@ export async function PUT(request: NextRequest) {
 
     const user = await db.profile.update({
       where: { id: userId },
-      data: { role, updatedAt: new Date() },
+      data: { role: role as UserRole, updatedAt: new Date() },
       select: { id: true, email: true, firstName: true, lastName: true, role: true }
     })
 
@@ -92,11 +93,11 @@ export async function PUT(request: NextRequest) {
 
 function getRolePermissions(role: string): string[] {
   const permissions: Record<string, string[]> = {
-    admin: ['all'],
-    coordinator: ['view_reports', 'approve_reports', 'view_patients', 'view_sessions', 'manage_proposals'],
-    therapist: ['view_patients', 'create_reports', 'manage_sessions', 'view_schedule'],
-    parent: ['view_child_progress', 'view_reports', 'view_schedule', 'make_payments'],
-    patient: ['view_own_progress', 'view_own_reports', 'view_own_schedule']
+    ADMIN: ['all'],
+    COORDINATOR: ['view_reports', 'approve_reports', 'view_patients', 'view_sessions', 'manage_proposals'],
+    THERAPIST: ['view_patients', 'create_reports', 'manage_sessions', 'view_schedule'],
+    PARENT: ['view_child_progress', 'view_reports', 'view_schedule', 'make_payments'],
+    PATIENT: ['view_own_progress', 'view_own_reports', 'view_own_schedule']
   }
   return permissions[role] || []
 }

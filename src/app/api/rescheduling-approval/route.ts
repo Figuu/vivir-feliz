@@ -27,18 +27,14 @@ export async function POST(request: NextRequest) {
 
     // Since there's no reschedulingRequest table, we'll work with sessions directly
     // For now, we'll simulate the approval process
-    const session = await db.session.findUnique({
+    const session = await db.patientSession.findUnique({
       where: { id: data.requestId },
       include: {
         patient: {
           select: {
             id: true,
-            profile: {
-              select: {
-                firstName: true,
-                lastName: true
-              }
-            }
+            firstName: true,
+            lastName: true
           }
         },
         therapist: {
@@ -75,19 +71,15 @@ export async function POST(request: NextRequest) {
         updateData.scheduledTime = data.suggestedTime
       }
 
-      updatedSession = await db.session.update({
+      updatedSession = await db.patientSession.update({
         where: { id: data.requestId },
         data: updateData,
         include: {
           patient: {
             select: {
               id: true,
-              profile: {
-                select: {
-                  firstName: true,
-                  lastName: true
-                }
-              }
+              firstName: true,
+              lastName: true
             }
           },
           therapist: {
@@ -105,7 +97,7 @@ export async function POST(request: NextRequest) {
       })
     } else if (data.action === 'reject') {
       // Mark session as cancelled
-      updatedSession = await db.session.update({
+      updatedSession = await db.patientSession.update({
         where: { id: data.requestId },
         data: {
           status: 'CANCELLED'
@@ -114,12 +106,8 @@ export async function POST(request: NextRequest) {
           patient: {
             select: {
               id: true,
-              profile: {
-                select: {
-                  firstName: true,
-                  lastName: true
-                }
-              }
+              firstName: true,
+              lastName: true
             }
           },
           therapist: {

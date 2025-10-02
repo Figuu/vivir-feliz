@@ -447,6 +447,7 @@ model TherapeuticProposal {
   treatmentPeriod       TreatmentPeriod
   parentAvailability    Json // Availability schedule
   status                ProposalStatus      @default(DRAFT)
+  notes                 String?             // Therapist notes
   coordinatorNotes      String?
   adminNotes            String?
   selectedProposal      ProposalType? // A or B

@@ -36,16 +36,16 @@ export async function GET(request: NextRequest) {
       paidPayments,
       pendingPayments
     ] = await Promise.all([
-      db.user.count(),
-      db.user.count({ where: { status: 'active' } }),
+      db.profile.count(),
+      db.profile.count({ where: { isActive: true } }),
       db.patient.count(),
       db.therapist.count(),
       db.patientSession.count(),
-      db.patientSession.count({ where: { status: 'completed' } }),
-      db.patientSession.count({ where: { status: 'scheduled' } }),
+      db.patientSession.count({ where: { status: 'COMPLETED' } }),
+      db.patientSession.count({ where: { status: 'SCHEDULED' } }),
       db.payment.count(),
-      db.payment.count({ where: { status: 'paid' } }),
-      db.payment.count({ where: { status: 'pending' } })
+      db.payment.count({ where: { status: 'COMPLETED' } }),
+      db.payment.count({ where: { status: 'PENDING' } })
     ])
 
     // System resource usage (simplified - in production would use actual system metrics)

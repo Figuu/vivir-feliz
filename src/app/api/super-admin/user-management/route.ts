@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
-import bcrypt from 'bcryptjs'
+import bcrypt from 'bcrypt'
 
 const userQuerySchema = z.object({
   role: z.string().optional(),
@@ -18,7 +18,7 @@ const createUserSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
-  role: z.enum(['USER', 'ADMIN', 'THERAPIST', 'COORDINATOR', 'PARENT', 'SUPER_ADMIN']),
+  role: z.enum(['SUPER_ADMIN', 'ADMIN', 'COORDINATOR', 'THERAPIST', 'PARENT']),
   phone: z.string().optional(),
   status: z.enum(['active', 'inactive', 'suspended']).default('active')
 })
@@ -28,7 +28,7 @@ const updateUserSchema = z.object({
   email: z.string().email('Invalid email address').optional(),
   firstName: z.string().min(1).optional(),
   lastName: z.string().min(1).optional(),
-  role: z.enum(['USER', 'ADMIN', 'THERAPIST', 'COORDINATOR', 'PARENT', 'SUPER_ADMIN']).optional(),
+  role: z.enum(['SUPER_ADMIN', 'ADMIN', 'COORDINATOR', 'THERAPIST', 'PARENT']).optional(),
   phone: z.string().optional(),
   status: z.enum(['active', 'inactive', 'suspended']).optional(),
   password: z.string().min(8).optional()
@@ -37,7 +37,7 @@ const updateUserSchema = z.object({
 const bulkActionSchema = z.object({
   userIds: z.array(z.string().uuid()).min(1, 'At least one user ID required'),
   action: z.enum(['activate', 'deactivate', 'suspend', 'delete', 'change_role']),
-  newRole: z.enum(['USER', 'ADMIN', 'THERAPIST', 'COORDINATOR', 'PARENT', 'SUPER_ADMIN']).optional()
+  newRole: z.enum(['SUPER_ADMIN', 'ADMIN', 'COORDINATOR', 'THERAPIST', 'PARENT']).optional()
 })
 
 // GET - List users with advanced filtering
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch users
     const [users, totalCount, roleDistribution, statusDistribution] = await Promise.all([
-      db.user.findMany({
+      db.profile.findMany({
         where,
         select: {
           id: true,
@@ -96,9 +96,8 @@ export async function GET(request: NextRequest) {
           firstName: true,
           lastName: true,
           role: true,
-          status: true,
+          isActive: true,
           phone: true,
-          lastLogin: true,
           createdAt: true,
           updatedAt: true
         },
@@ -106,13 +105,13 @@ export async function GET(request: NextRequest) {
         skip,
         take: limit
       }),
-      db.user.count({ where }),
-      db.user.groupBy({
+      db.profile.count({ where }),
+      db.profile.groupBy({
         by: ['role'],
         _count: true
       }),
-      db.user.groupBy({
-        by: ['status'],
+      db.profile.groupBy({
+        by: ['isActive'],
         _count: true
       })
     ])
@@ -129,7 +128,7 @@ export async function GET(request: NextRequest) {
         },
         statistics: {
           byRole: roleDistribution.map(r => ({ role: r.role, count: r._count })),
-          byStatus: statusDistribution.map(s => ({ status: s.status, count: s._count })),
+          byStatus: statusDistribution.map(s => ({ status: s.isActive ? 'active' : 'inactive', count: s._count })),
           totalUsers: totalCount
         }
       }
@@ -166,18 +165,18 @@ export async function POST(request: NextRequest) {
       
       switch (bulkAction) {
         case 'activate':
-          updateData = { status: 'active' }
+          updateData = { isActive: true }
           break
         case 'deactivate':
-          updateData = { status: 'inactive' }
+          updateData = { isActive: false }
           break
         case 'suspend':
-          updateData = { status: 'suspended' }
+          updateData = { isActive: false }
           break
         case 'delete':
-          await db.user.updateMany({
+          await db.profile.updateMany({
             where: { id: { in: userIds } },
-            data: { status: 'inactive', deletedAt: new Date() }
+            data: { isActive: false, updatedAt: new Date() }
           })
           return NextResponse.json({
             success: true,
@@ -194,7 +193,7 @@ export async function POST(request: NextRequest) {
           break
       }
 
-      await db.user.updateMany({
+      await db.profile.updateMany({
         where: { id: { in: userIds } },
         data: updateData
       })
@@ -216,7 +215,7 @@ export async function POST(request: NextRequest) {
       const data = validation.data
 
       // Check if email already exists
-      const existingUser = await db.user.findUnique({
+      const existingUser = await db.profile.findUnique({
         where: { email: data.email }
       })
 
@@ -231,7 +230,7 @@ export async function POST(request: NextRequest) {
       const hashedPassword = await bcrypt.hash(data.password, 10)
 
       // Create user
-      const user = await db.user.create({
+      const user = await db.profile.create({
         data: {
           email: data.email,
           password: hashedPassword,
@@ -239,7 +238,7 @@ export async function POST(request: NextRequest) {
           lastName: data.lastName,
           role: data.role,
           phone: data.phone,
-          status: data.status
+          isActive: data.status === 'active'
         },
         select: {
           id: true,
@@ -247,7 +246,7 @@ export async function POST(request: NextRequest) {
           firstName: true,
           lastName: true,
           role: true,
-          status: true,
+          isActive: true,
           createdAt: true
         }
       })
@@ -284,7 +283,7 @@ export async function PUT(request: NextRequest) {
     const { userId, password, ...updateData } = validation.data
 
     // Check if user exists
-    const existingUser = await db.user.findUnique({
+    const existingUser = await db.profile.findUnique({
       where: { id: userId }
     })
 
@@ -297,7 +296,7 @@ export async function PUT(request: NextRequest) {
 
     // If email is being updated, check for duplicates
     if (updateData.email && updateData.email !== existingUser.email) {
-      const emailExists = await db.user.findUnique({
+      const emailExists = await db.profile.findUnique({
         where: { email: updateData.email }
       })
 
@@ -316,7 +315,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update user
-    const updatedUser = await db.user.update({
+    const updatedUser = await db.profile.update({
       where: { id: userId },
       data: finalUpdateData,
       select: {
@@ -325,7 +324,7 @@ export async function PUT(request: NextRequest) {
         firstName: true,
         lastName: true,
         role: true,
-        status: true,
+        isActive: true,
         phone: true,
         updatedAt: true
       }
@@ -360,7 +359,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check if user exists
-    const user = await db.user.findUnique({
+    const user = await db.profile.findUnique({
       where: { id: userId }
     })
 
@@ -372,11 +371,11 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Soft delete (deactivate)
-    await db.user.update({
+    await db.profile.update({
       where: { id: userId },
       data: {
-        status: 'inactive',
-        deletedAt: new Date()
+        isActive: false,
+        updatedAt: new Date()
       }
     })
 

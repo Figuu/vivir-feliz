@@ -101,8 +101,12 @@ export async function GET(request: NextRequest) {
       include: {
         parent: {
           select: {
-            firstName: true,
-            lastName: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
           }
         },
         consultationRequest: {

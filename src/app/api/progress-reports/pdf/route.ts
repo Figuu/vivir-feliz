@@ -33,13 +33,8 @@ export async function POST(request: NextRequest) {
         patient: {
           select: {
             id: true,
-            profile: {
-              select: {
-                firstName: true,
-                lastName: true,
-                email: true
-              }
-            }
+            firstName: true,
+            lastName: true
           }
         },
         therapist: {
@@ -57,8 +52,8 @@ export async function POST(request: NextRequest) {
         therapeuticPlan: {
           select: {
             id: true,
-            title: true,
-            description: true
+            objectives: true,
+            background: true
           }
         }
       }
@@ -78,7 +73,7 @@ export async function POST(request: NextRequest) {
     const pdfBuffer = Buffer.from(pdf.getBuffer())
 
     // Return PDF file
-    const filename = `progress-report-${progressReport.patient.profile?.firstName || 'Unknown'}-${progressReport.patient.profile?.lastName || 'Patient'}-${new Date().toISOString().split('T')[0]}.pdf`
+    const filename = `progress-report-${progressReport.patient?.firstName || 'Unknown'}-${progressReport.patient?.lastName || 'Patient'}-${new Date().toISOString().split('T')[0]}.pdf`
     
     return new NextResponse(pdfBuffer, {
       status: 200,

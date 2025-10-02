@@ -62,13 +62,7 @@ export async function GET(request: NextRequest) {
       therapistPreferences = await db.therapist.findUnique({
         where: { id: therapistId },
         select: {
-          id: true,
-          profile: {
-            select: {
-              firstName: true,
-              lastName: true
-            }
-          }
+          id: true
         }
       })
     }
@@ -265,7 +259,7 @@ async function handleTimingAdjustment(body: any) {
       where: { id: sessionId },
       data: {
         duration: newDuration,
-        sessionNotes: reason ? `${session.sessionNotes || ''}\nDuration adjusted: ${reason}`.trim() : session.sessionNotes
+        therapistNotes: reason ? `Duration adjusted: ${reason}` : null
       }
     })
 
@@ -299,7 +293,7 @@ async function handleTimingAdjustment(body: any) {
             where: { id: followingSession.id },
             data: {
               scheduledTime: newFStartTimeString,
-              sessionNotes: `${followingSession.sessionNotes || ''}\nTime adjusted due to previous session duration change`.trim()
+              therapistNotes: `Time adjusted due to previous session duration change`
             }
           })
           

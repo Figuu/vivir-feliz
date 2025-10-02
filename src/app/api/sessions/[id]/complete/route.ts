@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import { SessionStatus } from '@prisma/client'
 
 // Validation schemas
 const sessionCompleteSchema = z.object({
@@ -66,26 +67,13 @@ export async function POST(
         patient: {
           select: {
             id: true,
-            profile: {
-              select: {
-                firstName: true,
-                lastName: true,
-                email: true,
-                phone: true
-              }
-            }
+            firstName: true,
+            lastName: true
           }
         },
         therapist: {
           select: {
-            id: true,
-            profile: {
-              select: {
-                firstName: true,
-                lastName: true,
-                email: true
-              }
-            }
+            id: true
           }
         },
         serviceAssignment: {
@@ -110,7 +98,7 @@ export async function POST(
       )
     }
 
-    if (existingSession.status !== 'in-progress') {
+    if (existingSession.status !== SessionStatus.IN_PROGRESS) {
       return NextResponse.json(
         { error: `Cannot complete session with status: ${existingSession.status}` },
         { status: 409 }
@@ -119,7 +107,7 @@ export async function POST(
 
     // Calculate actual duration if not provided
     const actualEndTime = endTime ? new Date(endTime) : new Date()
-    const startTime = existingSession.actualStartTime || new Date(`${existingSession.scheduledDate.toISOString().split('T')[0]}T${existingSession.scheduledTime}`)
+    const startTime = existingSession.startedAt || new Date(`${existingSession.scheduledDate.toISOString().split('T')[0]}T${existingSession.scheduledTime}`)
     const calculatedDuration = Math.round((actualEndTime.getTime() - startTime.getTime()) / (1000 * 60)) // in minutes
     const finalDuration = actualDuration || calculatedDuration
 
@@ -135,7 +123,7 @@ export async function POST(
     const session = await db.patientSession.update({
       where: { id: sessionId },
       data: {
-        status: 'COMPLETED',
+        status: SessionStatus.COMPLETED,
         completedAt: actualEndTime,
         therapistNotes: sessionNotes || therapistComments,
         updatedAt: new Date()
@@ -144,26 +132,13 @@ export async function POST(
         patient: {
           select: {
             id: true,
-            profile: {
-              select: {
-                firstName: true,
-                lastName: true,
-                email: true,
-                phone: true
-              }
-            }
+            firstName: true,
+            lastName: true
           }
         },
         therapist: {
           select: {
-            id: true,
-            profile: {
-              select: {
-                firstName: true,
-                lastName: true,
-                email: true
-              }
-            }
+            id: true
           }
         },
         serviceAssignment: {
@@ -191,12 +166,13 @@ export async function POST(
       duration: session.duration,
       status: session.status,
       therapistNotes: session.therapistNotes,
-      observations: session.observations,
+      // observations doesn't exist in the current schema
       patient: session.patient,
       therapist: session.therapist,
       service: session.serviceAssignment?.service,
       createdAt: session.createdAt,
-      updatedAt: session.updatedAt
+      updatedAt: session.updatedAt,
+      revenue: 0 // Since revenue doesn't exist in the current schema
     }
 
     return NextResponse.json({

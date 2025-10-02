@@ -48,8 +48,26 @@ export async function POST(request: NextRequest) {
         const planData = await db.therapeuticPlan.findUnique({
           where: { id: reportId },
           include: {
-            patient: { select: { firstName: true, lastName: true } },
-            therapist: { select: { firstName: true, lastName: true } },
+            patient: { 
+              select: { 
+                profile: {
+                  select: {
+                    firstName: true, 
+                    lastName: true 
+                  }
+                }
+              } 
+            },
+            therapist: { 
+              select: { 
+                profile: {
+                  select: {
+                    firstName: true, 
+                    lastName: true 
+                  }
+                }
+              } 
+            },
             objectives: true,
             metrics: true,
             treatmentApproach: true
@@ -78,8 +96,26 @@ export async function POST(request: NextRequest) {
         const progressData = await db.progressReport.findUnique({
           where: { id: reportId },
           include: {
-            patient: { select: { firstName: true, lastName: true } },
-            therapist: { select: { firstName: true, lastName: true } },
+            patient: { 
+              select: { 
+                profile: {
+                  select: {
+                    firstName: true, 
+                    lastName: true 
+                  }
+                }
+              } 
+            },
+            therapist: { 
+              select: { 
+                profile: {
+                  select: {
+                    firstName: true, 
+                    lastName: true 
+                  }
+                }
+              } 
+            },
             achievements: true,
             metrics: true,
             clinicalAssessment: true
@@ -108,8 +144,26 @@ export async function POST(request: NextRequest) {
         const finalData = await db.finalReport.findUnique({
           where: { id: reportId },
           include: {
-            patient: { select: { firstName: true, lastName: true } },
-            therapist: { select: { firstName: true, lastName: true } },
+            patient: { 
+              select: { 
+                profile: {
+                  select: {
+                    firstName: true, 
+                    lastName: true 
+                  }
+                }
+              } 
+            },
+            therapist: { 
+              select: { 
+                profile: {
+                  select: {
+                    firstName: true, 
+                    lastName: true 
+                  }
+                }
+              } 
+            },
             outcomesMeasurements: true,
             objectiveOutcomes: true,
             recommendations: true,

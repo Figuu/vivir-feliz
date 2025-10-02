@@ -98,13 +98,8 @@ export async function GET(request: NextRequest) {
           patient: {
             select: {
               id: true,
-              profile: {
-                select: {
-                  firstName: true,
-                  lastName: true,
-                  email: true
-                }
-              }
+              firstName: true,
+              lastName: true
             }
           },
           therapist: {
@@ -122,8 +117,8 @@ export async function GET(request: NextRequest) {
           therapeuticPlan: {
             select: {
               id: true,
-              title: true,
-              description: true
+              objectives: true,
+              background: true
             }
           }
         },
@@ -149,7 +144,7 @@ export async function GET(request: NextRequest) {
           observations: report.observations,
           status: report.status,
           coordinatorNotes: report.coordinatorNotes,
-          metricsUpdate: report.metricsUpdate,
+          metricsUpdate: report.metricsUpdate || {},
           patient: report.patient,
           therapist: report.therapist,
           therapeuticPlan: report.therapeuticPlan,
@@ -262,7 +257,7 @@ export async function POST(request: NextRequest) {
         reportNumber: validatedData.reportNumber,
         progress: validatedData.progress,
         observations: validatedData.observations,
-        metricsUpdate: validatedData.metricsUpdate,
+        metricsUpdate: validatedData.metricsUpdate || {},
         coordinatorNotes: validatedData.coordinatorNotes,
         status: 'DRAFT'
       },
@@ -270,13 +265,8 @@ export async function POST(request: NextRequest) {
         patient: {
           select: {
             id: true,
-            profile: {
-              select: {
-                firstName: true,
-                lastName: true,
-                email: true
-              }
-            }
+            firstName: true,
+            lastName: true
           }
         },
         therapist: {
@@ -294,8 +284,8 @@ export async function POST(request: NextRequest) {
         therapeuticPlan: {
           select: {
             id: true,
-            title: true,
-            description: true
+            objectives: true,
+            background: true
           }
         }
       }

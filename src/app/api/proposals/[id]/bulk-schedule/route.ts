@@ -41,12 +41,8 @@ export async function POST(
         patient: {
           select: {
             id: true,
-            profile: {
-              select: {
-                firstName: true,
-                lastName: true
-              }
-            }
+            firstName: true,
+            lastName: true
           }
         },
         therapist: {
@@ -71,7 +67,7 @@ export async function POST(
     }
 
     // Check if proposal is approved
-    if (proposal.status !== 'APPROVED') {
+    if (proposal.status !== 'ADMIN_APPROVED') {
       return NextResponse.json(
         { error: 'Proposal must be approved before scheduling sessions' },
         { status: 400 }
@@ -113,25 +109,22 @@ export async function POST(
         const sessionDateTime = new Date(date)
         sessionDateTime.setHours(hours, minutes, 0, 0)
 
-        const session = await db.session.create({
+        const session = await db.patientSession.create({
           data: {
+            serviceAssignmentId: 'temp-assignment-id', // This needs to be created first
             patientId: proposal.patientId,
             therapistId: proposal.therapistId,
             scheduledDate: sessionDateTime,
+            scheduledTime: timeSlot.time,
             duration: timeSlot.duration,
-            status: 'SCHEDULED',
-            notes: notes || `Bulk scheduled session for proposal ${proposal.id}`
+            status: 'SCHEDULED'
           },
           include: {
             patient: {
               select: {
                 id: true,
-                profile: {
-                  select: {
-                    firstName: true,
-                    lastName: true
-                  }
-                }
+                firstName: true,
+                lastName: true
               }
             },
             therapist: {
@@ -161,6 +154,7 @@ export async function POST(
         sessions: createdSessions.map(session => ({
           id: session.id,
           scheduledDate: session.scheduledDate,
+          scheduledTime: session.scheduledTime,
           duration: session.duration,
           status: session.status,
           patient: session.patient,

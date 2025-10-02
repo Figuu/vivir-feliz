@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import { SessionStatus } from '@prisma/client'
 
 // Validation schemas
 const sessionStartSchema = z.object({
@@ -50,26 +51,13 @@ export async function POST(
         patient: {
           select: {
             id: true,
-            profile: {
-              select: {
-                firstName: true,
-                lastName: true,
-                email: true,
-                phone: true
-              }
-            }
+            firstName: true,
+            lastName: true
           }
         },
         therapist: {
           select: {
-            id: true,
-            profile: {
-              select: {
-                firstName: true,
-                lastName: true,
-                email: true
-              }
-            }
+            id: true
           }
         },
         serviceAssignment: {
@@ -94,7 +82,7 @@ export async function POST(
       )
     }
 
-    if (existingSession.status !== 'SCHEDULED') {
+    if (existingSession.status !== SessionStatus.SCHEDULED) {
       return NextResponse.json(
         { error: `Cannot start session with status: ${existingSession.status}` },
         { status: 409 }
@@ -136,7 +124,7 @@ export async function POST(
     const session = await db.patientSession.update({
       where: { id: sessionId },
       data: {
-        status: 'IN_PROGRESS',
+        status: SessionStatus.IN_PROGRESS,
         startedAt: actualStartTime,
         therapistNotes: notes || therapistComments,
         updatedAt: new Date()
@@ -145,26 +133,13 @@ export async function POST(
         patient: {
           select: {
             id: true,
-            profile: {
-              select: {
-                firstName: true,
-                lastName: true,
-                email: true,
-                phone: true
-              }
-            }
+            firstName: true,
+            lastName: true
           }
         },
         therapist: {
           select: {
-            id: true,
-            profile: {
-              select: {
-                firstName: true,
-                lastName: true,
-                email: true
-              }
-            }
+            id: true
           }
         },
         serviceAssignment: {
@@ -187,14 +162,14 @@ export async function POST(
       id: session.id,
       scheduledDate: session.scheduledDate,
       scheduledTime: session.scheduledTime,
-      actualStartTime: session.actualStartTime,
+      startedAt: session.startedAt, // Using startedAt instead of actualStartTime
       duration: session.duration,
       status: session.status,
-      sessionNotes: session.sessionNotes,
-      therapistComments: session.therapistComments,
+      therapistNotes: session.therapistNotes, // Using therapistNotes instead of sessionNotes
+      // therapistComments doesn't exist in the current schema
       patient: session.patient,
       therapist: session.therapist,
-      services: session.serviceAssignment.map(sa => sa.service),
+      service: session.serviceAssignment?.service, // Using service instead of services array
       estimatedEndTime: new Date(actualStartTime.getTime() + (session.duration * 60 * 1000)).toISOString()
     }
 

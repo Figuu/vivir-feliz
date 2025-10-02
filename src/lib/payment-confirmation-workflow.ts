@@ -1,7 +1,7 @@
 import { db } from './db'
 
 export type PaymentConfirmationStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
-export type PaymentReviewAction = 'APPROVE' | 'REJECT' | 'HOLD'
+export type PaymentReviewAction = 'APPROVE' | 'REJECT' | 'REQUEST_CLARIFICATION' | 'ESCALATE' | 'HOLD'
 
 export interface PaymentConfirmationRequest {
   id: string

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import { PaymentStatus } from '@prisma/client'
 
 const analyticsQuerySchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -62,14 +63,14 @@ export async function GET(request: NextRequest) {
       
       // Paid payments
       db.payment.aggregate({
-        where: { ...whereClause, status: 'PAID' },
+        where: { ...whereClause, status: PaymentStatus.COMPLETED },
         _count: true,
         _sum: { amount: true }
       }),
       
       // Pending payments
       db.payment.aggregate({
-        where: { ...whereClause, status: 'PENDING' },
+        where: { ...whereClause, status: PaymentStatus.PENDING },
         _count: true,
         _sum: { amount: true }
       }),
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
       db.payment.aggregate({
         where: { 
           ...whereClause, 
-          status: 'PENDING',
+          status: PaymentStatus.PENDING,
           dueDate: { lt: new Date() }
         },
         _count: true,
@@ -87,7 +88,7 @@ export async function GET(request: NextRequest) {
       
       // Failed payments
       db.payment.aggregate({
-        where: { ...whereClause, status: 'FAILED' },
+        where: { ...whereClause, status: PaymentStatus.FAILED },
         _count: true,
         _sum: { amount: true }
       }),
@@ -96,12 +97,12 @@ export async function GET(request: NextRequest) {
       db.payment.findMany({
         where: { 
           ...whereClause, 
-          status: 'PAID',
-          paidDate: { not: null }
+          status: PaymentStatus.COMPLETED,
+          paymentDate: { not: null }
         },
         select: {
           createdAt: true,
-          paidDate: true
+          paymentDate: true
         }
       }),
       
@@ -115,8 +116,8 @@ export async function GET(request: NextRequest) {
       
       // Distribution by payment method
       db.payment.groupBy({
-        by: ['method'],
-        where: { ...whereClause, status: 'PAID' },
+        by: ['paymentMethod'],
+        where: { ...whereClause, status: PaymentStatus.COMPLETED },
         _count: true,
         _sum: { amount: true }
       }),
@@ -131,20 +132,11 @@ export async function GET(request: NextRequest) {
       
       // Largest payments
       db.payment.findMany({
-        where: { ...whereClause, status: 'PAID' },
+        where: { ...whereClause, status: PaymentStatus.COMPLETED },
         include: {
           consultationRequest: {
             select: {
-              patient: {
-                select: { 
-                  profile: {
-                    select: {
-                      firstName: true, 
-                      lastName: true 
-                    }
-                  }
-                }
-              }
+              patientId: true
             }
           }
         },
@@ -158,16 +150,7 @@ export async function GET(request: NextRequest) {
         include: {
           consultationRequest: {
             select: {
-              patient: {
-                select: { 
-                  profile: {
-                    select: {
-                      firstName: true, 
-                      lastName: true 
-                    }
-                  }
-                }
-              }
+              patientId: true
             }
           }
         },
@@ -180,9 +163,9 @@ export async function GET(request: NextRequest) {
     let avgProcessingDays = 0
     if (avgPaymentTime.length > 0) {
       const totalDays = avgPaymentTime.reduce((sum, payment) => {
-        if (payment.paidDate) {
+        if (payment.paymentDate) {
           const days = Math.ceil(
-            (payment.paidDate.getTime() - payment.createdAt.getTime()) / (1000 * 60 * 60 * 24)
+            (payment.paymentDate.getTime() - payment.createdAt.getTime()) / (1000 * 60 * 60 * 24)
           )
           return sum + days
         }
@@ -194,14 +177,14 @@ export async function GET(request: NextRequest) {
     // Calculate collection efficiency
     const totalAmount = totalPayments._sum.amount || 0
     const paidAmount = paidPayments._sum.amount || 0
-    const collectionRate = totalAmount > 0 ? (paidAmount / totalAmount * 100) : 0
+    const collectionRate = Number(totalAmount) > 0 ? (Number(paidAmount) / Number(totalAmount) * 100) : 0
 
     // Calculate on-time payment rate
     const onTimePayments = await db.payment.count({
       where: {
         ...whereClause,
-        status: 'PAID',
-        paidDate: { not: null }
+        status: PaymentStatus.COMPLETED,
+        paymentDate: { not: null }
       }
     })
     const onTimeRate = paidPayments._count > 0 ? (onTimePayments / paidPayments._count * 100) : 0
@@ -210,13 +193,13 @@ export async function GET(request: NextRequest) {
     const velocityData = {
       averageProcessingDays: avgProcessingDays.toFixed(1),
       fastestPayments: avgPaymentTime.filter(p => {
-        if (!p.paidDate) return false
-        const days = (p.paidDate.getTime() - p.createdAt.getTime()) / (1000 * 60 * 60 * 24)
+        if (!p.paymentDate) return false
+        const days = (p.paymentDate.getTime() - p.createdAt.getTime()) / (1000 * 60 * 60 * 24)
         return days <= 1
       }).length,
       slowPayments: avgPaymentTime.filter(p => {
-        if (!p.paidDate) return false
-        const days = (p.paidDate.getTime() - p.createdAt.getTime()) / (1000 * 60 * 60 * 24)
+        if (!p.paymentDate) return false
+        const days = (p.paymentDate.getTime() - p.createdAt.getTime()) / (1000 * 60 * 60 * 24)
         return days > 30
       }).length
     }
@@ -249,34 +232,34 @@ export async function GET(request: NextRequest) {
         },
         distribution: {
           byMethod: methodDistribution.map(m => ({
-            method: m.method || 'Not Specified',
+            method: m.paymentMethod || 'Not Specified',
             count: m._count,
             amount: m._sum.amount || 0,
-            percentage: totalAmount > 0 ? ((m._sum.amount || 0) / totalAmount * 100).toFixed(2) : 0
+            percentage: Number(totalAmount) > 0 ? ((Number(m._sum.amount) || 0) / Number(totalAmount) * 100).toFixed(2) : 0
           })),
           byStatus: statusDistribution.map(s => ({
             status: s.status,
             count: s._count,
             amount: s._sum.amount || 0,
-            percentage: totalAmount > 0 ? ((s._sum.amount || 0) / totalAmount * 100).toFixed(2) : 0
+            percentage: Number(totalAmount) > 0 ? ((Number(s._sum.amount) || 0) / Number(totalAmount) * 100).toFixed(2) : 0
           }))
         },
         topPayments: largestPayments.map(p => ({
           id: p.id,
           amount: p.amount,
-          patientName: `${p.consultationRequest.patient.profile.firstName} ${p.consultationRequest.patient.profile.lastName}`,
+          patientName: 'Unknown Patient',
           status: p.status,
-          method: p.method,
+          method: p.paymentMethod,
           dueDate: p.dueDate,
-          paidDate: p.paidDate,
+          paymentDate: p.paymentDate,
           createdAt: p.createdAt
         })),
         recentActivity: recentActivity.map(p => ({
           id: p.id,
           amount: p.amount,
-          patientName: `${p.consultationRequest.patient.profile.firstName} ${p.consultationRequest.patient.profile.lastName}`,
+          patientName: 'Unknown Patient',
           status: p.status,
-          method: p.method,
+          method: p.paymentMethod,
           createdAt: p.createdAt
         })),
         dateRange: {

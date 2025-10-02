@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
 
     const session = await SessionManager.createSession({
-      userId: user.id,
+      profileId: user.id,
       token: sessionToken,
       expiresAt,
       deviceInfo,

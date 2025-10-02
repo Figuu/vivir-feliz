@@ -78,12 +78,8 @@ export async function GET(request: NextRequest) {
           patient: {
             select: {
               id: true,
-              profile: {
-                select: {
-                  firstName: true,
-                  lastName: true
-                }
-              }
+              firstName: true,
+              lastName: true
             }
           },
           therapist: {
@@ -100,7 +96,7 @@ export async function GET(request: NextRequest) {
           therapeuticPlan: {
             select: {
               id: true,
-              title: true
+              objectives: true
             }
           }
         },
@@ -179,13 +175,8 @@ export async function GET(request: NextRequest) {
             patient: {
               select: {
                 id: true,
-                profile: {
-                  select: {
-                    firstName: true,
-                    lastName: true,
-                    email: true
-                  }
-                }
+                firstName: true,
+                lastName: true
               }
             },
             therapist: {
@@ -203,8 +194,8 @@ export async function GET(request: NextRequest) {
             therapeuticPlan: {
               select: {
                 id: true,
-                title: true,
-                description: true
+                objectives: true,
+                background: true
               }
             }
           },

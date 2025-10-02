@@ -140,12 +140,8 @@ export async function GET(request: NextRequest) {
             patient: {
               select: {
                 id: true,
-                profile: {
-                  select: {
-                    firstName: true,
-                    lastName: true
-                  }
-                }
+                firstName: true,
+                lastName: true
               }
             },
             therapist: {
@@ -169,12 +165,8 @@ export async function GET(request: NextRequest) {
             patient: {
               select: {
                 id: true,
-                profile: {
-                  select: {
-                    firstName: true,
-                    lastName: true
-                  }
-                }
+                firstName: true,
+                lastName: true
               }
             },
             therapist: {
@@ -263,17 +255,13 @@ export async function GET(request: NextRequest) {
       const progressReports = await db.progressReport.findMany({
         where: whereClause,
         include: {
-          patient: {
-            select: {
-              id: true,
-              profile: {
-                select: {
-                  firstName: true,
-                  lastName: true
-                }
+            patient: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true
               }
-            }
-          },
+            },
           therapist: {
             select: {
               id: true,
@@ -312,17 +300,13 @@ export async function GET(request: NextRequest) {
       const finalReports = await db.finalReport.findMany({
         where: whereClause,
         include: {
-          patient: {
-            select: {
-              id: true,
-              profile: {
-                select: {
-                  firstName: true,
-                  lastName: true
-                }
+            patient: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true
               }
-            }
-          },
+            },
           therapist: {
             select: {
               id: true,

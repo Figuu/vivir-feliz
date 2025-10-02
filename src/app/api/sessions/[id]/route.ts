@@ -1,28 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import { SessionStatus } from '@prisma/client'
 
 // Validation schemas
 const updateSessionSchema = z.object({
   scheduledDate: z.string().datetime().optional(),
   scheduledTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format (HH:mm)').optional(),
   duration: z.number().min(15).max(480).optional(),
-  status: z.enum(['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW']).optional(),
-  sessionNotes: z.string().optional(),
-  therapistComments: z.string().optional(),
-  parentVisible: z.boolean().optional(),
+  status: z.enum(['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']).optional(),
+  therapistNotes: z.string().optional(),
   rescheduleReason: z.string().optional()
 })
 
 const startSessionSchema = z.object({
-  actualStartTime: z.string().datetime().optional()
+  startedAt: z.string().datetime().optional()
 })
 
 const completeSessionSchema = z.object({
-  actualDuration: z.number().min(1).optional(),
-  sessionNotes: z.string().optional(),
-  therapistComments: z.string().optional(),
-  parentVisible: z.boolean().default(true)
+  duration: z.number().min(1).optional(),
+  therapistNotes: z.string().optional()
 })
 
 // Helper function to check therapist availability (same as in route.ts)
@@ -82,7 +79,7 @@ async function checkTherapistAvailability(
       lt: new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1)
     },
     status: {
-      in: ['SCHEDULED', 'IN_PROGRESS']
+      in: [SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS]
     }
   }
 
@@ -124,21 +121,14 @@ export async function GET(
             dateOfBirth: true,
             parent: {
               select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                phone: true
+                id: true
               }
             }
           }
         },
         therapist: {
           select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            phone: true
+            id: true
           }
         },
         serviceAssignment: {
@@ -223,7 +213,7 @@ export async function PATCH(
     }
 
     // Check if session can be modified
-    if (existingSession.status === 'COMPLETED') {
+    if (existingSession.status === SessionStatus.COMPLETED) {
       return NextResponse.json(
         { error: 'Cannot modify completed session' },
         { status: 400 }
@@ -257,7 +247,7 @@ export async function PATCH(
 
     // Handle rescheduling
     if (updateData.scheduledDate || updateData.scheduledTime) {
-      updatePayload.originalDate = existingSession.originalDate || existingSession.scheduledDate
+      // Since originalDate doesn't exist in the current schema, skip this field
       updatePayload.rescheduledAt = new Date()
       updatePayload.rescheduledBy = 'system' // In real app, get from auth context
     }
@@ -276,9 +266,7 @@ export async function PATCH(
         },
         therapist: {
           select: {
-            id: true,
-            firstName: true,
-            lastName: true
+            id: true
           }
         },
         serviceAssignment: {
@@ -325,7 +313,7 @@ export async function POST(
       )
     }
 
-    const { actualStartTime } = validation.data
+    const { startedAt } = validation.data
 
     // Get existing session
     const existingSession = await db.patientSession.findUnique({
@@ -339,7 +327,7 @@ export async function POST(
       )
     }
 
-    if (existingSession.status !== 'SCHEDULED') {
+    if (existingSession.status !== SessionStatus.SCHEDULED) {
       return NextResponse.json(
         { error: 'Session is not in scheduled status' },
         { status: 400 }
@@ -350,8 +338,8 @@ export async function POST(
     const updatedSession = await db.patientSession.update({
       where: { id: params.id },
       data: {
-        status: 'IN_PROGRESS',
-        startedAt: actualStartTime ? new Date(actualStartTime) : new Date()
+        status: SessionStatus.IN_PROGRESS,
+        startedAt: startedAt ? new Date(startedAt) : new Date()
       },
       include: {
         patient: {
@@ -363,9 +351,7 @@ export async function POST(
         },
         therapist: {
           select: {
-            id: true,
-            firstName: true,
-            lastName: true
+            id: true
           }
         },
         serviceAssignment: {
@@ -396,114 +382,8 @@ export async function POST(
   }
 }
 
-// POST /api/sessions/[id]/complete - Complete session
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const body = await request.json()
-    const validation = completeSessionSchema.safeParse(body)
-    
-    if (!validation.success) {
-      return NextResponse.json(
-        { error: 'Invalid request data', details: validation.error.issues },
-        { status: 400 }
-      )
-    }
-
-    const { actualDuration, sessionNotes, therapistComments, parentVisible } = validation.data
-
-    // Get existing session
-    const existingSession = await db.patientSession.findUnique({
-      where: { id: params.id }
-    })
-
-    if (!existingSession) {
-      return NextResponse.json(
-        { error: 'Session not found' },
-        { status: 404 }
-      )
-    }
-
-    if (existingSession.status !== 'IN_PROGRESS') {
-      return NextResponse.json(
-        { error: 'Session is not in progress' },
-        { status: 400 }
-      )
-    }
-
-    // Calculate actual duration if not provided
-    let finalDuration = actualDuration
-    if (!finalDuration && existingSession.startedAt) {
-      const startTime = existingSession.startedAt.getTime()
-      const endTime = new Date().getTime()
-      finalDuration = Math.round((endTime - startTime) / (1000 * 60)) // Convert to minutes
-    }
-
-    // Complete session
-    const updatedSession = await db.patientSession.update({
-      where: { id: params.id },
-      data: {
-        status: 'COMPLETED',
-        completedAt: new Date(),
-        actualDuration: finalDuration,
-        sessionNotes,
-        therapistComments,
-        parentVisible
-      },
-      include: {
-        patient: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true
-          }
-        },
-        therapist: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true
-          }
-        },
-        serviceAssignment: {
-          include: {
-            service: {
-              select: {
-                id: true,
-                name: true,
-                type: true
-              }
-            }
-          }
-        }
-      }
-    })
-
-    // Update service assignment completed sessions count
-    await db.serviceAssignment.update({
-      where: { id: existingSession.serviceAssignmentId },
-      data: {
-        completedSessions: {
-          increment: 1
-        }
-      }
-    })
-
-    return NextResponse.json({
-      session: updatedSession,
-      message: 'Session completed successfully'
-    })
-
-  } catch (error) {
-    console.error('Error completing session:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
-}
+// Note: Complete session functionality should be in /api/sessions/[id]/complete/route.ts
+// This file only handles GET, PATCH, and DELETE for the main session resource
 
 // DELETE /api/sessions/[id] - Cancel session
 export async function DELETE(
@@ -523,7 +403,7 @@ export async function DELETE(
       )
     }
 
-    if (existingSession.status === 'COMPLETED') {
+    if (existingSession.status === SessionStatus.COMPLETED) {
       return NextResponse.json(
         { error: 'Cannot cancel completed session' },
         { status: 400 }
@@ -534,7 +414,7 @@ export async function DELETE(
     const updatedSession = await db.patientSession.update({
       where: { id: params.id },
       data: {
-        status: 'CANCELLED'
+        status: SessionStatus.CANCELLED
       }
     })
 

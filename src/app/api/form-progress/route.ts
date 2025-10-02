@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { FormProgressTracker, type FormType } from '@/lib/form-progress-tracker'
 import { z } from 'zod'
+import { db } from '@/lib/db'
 
 const initializeProgressSchema = z.object({
   formType: z.enum(['MEDICAL_FORM', 'THERAPIST_FORM']),
@@ -116,12 +117,8 @@ export async function POST(request: NextRequest) {
     
     // Initialize progress tracking
     const progress = await FormProgressTracker.initializeProgress(
-      formType as FormType,
       formId,
-      userId,
-      totalSteps,
-      autoSaveEnabled ?? true,
-      autoSaveInterval ?? 30000
+      totalSteps
     )
     
     return NextResponse.json({

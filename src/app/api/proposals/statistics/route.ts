@@ -174,11 +174,11 @@ export async function GET(request: NextRequest) {
     })).sort((a, b) => a.period.localeCompare(b.period))
     
     // Calculate approval rate
-    const approvedProposals = proposals.filter(p => p.status === 'APPROVED').length
+    const approvedProposals = proposals.filter(p => p.status === 'ADMIN_APPROVED' || p.status === 'PARENT_APPROVED').length
     const approvalRate = totalProposals > 0 ? (approvedProposals / totalProposals) * 100 : 0
     
     // Calculate rejection rate
-    const rejectedProposals = proposals.filter(p => p.status === 'REJECTED').length
+    const rejectedProposals = proposals.filter(p => p.status === 'COORDINATOR_REJECTED').length
     const rejectionRate = totalProposals > 0 ? (rejectedProposals / totalProposals) * 100 : 0
     
     // Calculate draft rate

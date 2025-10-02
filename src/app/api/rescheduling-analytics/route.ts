@@ -21,8 +21,8 @@ export async function GET(request: NextRequest) {
     // Since there's no reschedulingRequest table, we'll use session data to simulate rescheduling analytics
     // We can look at sessions that were created and updated to infer rescheduling patterns
     const [totalSessions, sessionsByStatus] = await Promise.all([
-      db.session.count({ where: whereClause }),
-      db.session.groupBy({
+      db.patientSession.count({ where: whereClause }),
+      db.patientSession.groupBy({
         by: ['status'],
         where: whereClause,
         _count: true
@@ -30,9 +30,9 @@ export async function GET(request: NextRequest) {
     ])
 
     // Calculate some basic analytics from session data
-    const cancelledSessions = sessionsByStatus.find(s => s.status === 'CANCELLED')?._count || 0
-    const completedSessions = sessionsByStatus.find(s => s.status === 'COMPLETED')?._count || 0
-    const scheduledSessions = sessionsByStatus.find(s => s.status === 'SCHEDULED')?._count || 0
+    const cancelledSessions = Number(sessionsByStatus.find(s => s.status === 'CANCELLED')?._count || 0)
+    const completedSessions = Number(sessionsByStatus.find(s => s.status === 'COMPLETED')?._count || 0)
+    const scheduledSessions = Number(sessionsByStatus.find(s => s.status === 'SCHEDULED')?._count || 0)
 
     // Mock rescheduling analytics based on session data
     const mockReschedulingData = {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import { PaymentStatus } from '@prisma/client'
 
 // Centralized super admin API endpoint
 // Provides a unified interface for super admin operations
@@ -64,21 +65,21 @@ async function handleDashboard(searchParams: URLSearchParams) {
   if (options.includeFinancial !== false) {
     const [totalRevenue, paidRevenue, pendingRevenue, overdueRevenue] = await Promise.all([
       db.payment.aggregate({ _sum: { amount: true } }),
-      db.payment.aggregate({ where: { status: 'PAID' }, _sum: { amount: true } }),
-      db.payment.aggregate({ where: { status: 'PENDING' }, _sum: { amount: true } }),
+      db.payment.aggregate({ where: { status: PaymentStatus.COMPLETED }, _sum: { amount: true } }),
+      db.payment.aggregate({ where: { status: PaymentStatus.PENDING }, _sum: { amount: true } }),
       db.payment.aggregate({
-        where: { status: 'PENDING', dueDate: { lt: new Date() } },
+        where: { status: PaymentStatus.PENDING, dueDate: { lt: new Date() } },
         _sum: { amount: true }
       })
     ])
 
     responseData.financial = {
-      totalRevenue: totalRevenue._sum.amount?.toNumber() || 0,
-      paidRevenue: paidRevenue._sum.amount?.toNumber() || 0,
-      pendingRevenue: pendingRevenue._sum.amount?.toNumber() || 0,
-      overdueRevenue: overdueRevenue._sum.amount?.toNumber() || 0,
+      totalRevenue: Number(totalRevenue._sum.amount) || 0,
+      paidRevenue: Number(paidRevenue._sum.amount) || 0,
+      pendingRevenue: Number(pendingRevenue._sum.amount) || 0,
+      overdueRevenue: Number(overdueRevenue._sum.amount) || 0,
       collectionRate: totalRevenue._sum.amount
-        ? (((paidRevenue._sum.amount?.toNumber() || 0) / totalRevenue._sum.amount.toNumber()) * 100).toFixed(2)
+        ? (((Number(paidRevenue._sum.amount) || 0) / Number(totalRevenue._sum.amount)) * 100).toFixed(2)
         : 0
     }
   }
@@ -109,7 +110,10 @@ async function handleDashboard(searchParams: URLSearchParams) {
       db.patientSession.count({ where: { status: 'SCHEDULED' } }),
       db.patientSession.count({
         where: {
-          scheduledDate: new Date().toISOString().split('T')[0]
+          scheduledDate: {
+            gte: new Date(new Date().setHours(0, 0, 0, 0)),
+            lt: new Date(new Date().setHours(23, 59, 59, 999))
+          }
         }
       })
     ])
@@ -194,9 +198,13 @@ async function handleRecentActivity() {
       take: 5,
       include: {
         parent: {
-          include: {
+          select: { 
+            id: true,
             profile: {
-              select: { firstName: true, lastName: true }
+              select: {
+                firstName: true,
+                lastName: true
+              }
             }
           }
         }
@@ -234,7 +242,14 @@ async function handleRecentActivity() {
         status: p.status,
         createdAt: p.createdAt
       })),
-      users: recentUsers
+      users: recentUsers.map((u: any) => ({
+        id: u.id,
+        email: u.email,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        role: u.role,
+        createdAt: u.createdAt
+      }))
     }
   })
 }
@@ -246,7 +261,7 @@ async function handleAlerts() {
   // Check for overdue payments
   const overdueCount = await db.payment.count({
     where: {
-      status: 'PENDING',
+      status: PaymentStatus.PENDING,
       dueDate: { lt: new Date() }
     }
   })
@@ -274,13 +289,8 @@ async function handleAlerts() {
     })
   }
 
-  // Check for unassigned sessions
-  const unassignedSessions = await db.patientSession.count({
-    where: {
-      status: 'SCHEDULED',
-      therapistId: null
-    }
-  })
+  // Check for unassigned sessions (all PatientSessions have therapistId, so this check is not applicable)
+  const unassignedSessions = 0 // Since all PatientSessions must have a therapistId according to the schema
 
   if (unassignedSessions > 0) {
     alerts.push({

@@ -73,8 +73,12 @@ export async function GET(request: NextRequest) {
         patient: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            },
             dateOfBirth: true
           }
         },
@@ -212,7 +216,7 @@ export async function POST(request: NextRequest) {
         scheduledDate: new Date(scheduledDate),
         scheduledTime,
         duration,
-        notes: notes,
+        therapistNotes: notes,
         status: 'SCHEDULED'
       },
       include: {
@@ -283,7 +287,16 @@ export async function PUT(request: NextRequest) {
       where: { id: serviceAssignmentId },
       include: {
         therapist: true,
-        service: true
+        service: true,
+        proposalService: {
+          include: {
+            therapeuticProposal: {
+              select: {
+                patientId: true
+              }
+            }
+          }
+        }
       }
     })
 
@@ -352,12 +365,12 @@ export async function PUT(request: NextRequest) {
           const session = await db.patientSession.create({
             data: {
               serviceAssignmentId,
-              patientId: serviceAssignment.patientId,
+              patientId: serviceAssignment.proposalService?.therapeuticProposal?.patientId || '',
               therapistId: serviceAssignment.therapistId,
               scheduledDate: date,
               scheduledTime: timeSlot.time,
               duration: timeSlot.duration,
-              notes: notes,
+              therapistNotes: notes,
               status: 'SCHEDULED'
             }
           })

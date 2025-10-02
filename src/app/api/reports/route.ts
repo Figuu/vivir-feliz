@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
 
       // Log the report execution
       await auditLog({
-        action: 'AUDIT_LOG_VIEW',
+        action: 'READ',
         resource: 'reports',
         resourceId: templateId,
         userId: user.id,
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
 
         // Log the report execution
         await auditLog({
-          action: 'AUDIT_LOG_VIEW',
+          action: 'READ',
           resource: 'reports',
           resourceId: reportConfig.id,
           userId: user.id,

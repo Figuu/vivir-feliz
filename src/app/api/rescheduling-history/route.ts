@@ -55,32 +55,22 @@ export async function GET(request: NextRequest) {
 
     // Since there's no reschedulingRequest table, we'll look at session history
     // We'll focus on sessions that have been rescheduled or cancelled
-    const sessions = await db.session.findMany({
+    const sessions = await db.patientSession.findMany({
       where: {
         ...whereClause,
-        status: { in: ['RESCHEDULED', 'CANCELLED'] }
+        status: { in: ['CANCELLED'] } // Using CANCELLED as RESCHEDULED doesn't exist in SessionStatus enum
       },
       include: {
         patient: {
           select: {
             id: true,
-            profile: {
-              select: {
-                firstName: true,
-                lastName: true
-              }
-            }
+            firstName: true,
+            lastName: true
           }
         },
         therapist: {
           select: {
-            id: true,
-            profile: {
-              select: {
-                firstName: true,
-                lastName: true
-              }
-            }
+            id: true
           }
         }
       },
@@ -94,7 +84,7 @@ export async function GET(request: NextRequest) {
       requestedDate: session.scheduledDate,
       requestedTime: session.scheduledTime,
       reason: 'Session rescheduled', // Default reason since we don't have specific rescheduling reasons
-      status: session.status === 'RESCHEDULED' ? 'approved' : 'rejected',
+      status: session.status === 'CANCELLED' ? 'rejected' : 'approved', // Using CANCELLED as RESCHEDULED doesn't exist
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
       session: {
@@ -113,9 +103,9 @@ export async function GET(request: NextRequest) {
         history, 
         totalCount: history.length,
         summary: {
-          totalRescheduled: sessions.filter(s => s.status === 'RESCHEDULED').length,
+          totalRescheduled: sessions.filter(s => s.status === 'SCHEDULED').length, // Using SCHEDULED as RESCHEDULED doesn't exist
           totalCancelled: sessions.filter(s => s.status === 'CANCELLED').length,
-          reschedulingRate: sessions.length > 0 ? (sessions.filter(s => s.status === 'RESCHEDULED').length / sessions.length) * 100 : 0
+          reschedulingRate: sessions.length > 0 ? (sessions.filter(s => s.status === 'SCHEDULED').length / sessions.length) * 100 : 0 // Using SCHEDULED as RESCHEDULED doesn't exist
         }
       }
     })

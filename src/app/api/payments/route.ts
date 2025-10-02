@@ -226,20 +226,22 @@ export async function GET(request: NextRequest) {
       db.payment.findMany({
         where: whereClause,
         include: {
-          patient: {
+          parent: {
             select: {
-              firstName: true,
-              lastName: true,
-              dateOfBirth: true
+              profile: {
+                select: {
+                  firstName: true,
+                  lastName: true
+                }
+              }
             }
           },
           therapist: {
             select: {
-              firstName: true,
-              lastName: true,
-              user: {
+              profile: {
                 select: {
-                  name: true
+                  firstName: true,
+                  lastName: true
                 }
               }
             }

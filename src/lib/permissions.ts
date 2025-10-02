@@ -1,188 +1,124 @@
-// Permission constants
 export const PERMISSIONS = {
-  // User management
-  USERS_READ: 'users:read',
-  USERS_WRITE: 'users:write',
-  USERS_DELETE: 'users:delete',
-  USERS_IMPERSONATE: 'users:impersonate',
-  
-  // Profile management
-  PROFILE_READ_OWN: 'profile:read:own',
-  PROFILE_WRITE_OWN: 'profile:write:own',
-  PROFILE_READ_ALL: 'profile:read:all',
-  PROFILE_WRITE_ALL: 'profile:write:all',
-  
-  // System administration
-  SYSTEM_ADMIN: 'system:admin',
-  SYSTEM_CONFIG: 'system:config',
-  
-  // Analytics and reporting
-  ANALYTICS_READ: 'analytics:read',
-  ANALYTICS_EXPORT: 'analytics:export',
+  // Reports
   REPORTS_VIEW: 'reports:view',
-  ADMIN_ACCESS: 'admin:access',
+  REPORTS_CREATE: 'reports:create',
+  REPORTS_EDIT: 'reports:edit',
+  REPORTS_DELETE: 'reports:delete',
   
-  // File management
-  FILES_UPLOAD: 'files:upload',
-  FILES_DELETE: 'files:delete',
-  FILES_READ: 'files:read',
+  // Users
+  USERS_VIEW: 'users:view',
+  USERS_CREATE: 'users:create',
+  USERS_EDIT: 'users:edit',
+  USERS_DELETE: 'users:delete',
   
-  // Audit logging
-  AUDIT_LOGS_VIEW: 'audit:logs:view',
-  AUDIT_LOGS_EXPORT: 'audit:logs:export',
-  AUDIT_LOGS_MANAGE: 'audit:logs:manage',
+  // Patients
+  PATIENTS_VIEW: 'patients:view',
+  PATIENTS_CREATE: 'patients:create',
+  PATIENTS_EDIT: 'patients:edit',
+  PATIENTS_DELETE: 'patients:delete',
+  
+  // Therapists
+  THERAPISTS_VIEW: 'therapists:view',
+  THERAPISTS_CREATE: 'therapists:create',
+  THERAPISTS_EDIT: 'therapists:edit',
+  THERAPISTS_DELETE: 'therapists:delete',
+  
+  // Payments
+  PAYMENTS_VIEW: 'payments:view',
+  PAYMENTS_CREATE: 'payments:create',
+  PAYMENTS_EDIT: 'payments:edit',
+  PAYMENTS_DELETE: 'payments:delete',
+  
+  // Sessions
+  SESSIONS_VIEW: 'sessions:view',
+  SESSIONS_CREATE: 'sessions:create',
+  SESSIONS_EDIT: 'sessions:edit',
+  SESSIONS_DELETE: 'sessions:delete',
+  
+  // Proposals
+  PROPOSALS_VIEW: 'proposals:view',
+  PROPOSALS_CREATE: 'proposals:create',
+  PROPOSALS_EDIT: 'proposals:edit',
+  PROPOSALS_DELETE: 'proposals:delete',
+  
+  // Admin
+  ADMIN_VIEW: 'admin:view',
+  ADMIN_CREATE: 'admin:create',
+  ADMIN_EDIT: 'admin:edit',
+  ADMIN_DELETE: 'admin:delete',
+  
+  // Super Admin
+  SUPER_ADMIN_VIEW: 'super_admin:view',
+  SUPER_ADMIN_CREATE: 'super_admin:create',
+  SUPER_ADMIN_EDIT: 'super_admin:edit',
+  SUPER_ADMIN_DELETE: 'super_admin:delete',
+  
+  // Admin Access
+  ADMIN_ACCESS: 'admin:access'
 } as const
 
-export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS]
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'COORDINATOR' | 'THERAPIST' | 'PARENT'
 
-// Role definitions with their permissions
-export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
-  USER: [
-    PERMISSIONS.PROFILE_READ_OWN,
-    PERMISSIONS.PROFILE_WRITE_OWN,
-    PERMISSIONS.FILES_UPLOAD,
-    PERMISSIONS.FILES_READ,
-  ],
+const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
+  SUPER_ADMIN: Object.values(PERMISSIONS),
   ADMIN: [
-    // All user permissions
-    PERMISSIONS.PROFILE_READ_OWN,
-    PERMISSIONS.PROFILE_WRITE_OWN,
-    PERMISSIONS.FILES_UPLOAD,
-    PERMISSIONS.FILES_READ,
-    // Plus admin permissions
-    PERMISSIONS.USERS_READ,
-    PERMISSIONS.USERS_WRITE,
-    PERMISSIONS.PROFILE_READ_ALL,
-    PERMISSIONS.ANALYTICS_READ,
-    PERMISSIONS.ANALYTICS_EXPORT,
-    PERMISSIONS.FILES_DELETE,
+    PERMISSIONS.REPORTS_VIEW,
+    PERMISSIONS.REPORTS_CREATE,
+    PERMISSIONS.REPORTS_EDIT,
+    PERMISSIONS.USERS_VIEW,
+    PERMISSIONS.PATIENTS_VIEW,
+    PERMISSIONS.PATIENTS_CREATE,
+    PERMISSIONS.PATIENTS_EDIT,
+    PERMISSIONS.THERAPISTS_VIEW,
+    PERMISSIONS.PAYMENTS_VIEW,
+    PERMISSIONS.PAYMENTS_CREATE,
+    PERMISSIONS.PAYMENTS_EDIT,
+    PERMISSIONS.SESSIONS_VIEW,
+    PERMISSIONS.SESSIONS_CREATE,
+    PERMISSIONS.SESSIONS_EDIT,
+    PERMISSIONS.PROPOSALS_VIEW,
+    PERMISSIONS.PROPOSALS_CREATE,
+    PERMISSIONS.PROPOSALS_EDIT,
+    PERMISSIONS.ADMIN_VIEW,
+    PERMISSIONS.ADMIN_CREATE,
+    PERMISSIONS.ADMIN_EDIT,
+    PERMISSIONS.ADMIN_ACCESS
   ],
-  SUPER_ADMIN: [
-    // All permissions
-    ...Object.values(PERMISSIONS),
+  COORDINATOR: [
+    PERMISSIONS.REPORTS_VIEW,
+    PERMISSIONS.REPORTS_CREATE,
+    PERMISSIONS.REPORTS_EDIT,
+    PERMISSIONS.PATIENTS_VIEW,
+    PERMISSIONS.THERAPISTS_VIEW,
+    PERMISSIONS.SESSIONS_VIEW,
+    PERMISSIONS.SESSIONS_CREATE,
+    PERMISSIONS.SESSIONS_EDIT,
+    PERMISSIONS.PROPOSALS_VIEW,
+    PERMISSIONS.PROPOSALS_CREATE,
+    PERMISSIONS.PROPOSALS_EDIT
   ],
+  THERAPIST: [
+    PERMISSIONS.REPORTS_VIEW,
+    PERMISSIONS.REPORTS_CREATE,
+    PERMISSIONS.PATIENTS_VIEW,
+    PERMISSIONS.SESSIONS_VIEW,
+    PERMISSIONS.SESSIONS_CREATE,
+    PERMISSIONS.SESSIONS_EDIT,
+    PERMISSIONS.PROPOSALS_VIEW,
+    PERMISSIONS.PROPOSALS_CREATE
+  ],
+  PARENT: [
+    PERMISSIONS.PATIENTS_VIEW,
+    PERMISSIONS.SESSIONS_VIEW,
+    PERMISSIONS.PROPOSALS_VIEW
+  ]
 }
 
-// Initialize USER permissions properly
-ROLE_PERMISSIONS.USER = [
-  PERMISSIONS.PROFILE_READ_OWN,
-  PERMISSIONS.PROFILE_WRITE_OWN,
-  PERMISSIONS.FILES_UPLOAD,
-  PERMISSIONS.FILES_READ,
-]
-
-ROLE_PERMISSIONS.ADMIN = [
-  ...ROLE_PERMISSIONS.USER,
-  PERMISSIONS.USERS_READ,
-  PERMISSIONS.USERS_WRITE,
-  PERMISSIONS.PROFILE_READ_ALL,
-  PERMISSIONS.ANALYTICS_READ,
-  PERMISSIONS.ANALYTICS_EXPORT,
-  PERMISSIONS.REPORTS_VIEW,
-  PERMISSIONS.ADMIN_ACCESS,
-  PERMISSIONS.FILES_DELETE,
-  PERMISSIONS.AUDIT_LOGS_VIEW,
-  PERMISSIONS.AUDIT_LOGS_EXPORT,
-]
-
-/**
- * Check if a user role has a specific permission
- */
-export function hasPermission(userRole: string, permission: Permission): boolean {
+export function hasPermission(userRole: UserRole, permission: string): boolean {
   const rolePermissions = ROLE_PERMISSIONS[userRole] || []
   return rolePermissions.includes(permission)
 }
 
-/**
- * Check if a user role has any of the specified permissions
- */
-export function hasAnyPermission(userRole: string, permissions: Permission[]): boolean {
-  return permissions.some(permission => hasPermission(userRole, permission))
-}
-
-/**
- * Check if a user role has all of the specified permissions
- */
-export function hasAllPermissions(userRole: string, permissions: Permission[]): boolean {
-  return permissions.every(permission => hasPermission(userRole, permission))
-}
-
-/**
- * Get all permissions for a user role
- */
-export function getRolePermissions(userRole: string): Permission[] {
+export function getRolePermissions(userRole: UserRole): string[] {
   return ROLE_PERMISSIONS[userRole] || []
-}
-
-/**
- * Check if a user can perform an action on a resource
- */
-export function canPerformAction(
-  userRole: string,
-  permission: Permission,
-  resourceOwnerId?: string,
-  userId?: string
-): boolean {
-  // Super admins can do everything
-  if (userRole === 'SUPER_ADMIN') {
-    return true
-  }
-
-  // Check if user has the general permission
-  if (hasPermission(userRole, permission)) {
-    return true
-  }
-
-  // For own resources, check if user has "own" permission
-  if (resourceOwnerId && userId && resourceOwnerId === userId) {
-    const ownPermission = permission.replace(':all', ':own') as Permission
-    return hasPermission(userRole, ownPermission)
-  }
-
-  return false
-}
-
-/**
- * Middleware helper to check permissions
- */
-export function createPermissionChecker(requiredPermissions: Permission[]) {
-  return (userRole: string, userId?: string, resourceOwnerId?: string) => {
-    // Super admins bypass all checks
-    if (userRole === 'SUPER_ADMIN') {
-      return true
-    }
-
-    return requiredPermissions.some(permission => 
-      canPerformAction(userRole, permission, resourceOwnerId, userId)
-    )
-  }
-}
-
-/**
- * Role hierarchy - higher roles inherit lower role permissions
- */
-export const ROLE_HIERARCHY = {
-  USER: 0,
-  ADMIN: 1,
-  SUPER_ADMIN: 2,
-} as const
-
-export function isHigherRole(userRole: string, targetRole: string): boolean {
-  const userLevel = ROLE_HIERARCHY[userRole as keyof typeof ROLE_HIERARCHY] ?? -1
-  const targetLevel = ROLE_HIERARCHY[targetRole as keyof typeof ROLE_HIERARCHY] ?? -1
-  return userLevel > targetLevel
-}
-
-export function canManageUser(managerRole: string, targetRole: string): boolean {
-  // Super admins can manage anyone
-  if (managerRole === 'SUPER_ADMIN') {
-    return true
-  }
-  
-  // Admins can manage users but not other admins or super admins
-  if (managerRole === 'ADMIN' && targetRole === 'USER') {
-    return true
-  }
-  
-  return false
 }

@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
             lastName: true
           }
         },
-        serviceAssignments: {
+        serviceAssignment: {
           include: {
             proposalService: {
               include: {
@@ -295,7 +295,7 @@ export async function POST(request: NextRequest) {
         data: {
           therapistId,
           dayOfWeek,
-          effectiveDate: targetDate,
+          // effectiveDate: targetDate,
           isWorkingDay: true,
           startTime: '09:00',
           endTime: '17:00',

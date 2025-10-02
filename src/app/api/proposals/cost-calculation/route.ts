@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     const costSummary = calculator.calculateCostSummary(selectedServices)
     
     // Get role-based cost information
-    const roleBasedInfo = calculator.getRoleBasedCostInfo(selectedServices, userRole as any)
+    const roleBasedInfo = calculator.getRoleBasedCostInfo(selectedServices, userRole as 'THERAPIST' | 'COORDINATOR' | 'ADMIN' | 'SUPER_ADMIN')
     
     return NextResponse.json({
       costBreakdown: roleBasedInfo.costBreakdown || null,

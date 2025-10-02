@@ -98,7 +98,7 @@ export const childInfoSchema = z.object({
   placeOfBirth: z.string().min(1, 'Place of birth is required').max(100, 'Place of birth cannot exceed 100 characters'),
   
   // Physical Information
-  height: heightSchema,
+  blockSize: heightSchema,
   weight: weightSchema,
   bloodType: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'UNKNOWN']).optional(),
   
@@ -409,7 +409,7 @@ export const autoSaveSchema = z.object({
   consultationRequestId: z.string().uuid(),
   currentStep: z.number().min(1).max(6),
   completedSteps: z.array(z.number()),
-  data: z.record(z.any()), // Flexible data structure for partial saves
+  data: z.record(z.string(), z.any()), // Flexible data structure for partial saves
   status: z.enum(['DRAFT', 'IN_PROGRESS']).default('DRAFT')
 })
 

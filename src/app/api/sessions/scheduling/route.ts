@@ -146,7 +146,7 @@ async function handleAvailabilityCheck(searchParams: URLSearchParams) {
     const therapistSchedule = await db.therapistSchedule.findFirst({
       where: {
         therapistId,
-        dayOfWeek: dayOfWeek as any,
+        dayOfWeek: dayOfWeek as 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY',
         isActive: true
       }
     })
@@ -850,7 +850,7 @@ async function checkSchedulingConflicts(
     const therapistSchedule = await db.therapistSchedule.findFirst({
       where: {
         therapistId,
-        dayOfWeek: dayOfWeek as any,
+        dayOfWeek: dayOfWeek as 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY',
         isActive: true
       }
     })

@@ -10,7 +10,7 @@ const progressReportCreateSchema = z.object({
   reportNumber: z.number().min(1, 'Report number must be at least 1'),
   progress: z.string().max(2000, 'Progress description cannot exceed 2000 characters').optional(),
   observations: z.string().max(2000, 'Observations cannot exceed 2000 characters').optional(),
-  metricsUpdate: z.record(z.any()).optional(),
+  metricsUpdate: z.record(z.string(), z.any()).optional(),
   coordinatorNotes: z.string().max(1000, 'Coordinator notes cannot exceed 1000 characters').optional()
 })
 

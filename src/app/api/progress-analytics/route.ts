@@ -160,11 +160,11 @@ function generateOverviewAnalytics(progressReports: any[]) {
   progressReports.forEach(report => {
     if (report.progress) {
       const progress = parseFloat(report.progress)
-    if (progress <= 20) progressDistribution['0-20']++
-    else if (progress <= 40) progressDistribution['21-40']++
-    else if (progress <= 60) progressDistribution['41-60']++
-    else if (progress <= 80) progressDistribution['61-80']++
-    else progressDistribution['81-100']++
+      if (progress <= 20) progressDistribution['0-20']++
+      else if (progress <= 40) progressDistribution['21-40']++
+      else if (progress <= 60) progressDistribution['41-60']++
+      else if (progress <= 80) progressDistribution['61-80']++
+      else progressDistribution['81-100']++
     }
   })
 

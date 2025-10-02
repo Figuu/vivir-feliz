@@ -272,8 +272,12 @@ async function handleCreateTemplate(body: any) {
         therapist: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
           }
         }
       }
@@ -350,8 +354,12 @@ async function handleUpdateTemplate(body: any) {
         therapist: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
           }
         }
       }
@@ -539,8 +547,12 @@ async function handleDuplicateTemplate(body: any) {
         therapist: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            }
           }
         }
       }

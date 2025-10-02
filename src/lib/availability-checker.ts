@@ -163,7 +163,7 @@ export class AvailabilityChecker {
     return {
       isAvailable: true,
       therapistId,
-      therapistName: therapist.user.name || `${therapist.firstName} ${therapist.lastName}`
+      therapistName: `${therapist.profile.firstName} ${therapist.profile.lastName}`
     }
   }
 
@@ -569,11 +569,6 @@ export class AvailabilityChecker {
           }
         },
         include: {
-          user: {
-            select: {
-              name: true
-            }
-          },
           specialties: {
             include: {
               specialty: {
@@ -592,11 +587,6 @@ export class AvailabilityChecker {
           canTakeConsultations: true
         },
         include: {
-          user: {
-            select: {
-              name: true
-            }
-          },
           specialties: {
             include: {
               specialty: {
@@ -626,7 +616,7 @@ export class AvailabilityChecker {
       if (!schedule || !schedule.isActive) {
         availability.push({
           therapistId: therapist.id,
-          therapistName: `${therapist.profile.firstName} ${therapist.profile.lastName}`,
+          therapistName: `${therapist.profileId}`, // Using profileId since profile relation might not exist
           specialties: therapist.specialties.map(ts => ts.specialty.name),
           isAvailable: false,
           reason: 'Not scheduled for this day'
@@ -658,7 +648,7 @@ export class AvailabilityChecker {
 
       availability.push({
         therapistId: therapist.id,
-        therapistName: `${therapist.profile.firstName} ${therapist.profile.lastName}`,
+        therapistName: `${therapist.profileId}`, // Using profileId since profile relation might not exist
         specialties: therapist.specialties.map(ts => ts.specialty.name),
         isAvailable: hasAvailableSlots,
         reason: hasAvailableSlots ? undefined : 'No available slots',

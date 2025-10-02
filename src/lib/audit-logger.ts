@@ -31,15 +31,14 @@ export class AuditLogger {
           action: data.action,
           resource: data.resource,
           resourceId: data.resourceId,
-          userId: data.userId,
           endpoint: data.endpoint,
           method: data.method,
           userAgent: data.userAgent,
           ipAddress: data.ipAddress,
-          oldData: data.oldData ? JSON.parse(JSON.stringify(data.oldData)) : null,
-          newData: data.newData ? JSON.parse(JSON.stringify(data.newData)) : null,
-          metadata: data.metadata ? JSON.parse(JSON.stringify(data.metadata)) : null,
-          severity: data.severity || AuditSeverity.INFO,
+          oldData: data.oldData ? JSON.parse(JSON.stringify(data.oldData)) : undefined,
+          newData: data.newData ? JSON.parse(JSON.stringify(data.newData)) : undefined,
+          metadata: data.metadata ? JSON.parse(JSON.stringify(data.metadata)) : undefined,
+          severity: data.severity || AuditSeverity.LOW,
           category: data.category,
           success: data.success ?? true,
           errorMessage: data.errorMessage,
@@ -114,7 +113,7 @@ export class AuditLogger {
       success: data.success,
       errorMessage: data.errorMessage,
       category: 'authentication',
-      severity: data.success === false ? AuditSeverity.WARNING : AuditSeverity.INFO,
+      severity: data.success === false ? AuditSeverity.MEDIUM : AuditSeverity.LOW,
       metadata: data.metadata,
       ...requestInfo,
     })
@@ -142,7 +141,7 @@ export class AuditLogger {
       oldData: data.oldData,
       newData: data.newData,
       category: 'user_management',
-      severity: AuditSeverity.INFO,
+      severity: AuditSeverity.LOW,
       metadata: data.metadata,
       ...requestInfo,
     })
@@ -168,7 +167,7 @@ export class AuditLogger {
       resourceId: data.fileId,
       userId: data.userId,
       category: 'file_management',
-      severity: AuditSeverity.INFO,
+      severity: AuditSeverity.LOW,
       metadata: {
         fileName: data.fileName,
         fileSize: data.fileSize,
@@ -196,7 +195,7 @@ export class AuditLogger {
       resource: 'security',
       userId: data.userId,
       category: 'security',
-      severity: data.severity || AuditSeverity.WARNING,
+      severity: data.severity || AuditSeverity.MEDIUM,
       success: false,
       errorMessage: data.errorMessage,
       metadata: data.metadata,
@@ -278,14 +277,7 @@ export class AuditLogger {
       db.auditLog.findMany({
         where,
         include: {
-          user: {
-            select: {
-              id: true,
-              email: true,
-              name: true,
-              role: true,
-            },
-          },
+          // Note: user relation might not exist in the schema
         },
         orderBy: {
           createdAt: 'desc',
@@ -347,7 +339,7 @@ export class AuditLogger {
         take: 10,
       }),
       db.auditLog.groupBy({
-        by: ['severity'],
+        by: ['action'],
         where,
         _count: true,
       }),

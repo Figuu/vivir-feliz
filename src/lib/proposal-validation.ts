@@ -164,7 +164,7 @@ export const ProposalStatsSchema = z.object({
 export const ProposalBulkOperationSchema = z.object({
   proposalIds: z.array(z.string()).min(1, 'At least one proposal ID is required'),
   operation: z.enum(['APPROVE', 'REJECT', 'CANCEL', 'DELETE', 'ASSIGN', 'EXPORT']),
-  parameters: z.record(z.any()).optional()
+  parameters: z.record(z.string(), z.any()).optional()
 })
 
 // Schema for proposal export
@@ -182,7 +182,7 @@ export const ProposalNotificationSchema = z.object({
   recipients: z.array(z.string()).min(1, 'At least one recipient is required'),
   message: z.string().min(1, 'Message is required'),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM'),
-  data: z.record(z.any()).optional()
+  data: z.record(z.string(), z.any()).optional()
 })
 
 // Schema for proposal workflow steps
@@ -201,8 +201,8 @@ export const ProposalWorkflowTransitionSchema = z.object({
   fromStatus: z.string().min(1, 'From status is required'),
   toStatus: z.string().min(1, 'To status is required'),
   notes: z.string().optional(),
-  conditions: z.array(z.record(z.any())).optional(),
-  actions: z.array(z.record(z.any())).optional()
+  conditions: z.array(z.record(z.string(), z.any())).optional(),
+  actions: z.array(z.record(z.string(), z.any())).optional()
 })
 
 // Schema for proposal cost calculation
@@ -249,7 +249,7 @@ export const ProposalAuditLogSchema = z.object({
   action: z.string().min(1, 'Action is required'),
   userId: z.string().min(1, 'User ID is required'),
   userRole: z.enum(['THERAPIST', 'COORDINATOR', 'ADMIN']),
-  details: z.record(z.any()).optional(),
+  details: z.record(z.string(), z.any()).optional(),
   timestamp: z.string().datetime()
 })
 
@@ -274,7 +274,7 @@ export const ProposalAnalyticsSchema = z.object({
   dateTo: z.string().datetime().optional(),
   groupBy: z.enum(['day', 'week', 'month', 'year', 'therapist', 'status', 'priority']).default('month'),
   metrics: z.array(z.enum(['count', 'cost', 'duration', 'completion_rate', 'approval_rate'])).default(['count']),
-  filters: z.record(z.any()).optional()
+  filters: z.record(z.string(), z.any()).optional()
 })
 
 // Validation functions
@@ -290,7 +290,7 @@ export const validateUpdateProposal = (data: unknown) => {
   return UpdateProposalSchema.safeParse(data)
 }
 
-export const validateProposalStatusTransition = (data: unknown) => {
+export const validateProposalStatusTransitionData = (data: unknown) => {
   return ProposalStatusTransitionSchema.safeParse(data)
 }
 
@@ -467,7 +467,7 @@ export const ProposalValidation = {
     validateProposal,
     validateCreateProposal,
     validateUpdateProposal,
-    validateProposalStatusTransition,
+    validateProposalStatusTransitionData,
     validateProposalComment,
     validateProposalAssignment,
     validateProposalReview,

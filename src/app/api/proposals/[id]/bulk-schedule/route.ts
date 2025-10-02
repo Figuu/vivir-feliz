@@ -87,7 +87,7 @@ export async function POST(
     while (currentDate <= end) {
       const dayOfWeek = currentDate.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase()
       
-      if (!daysOfWeek || daysOfWeek.includes(dayOfWeek as any)) {
+      if (!daysOfWeek || daysOfWeek.includes(dayOfWeek as 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY')) {
         sessionDates.push(new Date(currentDate))
       }
 

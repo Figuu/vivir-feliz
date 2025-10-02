@@ -131,7 +131,7 @@ export class ConflictResolutionService {
         startTime: timeSlot.startTime,
         endTime: timeSlot.endTime,
         duration: timeSlot.duration,
-        excludeSessionIds: request.excludeSessionIds
+        excludeSessionId: request.excludeSessionIds?.[0]
       })
     }
 

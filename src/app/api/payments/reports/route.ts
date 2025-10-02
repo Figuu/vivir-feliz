@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     
     // Generate financial report
     const report = await PaymentAnalyticsManager.generateFinancialReport(
-      reportType,
+      reportType as ReportType,
       { start: new Date(startDate), end: new Date(endDate) },
       generatedBy
     )

@@ -10,7 +10,7 @@ const validateReceiptSchema = z.object({
   fileType: z.enum(['PDF', 'JPG', 'JPEG', 'PNG', 'DOC', 'DOCX', 'TXT']),
   fileData: z.string().min(1, 'File data is required'),
   description: z.string().max(500, 'Description too long').optional(),
-  metadata: z.record(z.any()).optional()
+  metadata: z.record(z.string(), z.any()).optional()
 })
 
 // POST - Validate receipt upload request

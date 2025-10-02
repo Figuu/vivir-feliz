@@ -6,7 +6,7 @@ import { PDFGenerator, TherapeuticPlanPDF, ProgressReportPDF, FinalReportPDF } f
 const pdfRequestSchema = z.object({
   reportType: z.enum(['therapeutic_plan', 'progress_report', 'final_report', 'custom']),
   reportId: z.string().uuid('Invalid report ID').optional(),
-  customData: z.record(z.any()).optional(),
+  customData: z.record(z.string(), z.any()).optional(),
   options: z.object({
     title: z.string().optional(),
     subtitle: z.string().optional(),

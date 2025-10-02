@@ -5,19 +5,13 @@ export type ProgressStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'VALI
 
 export interface FormProgress {
   id: string
-  formType: FormType
-  formId: string
-  userId: string
+  medicalFormId: string
   currentStep: number
   totalSteps: number
   completedSteps: number[]
   progressPercentage: number
-  status: ProgressStatus
   lastSavedAt: Date
-  estimatedTimeRemaining: number
-  validationState: ValidationState
-  autoSaveEnabled: boolean
-  autoSaveInterval: number
+  estimatedTimeRemaining?: number
   createdAt: Date
   updatedAt: Date
 }
@@ -67,19 +61,14 @@ export class FormProgressTracker {
    * Initialize progress tracking for a form
    */
   static async initializeProgress(
-    formType: FormType,
     formId: string,
-    userId: string,
-    totalSteps: number,
-    autoSaveEnabled: boolean = true,
-    autoSaveInterval: number = 30000
+    totalSteps: number
   ): Promise<FormProgress> {
     try {
       // Check if progress already exists
       const existingProgress = await db.formProgress.findFirst({
         where: {
-          formId,
-          userId
+          medicalFormId: formId
         }
       })
 
@@ -90,16 +79,13 @@ export class FormProgressTracker {
       // Create new progress tracking
       const progress = await db.formProgress.create({
         data: {
-          formId,
-          userId,
+          medicalFormId: formId,
           currentStep: 1,
           totalSteps,
           completedSteps: [],
           progressPercentage: 0,
           lastSavedAt: new Date(),
-          estimatedTimeRemaining: this.calculateEstimatedTimeRemaining(totalSteps),
-          autoSaveEnabled,
-          autoSaveInterval
+          estimatedTimeRemaining: this.calculateEstimatedTimeRemaining(totalSteps)
         }
       })
 
@@ -125,8 +111,7 @@ export class FormProgressTracker {
     try {
       const progress = await db.formProgress.findFirst({
         where: {
-          formId,
-          userId
+          medicalFormId: formId
         }
       })
 
@@ -157,11 +142,8 @@ export class FormProgressTracker {
         data: {
           currentStep,
           completedSteps,
-          progressPercentage,
-          status,
           lastSavedAt: new Date(),
-          estimatedTimeRemaining,
-          lastSavedAt: new Date(),
+          estimatedTimeRemaining
         }
       })
 
@@ -190,8 +172,7 @@ export class FormProgressTracker {
     try {
       const progress = await db.formProgress.findFirst({
         where: {
-          formId,
-          userId
+          medicalFormId: formId
         }
       })
 
@@ -206,8 +187,6 @@ export class FormProgressTracker {
         data: {
           currentStep,
           completedSteps,
-          progressPercentage,
-          lastSavedAt: new Date(),
           lastSavedAt: new Date(),
         }
       })
@@ -231,8 +210,7 @@ export class FormProgressTracker {
     try {
       const progress = await db.formProgress.findFirst({
         where: {
-          formId,
-          userId
+          medicalFormId: formId
         }
       })
 
@@ -261,8 +239,7 @@ export class FormProgressTracker {
     try {
       const progress = await db.formProgress.findFirst({
         where: {
-          formId,
-          userId
+          medicalFormId: formId
         }
       })
 
@@ -301,8 +278,7 @@ export class FormProgressTracker {
     try {
       const progress = await db.formProgress.findFirst({
         where: {
-          formId,
-          userId
+          medicalFormId: formId
         }
       })
 
@@ -322,8 +298,8 @@ export class FormProgressTracker {
       return snapshots.map(snapshot => ({
         timestamp: snapshot.createdAt,
         step: snapshot.step,
-        progressPercentage: snapshot.step / snapshot.step * 100, // Calculate percentage
-        validationState: snapshot.data,
+        progressPercentage: snapshot.step / progress.totalSteps * 100, // Calculate percentage
+        validationState: JSON.parse(snapshot.data as string) as ValidationState,
         timeSpent: 0, // Default value
         actions: ['step_completed'] // Default value
       }))
@@ -398,8 +374,7 @@ export class FormProgressTracker {
     try {
       const progress = await db.formProgress.findFirst({
         where: {
-          formId,
-          userId
+          medicalFormId: formId
         }
       })
 
@@ -437,8 +412,7 @@ export class FormProgressTracker {
     try {
       const progress = await db.formProgress.findFirst({
         where: {
-          formId,
-          userId
+          medicalFormId: formId
         }
       })
 
@@ -449,7 +423,7 @@ export class FormProgressTracker {
       // Delete progress snapshots first
       await db.progressSnapshot.deleteMany({
         where: {
-          progressId: progress.id
+          formProgressId: progress.id
         }
       })
 
@@ -470,19 +444,13 @@ export class FormProgressTracker {
   private static formatProgressData(progress: any): FormProgress {
     return {
       id: progress.id,
-      formType: progress.formType,
-      formId: progress.formId,
-      userId: progress.userId,
+      medicalFormId: progress.medicalFormId,
       currentStep: progress.currentStep,
       totalSteps: progress.totalSteps,
-      completedSteps: progress.completedSteps,
+      completedSteps: progress.completedSteps as number[],
       progressPercentage: progress.progressPercentage,
-      status: progress.status,
       lastSavedAt: progress.lastSavedAt,
       estimatedTimeRemaining: progress.estimatedTimeRemaining,
-      validationState: JSON.parse(progress.validationState),
-      autoSaveEnabled: progress.autoSaveEnabled,
-      autoSaveInterval: progress.autoSaveInterval,
       createdAt: progress.createdAt,
       updatedAt: progress.updatedAt
     }
@@ -508,7 +476,6 @@ export class FormProgressTracker {
         data: {
           formProgressId: progressId,
           step,
-          progressPercentage,
           data: JSON.stringify(validationState)
         }
       })

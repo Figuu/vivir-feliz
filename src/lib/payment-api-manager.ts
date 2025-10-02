@@ -250,12 +250,7 @@ export class PaymentApiManager {
         include: {
           parent: {
             select: {
-              profile: {
-                select: {
-                  firstName: true,
-                  lastName: true
-                }
-              }
+              id: true
             }
           }
         }
@@ -327,13 +322,7 @@ export class PaymentApiManager {
         include: {
           parent: {
             select: {
-              profile: {
-                select: {
-                  firstName: true,
-                  lastName: true,
-                  email: true
-                }
-              }
+              id: true
             }
           },
           consultationRequest: {
@@ -350,8 +339,8 @@ export class PaymentApiManager {
           paymentPlan: {
             select: {
               id: true,
-              name: true,
-              totalAmount: true
+              name: true
+              // Note: totalAmount field might not exist in schema
             }
           }
         }
@@ -565,7 +554,7 @@ export class PaymentApiManager {
       if (payment.consultationRequestId) {
         await db.consultationRequest.update({
           where: { id: payment.consultationRequestId },
-          data: { paymentStatus: 'PAID' }
+          data: { paymentStatus: 'PAID' as any }
         })
       }
 

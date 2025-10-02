@@ -26,7 +26,7 @@ const customReportSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
   metrics: z.array(z.string()),
-  filters: z.record(z.any()),
+  filters: z.record(z.string(), z.any()),
   dateRange: z.object({
     from: z.string().datetime(),
     to: z.string().datetime()
@@ -525,7 +525,7 @@ async function getUtilizationMetrics(dateFrom: string, dateTo: string): Promise<
 
       return {
         therapistId: therapist.id,
-        therapistName: `${therapist.firstName} ${therapist.lastName}`,
+        therapistName: `${therapist.profile?.firstName || 'Unknown'} ${therapist.profile?.lastName || 'Therapist'}`,
         totalSessions,
         totalHours,
         sessionUtilization,

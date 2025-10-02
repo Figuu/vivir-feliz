@@ -350,7 +350,7 @@ async function handleTimeSlotOptimization(body: any) {
     const therapistSchedule = await db.therapistSchedule.findFirst({
       where: {
         therapistId,
-        dayOfWeek: dayOfWeek as any,
+        dayOfWeek: dayOfWeek as 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY',
         isActive: true
       }
     })

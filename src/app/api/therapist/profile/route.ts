@@ -4,8 +4,8 @@ import { db } from '@/lib/db'
 
 // Validation schemas
 const therapistQuerySchema = z.object({
-  page: z.string().transform(Number).default('1'),
-  limit: z.string().transform(Number).default('10'),
+  page: z.string().transform(Number).default(1),
+  limit: z.string().transform(Number).default(10),
   search: z.string().optional(),
   specialty: z.string().uuid().optional(),
   isActive: z.string().transform(val => val === 'true').optional(),
@@ -124,8 +124,8 @@ export async function GET(request: NextRequest) {
       phone: therapist.profile.phone,
       avatar: therapist.profile.avatar,
       licenseNumber: therapist.licenseNumber,
-      specialties: therapist.specialties.map(s => s.specialty),
-      certifications: therapist.certifications.map(c => ({
+      specialties: therapist.specialties.map((s: any) => s.specialty),
+      certifications: therapist.certifications.map((c: any) => ({
         ...c.certification,
         obtainedAt: c.obtainedAt,
         expiryDate: c.expiryDate
@@ -237,7 +237,11 @@ export async function POST(request: NextRequest) {
         },
         certifications: therapistData.certifications ? {
           create: therapistData.certifications.map(certificationId => ({
-            certificationId
+            certificationId,
+            issueDate: new Date(),
+            certification: {
+              connect: { id: certificationId }
+            }
           }))
         } : undefined
       },
@@ -287,8 +291,8 @@ export async function POST(request: NextRequest) {
       phone: therapist.profile.phone,
       avatar: therapist.profile.avatar,
       licenseNumber: therapist.licenseNumber,
-      specialties: therapist.specialties.map(s => s.specialty),
-      certifications: therapist.certifications.map(c => ({
+      specialties: therapist.specialties.map((s: any) => s.specialty),
+      certifications: therapist.certifications.map((c: any) => ({
         ...c.certification,
         obtainedAt: c.obtainedAt,
         expiryDate: c.expiryDate
@@ -384,7 +388,11 @@ export async function PUT(request: NextRequest) {
         certifications: certifications ? {
           deleteMany: {},
           create: certifications.map(certificationId => ({
-            certificationId
+            certificationId,
+            issueDate: new Date(),
+            certification: {
+              connect: { id: certificationId }
+            }
           }))
         } : undefined
       },
@@ -434,8 +442,8 @@ export async function PUT(request: NextRequest) {
       phone: therapist.profile.phone,
       avatar: therapist.profile.avatar,
       licenseNumber: therapist.licenseNumber,
-      specialties: therapist.specialties.map(s => s.specialty),
-      certifications: therapist.certifications.map(c => ({
+      specialties: therapist.specialties.map((s: any) => s.specialty),
+      certifications: therapist.certifications.map((c: any) => ({
         ...c.certification,
         obtainedAt: c.obtainedAt,
         expiryDate: c.expiryDate

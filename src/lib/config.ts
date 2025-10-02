@@ -116,7 +116,7 @@ export function getEnvironmentConfig() {
         logLevel: 'warn',
         enableAuditLogging: true,
       }
-    case 'staging':
+    case 'development':
       return {
         ...appConfig,
         debug: false,

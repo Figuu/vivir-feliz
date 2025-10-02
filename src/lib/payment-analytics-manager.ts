@@ -151,7 +151,11 @@ export class PaymentAnalyticsManager {
         revenueBreakdown: {
           byStatus: analytics.amountBreakdown,
           byMethod: analytics.methodBreakdown,
-          byMonth: analytics.monthlyTrends
+          byMonth: analytics.monthlyTrends.map(trend => ({
+            month: trend.month,
+            revenue: trend.amount,
+            growth: trend.growth
+          }))
         },
         insights,
         recommendations
@@ -653,7 +657,7 @@ export class PaymentAnalyticsManager {
       
       // Calculate average monthly revenue and payments
       const avgRevenue = historicalData.length > 0 
-        ? historicalData.reduce((sum, item) => sum + item.revenue, 0) / historicalData.length 
+        ? historicalData.reduce((sum, item) => sum + item.amount, 0) / historicalData.length 
         : 0
       
       const avgPayments = historicalData.length > 0 
@@ -685,7 +689,7 @@ export class PaymentAnalyticsManager {
       const insights: string[] = []
       if (historicalData.length > 0) {
         const recentTrend = historicalData.slice(-3)
-        const avgRecent = recentTrend.reduce((sum, item) => sum + item.revenue, 0) / recentTrend.length
+        const avgRecent = recentTrend.reduce((sum, item) => sum + item.amount, 0) / recentTrend.length
         
         if (avgRecent > avgRevenue * 1.1) {
           insights.push('Revenue is trending upward in recent months')
@@ -701,7 +705,7 @@ export class PaymentAnalyticsManager {
         forecast,
         historicalData: historicalData.map(item => ({
           month: item.month,
-          revenue: item.revenue,
+          revenue: item.amount,
           payments: item.count
         })),
         insights

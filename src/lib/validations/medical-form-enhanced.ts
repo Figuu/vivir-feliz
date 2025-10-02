@@ -615,9 +615,9 @@ export const enhancedMedicalFormSchema = z.object({
   // Validation and Quality
   validationState: z.object({
     isValid: z.boolean(),
-    errors: z.record(z.array(z.string())),
-    warnings: z.record(z.array(z.string())),
-    stepValidation: z.record(z.object({
+    errors: z.record(z.string(), z.array(z.string())),
+    warnings: z.record(z.string(), z.array(z.string())),
+    stepValidation: z.record(z.string(), z.object({
       isValid: z.boolean(),
       errors: z.array(z.string()),
       warnings: z.array(z.string()),
@@ -643,13 +643,13 @@ export const enhancedAutoSaveSchema = z.object({
   consultationRequestId: z.string().uuid(),
   currentStep: z.number().min(1).max(6),
   completedSteps: z.array(z.number()),
-  data: z.record(z.any()), // Flexible data structure for partial saves
+  data: z.record(z.string(), z.any()), // Flexible data structure for partial saves
   status: z.enum(['DRAFT', 'IN_PROGRESS']).default('DRAFT'),
   validationState: z.object({
     isValid: z.boolean(),
-    errors: z.record(z.array(z.string())),
-    warnings: z.record(z.array(z.string())),
-    stepValidation: z.record(z.object({
+    errors: z.record(z.string(), z.array(z.string())),
+    warnings: z.record(z.string(), z.array(z.string())),
+    stepValidation: z.record(z.string(), z.object({
       isValid: z.boolean(),
       errors: z.array(z.string()),
       warnings: z.array(z.string()),
@@ -670,9 +670,9 @@ export const enhancedFormProgressSchema = z.object({
   estimatedTimeRemaining: z.number().optional(), // in minutes
   validationState: z.object({
     isValid: z.boolean(),
-    errors: z.record(z.array(z.string())),
-    warnings: z.record(z.array(z.string())),
-    stepValidation: z.record(z.object({
+    errors: z.record(z.string(), z.array(z.string())),
+    warnings: z.record(z.string(), z.array(z.string())),
+    stepValidation: z.record(z.string(), z.object({
       isValid: z.boolean(),
       errors: z.array(z.string()),
       warnings: z.array(z.string()),

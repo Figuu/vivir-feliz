@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
       }
       groups[proposal.therapistId].count++
       return groups
-    }, {} as Record<string, any>)
+    }, {} as Record<string, { count: number }>)
     
     // Group by time period
     const timeGroups = groupByTimePeriod(proposals, groupBy)

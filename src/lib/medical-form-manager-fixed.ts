@@ -106,30 +106,10 @@ export class MedicalFormManager {
       const form = await db.medicalForm.create({
         data: {
           consultationRequestId,
-          patientId,
-          isComplete: false,
-          // Store form data in JSON fields
-          birthComplications: JSON.stringify({}),
-          developmentalMilestones: {},
-          medicalConditions: JSON.stringify({}),
-          allergies: JSON.stringify({}),
-          currentMedications: JSON.stringify({}),
-          previousSurgeries: JSON.stringify({}),
-          familyMedicalHistory: JSON.stringify({}),
-          familyStructure: JSON.stringify({}),
-          familyDynamics: JSON.stringify({}),
-          parentalConcerns: JSON.stringify({}),
-          behavioralConcerns: JSON.stringify({}),
-          socialSkills: JSON.stringify({}),
-          communicationSkills: JSON.stringify({}),
-          learningDifficulties: JSON.stringify({}),
-          academicPerformance: JSON.stringify({}),
-          schoolBehavior: JSON.stringify({}),
-          teacherReports: JSON.stringify({}),
-          sleepPatterns: JSON.stringify({}),
-          eatingHabits: JSON.stringify({}),
-          dailyRoutines: JSON.stringify({}),
-          stressFactors: JSON.stringify({})
+          patientId: patientId || '',
+          formData: {},
+          filledBy: 'parent',
+          isComplete: false
         }
       })
 
@@ -191,7 +171,7 @@ export class MedicalFormManager {
    */
   static async getMedicalFormByConsultationRequest(consultationRequestId: string): Promise<MedicalForm | null> {
     try {
-      const form = await db.medicalForm.findUnique({
+      const form = await db.medicalForm.findFirst({
         where: { consultationRequestId },
         include: {
           consultationRequest: {
@@ -661,8 +641,12 @@ export class MedicalFormManager {
                 },
                 parent: {
                   select: {
-                    firstName: true,
-                    lastName: true
+                    profile: {
+                      select: {
+                        firstName: true,
+                        lastName: true
+                      }
+                    }
                   }
                 }
               }
@@ -714,12 +698,12 @@ export class MedicalFormManager {
       createdAt: form.createdAt,
       updatedAt: form.updatedAt,
       completedAt: form.completedAt,
-      reviewedAt: null,
-      approvedAt: null,
-      reviewedBy: null,
-      approvedBy: null,
-      reviewNotes: null,
-      approvalNotes: null
+      reviewedAt: undefined,
+      approvedAt: undefined,
+      reviewedBy: undefined,
+      approvedBy: undefined,
+      reviewNotes: undefined,
+      approvalNotes: undefined
     }
   }
 

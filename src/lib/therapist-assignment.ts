@@ -138,7 +138,7 @@ export class TherapistAssignment {
         },
         schedules: {
           where: {
-            dayOfWeek: this.getDayOfWeek(criteria.date),
+            dayOfWeek: this.getDayOfWeek(criteria.date) as any,
             isActive: true
           }
         }
@@ -214,7 +214,7 @@ export class TherapistAssignment {
       availability: availabilityScore.score > 0,
       experience: this.calculateExperienceYears(therapist.user.createdAt),
       rating: this.getTherapistRating(therapist.id), // This would come from a rating system
-      lastAssigned: await this.getLastAssignedDate(therapist.id)
+      lastAssigned: await this.getLastAssignedDate(therapist.id) || undefined
     }
   }
 
@@ -589,12 +589,9 @@ export class TherapistAssignment {
       },
       include: {
         therapist: {
-          include: {
-            user: {
-              select: {
-                name: true
-              }
-            }
+          select: {
+            firstName: true,
+            lastName: true
           }
         }
       }
@@ -611,7 +608,9 @@ export class TherapistAssignment {
     // Calculate therapist workloads
     assignments.forEach(assignment => {
       const therapistId = assignment.therapistId
-      stats.therapistWorkload[therapistId] = (stats.therapistWorkload[therapistId] || 0) + 1
+      if (therapistId) {
+        stats.therapistWorkload[therapistId] = (stats.therapistWorkload[therapistId] || 0) + 1
+      }
     })
 
     // Find most and least assigned therapists

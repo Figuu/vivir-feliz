@@ -94,7 +94,6 @@ export async function GET(request: NextRequest) {
                 select: {
                   id: true,
                   name: true,
-                  category: true,
                   description: true
                 }
               }
@@ -106,7 +105,6 @@ export async function GET(request: NextRequest) {
                 select: {
                   id: true,
                   name: true,
-                  organization: true,
                   expiryDate: true
                 }
               }
@@ -137,18 +135,18 @@ export async function GET(request: NextRequest) {
       data: {
         therapists: therapists.map(therapist => ({
           id: therapist.id,
-          firstName: therapist.profile.firstName,
-          lastName: therapist.profile.lastName,
-          email: therapist.profile.email,
-          phone: therapist.profile.phone,
-          avatar: therapist.profile.avatar,
+          firstName: therapist.profile?.firstName || '',
+          lastName: therapist.profile?.lastName || '',
+          email: therapist.profile?.email || '',
+          phone: therapist.profile?.phone || '',
+          avatar: therapist.profile?.avatar || '',
           licenseNumber: therapist.licenseNumber,
           bio: therapist.bio,
           isCoordinator: therapist.isCoordinator,
           isActive: therapist.isActive,
           canTakeConsultations: therapist.canTakeConsultations,
-          specialties: therapist.specialties.map(s => s.specialty),
-          certifications: therapist.certifications.map(c => c.certification),
+          specialties: therapist.specialties.map((s: any) => s.specialty),
+          certifications: therapist.certifications.map((c: any) => c.certification),
           stats: {
             totalSessions: therapist._count?.patientSessions || 0,
           },

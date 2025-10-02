@@ -173,6 +173,8 @@ export class TherapistMedicalFormManager {
         data: {
           medicalFormId,
           therapistId,
+          patientId: '', // Required field - will be set from medical form
+          formData: {}, // Required field - empty for now
           status: 'DRAFT',
           assessment: JSON.stringify(formData.assessment)
         }
@@ -211,10 +213,8 @@ export class TherapistMedicalFormManager {
             }
           },
           therapist: {
-            select: {
-              firstName: true,
-              lastName: true,
-              specialties: {
+              select: {
+                specialties: {
                 select: {
                   specialty: {
                     select: {
@@ -271,10 +271,8 @@ export class TherapistMedicalFormManager {
             }
           },
           therapist: {
-            select: {
-              firstName: true,
-              lastName: true,
-              specialties: {
+              select: {
+                specialties: {
                 select: {
                   specialty: {
                     select: {
@@ -415,7 +413,7 @@ export class TherapistMedicalFormManager {
         throw new Error('Therapist medical form not found')
       }
 
-      const assessment = JSON.parse(form.assessment || '{}')
+      const assessment = typeof form.assessment === 'string' ? JSON.parse(form.assessment) : form.assessment || {}
       const validationResult = therapistAssessmentSchema.safeParse(assessment)
 
       const errors: Record<string, string[]> = {}
@@ -476,7 +474,6 @@ export class TherapistMedicalFormManager {
         where: { id: formId },
         data: {
           status: 'REVIEWED',
-          reviewedBy: submittedBy,
           reviewedAt: new Date(),
           updatedAt: new Date()
         }
@@ -515,7 +512,6 @@ export class TherapistMedicalFormManager {
         where: { id: formId },
         data: {
           status: 'APPROVED',
-          approvedBy,
           approvedAt: new Date(),
           approvalNotes,
           updatedAt: new Date()

@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user from database to check permissions
-    const dbUser = await db.user.findUnique({
+    const dbUser = await db.profile.findUnique({
       where: { id: user.id },
       select: { role: true }
     })
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
 
       // Log the report execution
       await auditLog({
-        action: 'AUDIT_LOG_VIEWED',
+        action: 'AUDIT_LOG_VIEW',
         resource: 'reports',
         resourceId: templateId,
         userId: user.id,
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user from database to check permissions
-    const dbUser = await db.user.findUnique({
+    const dbUser = await db.profile.findUnique({
       where: { id: user.id },
       select: { role: true }
     })
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
 
         // Log the report execution
         await auditLog({
-          action: 'AUDIT_LOG_VIEWED',
+          action: 'AUDIT_LOG_VIEW',
           resource: 'reports',
           resourceId: reportConfig.id,
           userId: user.id,
@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
         // For now, we'll return the created report configuration
 
         await auditLog({
-          action: 'USER_CREATED',
+          action: 'USER_CREATE',
           resource: 'reports',
           resourceId: newReport.id,
           userId: user.id,

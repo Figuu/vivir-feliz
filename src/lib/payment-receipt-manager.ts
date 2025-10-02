@@ -188,7 +188,7 @@ export class PaymentReceiptManager {
       const receipt = await db.paymentReceipt.create({
         data: {
           paymentId: request.paymentId,
-          receiptNumber: request.receiptNumber,
+          receiptNumber: request.receiptNumber!,
           receiptUrl: filePath,
           fileSize: request.fileSize,
           fileType: request.fileType,
@@ -589,10 +589,9 @@ export class PaymentReceiptManager {
       const updatedReceipt = await db.paymentReceipt.update({
         where: { id: receiptId },
         data: {
-          status: isApproved ? 'VERIFIED' : 'REJECTED',
-          verifiedBy,
-          verifiedAt: new Date(),
-          verificationComments: comments
+          // verifiedBy,
+          // verifiedAt: new Date(),
+          // verificationComments: comments
         }
       })
       

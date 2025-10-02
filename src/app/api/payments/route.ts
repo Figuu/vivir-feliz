@@ -13,7 +13,7 @@ const createPaymentSchema = z.object({
   paymentType: z.enum(['CONSULTATION', 'SESSION', 'EVALUATION', 'TREATMENT', 'PLAN_INSTALLMENT', 'REFUND']),
   description: z.string().max(500, 'Description cannot exceed 500 characters').optional(),
   reference: z.string().max(100, 'Reference cannot exceed 100 characters').optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
   dueDate: z.string().datetime('Invalid due date format').optional(),
   autoProcess: z.boolean().optional()
 })
@@ -248,13 +248,12 @@ export async function GET(request: NextRequest) {
             select: {
               id: true,
               reason: true,
-              urgency: true
+              status: true
             }
           },
           paymentPlan: {
             select: {
               id: true,
-              planName: true,
               totalAmount: true
             }
           }

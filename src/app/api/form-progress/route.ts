@@ -120,8 +120,8 @@ export async function POST(request: NextRequest) {
       formId,
       userId,
       totalSteps,
-      autoSaveEnabled,
-      autoSaveInterval
+      autoSaveEnabled ?? true,
+      autoSaveInterval ?? 30000
     )
     
     return NextResponse.json({

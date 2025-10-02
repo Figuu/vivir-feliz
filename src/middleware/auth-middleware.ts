@@ -34,7 +34,7 @@ export async function verifyAuth(request: NextRequest): Promise<{ user: AuthUser
     }
 
     // Get user from database to include role
-    const dbUser = await db.user.findUnique({
+    const dbUser = await db.profile.findUnique({
       where: { id: user.id },
       select: {
         id: true,

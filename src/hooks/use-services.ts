@@ -204,7 +204,7 @@ export function useServices(filters: ServicesFilters = {}) {
     queryKey: ['services', filters],
     queryFn: () => fetchServices(filters),
     staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
   })
 }
 
@@ -214,7 +214,7 @@ export function useServiceCategories() {
     queryKey: ['service-categories'],
     queryFn: fetchCategories,
     staleTime: 10 * 60 * 1000, // 10 minutes
-    cacheTime: 30 * 60 * 1000, // 30 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
   })
 }
 
@@ -324,11 +324,11 @@ export function useFilteredServices(filters: {
   })
 
   return {
-    services: data?.services || [],
-    categories: data?.categories || [],
+    services: (data as ServicesResponse)?.services || [],
+    categories: (data as ServicesResponse)?.categories || [],
     isLoading,
     error,
-    total: data?.total || 0,
+    total: (data as ServicesResponse)?.total || 0,
   }
 }
 
@@ -337,30 +337,30 @@ export function useServiceStatistics() {
   const { data: servicesData } = useServices({ limit: 1000 }) // Get all services for stats
   const { data: categoriesData } = useServiceCategories()
 
-  const services = servicesData?.services || []
-  const categories = categoriesData || []
+  const services = (servicesData as ServicesResponse)?.services || []
+  const categories = (categoriesData as ServiceCategory[]) || []
 
   const statistics = {
     totalServices: services.length,
-    activeServices: services.filter(s => s.isActive).length,
+    activeServices: services.filter((s: Service) => s.isActive).length,
     totalCategories: categories.length,
-    servicesByType: services.reduce((acc, service) => {
+    servicesByType: services.reduce((acc: Record<string, number>, service: Service) => {
       acc[service.type] = (acc[service.type] || 0) + 1
       return acc
     }, {} as Record<string, number>),
-    servicesByCategory: services.reduce((acc, service) => {
+    servicesByCategory: services.reduce((acc: Record<string, number>, service: Service) => {
       const categoryName = service.category.name
       acc[categoryName] = (acc[categoryName] || 0) + 1
       return acc
     }, {} as Record<string, number>),
-    totalRevenue: services.reduce((sum, service) => sum + (service.price * service.metadata.usageCount), 0),
-    averagePrice: services.length > 0 ? services.reduce((sum, service) => sum + service.price, 0) / services.length : 0,
-    mostUsedService: services.reduce((max, service) => 
+    totalRevenue: services.reduce((sum: number, service: Service) => sum + (service.price * service.metadata.usageCount), 0),
+    averagePrice: services.length > 0 ? services.reduce((sum: number, service: Service) => sum + service.price, 0) / services.length : 0,
+    mostUsedService: services.length > 0 ? services.reduce((max: Service, service: Service) => 
       service.metadata.usageCount > max.metadata.usageCount ? service : max, 
       services[0]
-    ),
+    ) : null,
     averageRating: services.length > 0 ? 
-      services.reduce((sum, service) => sum + (service.metadata.averageRating || 0), 0) / services.length : 0,
+      services.reduce((sum: number, service: Service) => sum + (service.metadata.averageRating || 0), 0) / services.length : 0,
   }
 
   return {

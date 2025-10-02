@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       confirmationRequestId,
       action,
       reviewedBy,
-      reviewNotes
+      reviewNotes ?? undefined
     )
     
     return NextResponse.json({

@@ -240,7 +240,17 @@ export async function GET(request: NextRequest) {
 
     const { reportId, reportType, patientId, therapistId, currentStatus } = validation.data
 
-    let reports: any[] = []
+    let reports: Array<{
+      id: string;
+      type: string;
+      reportNumber?: number;
+      status: string;
+      coordinatorNotes?: string | null;
+      patient: any;
+      therapist: any;
+      createdAt: Date;
+      updatedAt: Date;
+    }> = []
 
     // Fetch reports based on filters
     if (reportType === 'progress_report' || !reportType) {

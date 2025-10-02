@@ -42,7 +42,6 @@ export class SessionManager {
         browser: deviceInfo.browser || null,
         os: deviceInfo.os || null,
         ipAddress: deviceInfo.ipAddress || null,
-        userAgent: deviceInfo.userAgent || null,
         country: locationData.country || null,
         city: locationData.city || null,
         lastActivityAt: new Date(),

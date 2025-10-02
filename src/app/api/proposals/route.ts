@@ -84,7 +84,6 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             reason: true,
-            description: true,
             status: true
           }
         },
@@ -99,7 +98,7 @@ export async function GET(request: NextRequest) {
                 costPerSession: true
               }
             },
-            assignedTherapist: {
+            therapist: {
               select: {
                 id: true,
                 profile: {

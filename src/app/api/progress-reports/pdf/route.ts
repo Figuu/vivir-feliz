@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     const pdfBuffer = Buffer.from(pdf.getBuffer())
 
     // Return PDF file
-    const filename = `progress-report-${progressReport.patient.profile.firstName}-${progressReport.patient.profile.lastName}-${new Date().toISOString().split('T')[0]}.pdf`
+    const filename = `progress-report-${progressReport.patient.profile?.firstName || 'Unknown'}-${progressReport.patient.profile?.lastName || 'Patient'}-${new Date().toISOString().split('T')[0]}.pdf`
     
     return new NextResponse(pdfBuffer, {
       status: 200,

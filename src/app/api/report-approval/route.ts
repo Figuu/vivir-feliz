@@ -69,7 +69,17 @@ export async function GET(request: NextRequest) {
     // Calculate pagination
     const skip = (page - 1) * limit
 
-    let reports: any[] = []
+    let reports: Array<{
+      id: string;
+      type: string;
+      reportNumber?: number;
+      status: string;
+      coordinatorNotes?: string | null;
+      patient: any;
+      therapist: any;
+      createdAt: Date;
+      updatedAt: Date;
+    }> = []
     let totalCount = 0
 
     // Fetch reports based on type

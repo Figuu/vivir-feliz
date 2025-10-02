@@ -25,7 +25,7 @@ export async function GET(
     const headers = new Headers()
     headers.set('Content-Type', getContentType(fileData.fileType))
     headers.set('Content-Disposition', `attachment; filename="${fileData.fileName}"`)
-    headers.set('Content-Length', fileData.fileSize.toString())
+    headers.set('Content-Length', fileData.fileSize?.toString() ?? '0')
     
     // Return file data
     return new NextResponse(fileData.fileData, {

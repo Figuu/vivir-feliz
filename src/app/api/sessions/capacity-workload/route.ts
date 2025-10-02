@@ -112,9 +112,9 @@ async function handleGetOverview(searchParams: URLSearchParams) {
       return {
         therapist: {
           id: therapist.id,
-          firstName: therapist.firstName,
-          lastName: therapist.lastName,
-          email: therapist.email
+          firstName: therapist.profile?.firstName || 'Unknown',
+          lastName: therapist.profile?.lastName || 'Therapist',
+          email: therapist.profile?.email || 'No email'
         },
         capacity,
         workload,
@@ -703,7 +703,7 @@ async function getCapacityAnalytics(dateFrom: string, dateTo: string): Promise<a
 
       return {
         therapistId: therapist.id,
-        therapistName: `${therapist.firstName} ${therapist.lastName}`,
+        therapistName: `${therapist.profile?.firstName || 'Unknown'} ${therapist.profile?.lastName || 'Therapist'}`,
         capacity,
         workload,
         utilization

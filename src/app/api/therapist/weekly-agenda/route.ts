@@ -16,7 +16,7 @@ const sessionUpdateSchema = z.object({
   scheduledDate: z.string().optional(),
   scheduledTime: z.string().optional(),
   duration: z.number().min(15).max(180).optional(),
-  status: z.enum(['scheduled', 'in-progress', 'completed', 'cancelled', 'no-show']).optional(),
+  status: z.enum(['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW']).optional(),
   sessionNotes: z.string().max(1000).optional(),
   therapistComments: z.string().max(1000).optional()
 })
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
         duration: sessionData.duration,
         status: 'SCHEDULED',
         sessionNotes: sessionData.notes,
-        serviceAssignments: {
+        serviceAssignment: {
           create: sessionData.serviceIds.map(serviceId => ({
             proposalService: {
               create: {
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
             lastName: true,
           }
         },
-        serviceAssignments: {
+        serviceAssignment: {
           include: {
             proposalService: {
               include: {
@@ -281,7 +281,8 @@ export async function PUT(request: NextRequest) {
       where: { id: sessionId },
       data: {
         ...updateData,
-        scheduledDate: updateData.scheduledDate ? new Date(updateData.scheduledDate) : undefined
+        scheduledDate: updateData.scheduledDate ? new Date(updateData.scheduledDate) : undefined,
+        status: updateData.status as any
       },
       include: {
         patient: {
@@ -291,7 +292,7 @@ export async function PUT(request: NextRequest) {
             lastName: true,
           }
         },
-        serviceAssignments: {
+        serviceAssignment: {
           include: {
             proposalService: {
               include: {
@@ -412,7 +413,7 @@ async function getWeeklySessions(therapistId: string, weekStart: Date, weekEnd: 
           lastName: true,
         }
       },
-      serviceAssignments: {
+        serviceAssignment: {
         include: {
           proposalService: {
             include: {

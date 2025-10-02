@@ -490,22 +490,22 @@ export class MedicalFormDataStructureManager {
       // Update form data based on step
       switch (stepNumber) {
         case 1:
-          this.formData.parentInfo = validationResult.data
+          this.formData.parentInfo = validationResult.data as any
           break
         case 2:
-          this.formData.childInfo = validationResult.data
+          this.formData.childInfo = validationResult.data as any
           break
         case 3:
-          this.formData.medicalHistory = validationResult.data
+          this.formData.medicalHistory = validationResult.data as any
           break
         case 4:
-          this.formData.currentConcerns = validationResult.data
+          this.formData.currentConcerns = validationResult.data as any
           break
         case 5:
-          this.formData.familyInfo = validationResult.data
+          this.formData.familyInfo = validationResult.data as any
           break
         case 6:
-          this.formData.goalsExpectations = validationResult.data
+          this.formData.goalsExpectations = validationResult.data as any
           break
         default:
           throw new Error(`Invalid step number: ${stepNumber}`)
@@ -718,7 +718,16 @@ export class MedicalFormDataStructureManager {
     return {
       formData: this.formData,
       validationState: this.validationState,
-      progress: this.progress,
+      progress: {
+        formId: this.formData.formId!,
+        currentStep: this.progress.currentStep,
+        completedSteps: this.progress.completedSteps,
+        totalSteps: this.progress.totalSteps,
+        progressPercentage: this.progress.progressPercentage,
+        lastSavedAt: this.progress.lastSavedAt,
+        validationState: this.validationState,
+        estimatedTimeRemaining: this.progress.estimatedTimeRemaining
+      },
       autoSaveState: this.autoSaveState,
       metadata: this.metadata
     }

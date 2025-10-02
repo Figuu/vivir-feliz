@@ -260,14 +260,14 @@ export class ReportingEngine {
     })
 
     const [data, totalCount] = await Promise.all([
-      db.user.findMany({
+      db.profile.findMany({
         where,
         select: query.fields.reduce((acc, field) => ({ ...acc, [field]: true }), {}),
         orderBy: query.orderBy?.map(order => ({ [order.field]: order.direction })),
         skip: pagination ? (pagination.page - 1) * pagination.limit : undefined,
         take: pagination?.limit || query.limit
       }),
-      db.user.count({ where })
+      db.profile.count({ where })
     ])
 
     return { data, totalCount }
@@ -424,9 +424,9 @@ export class ReportingEngine {
       },
       visualizations: [...template.visualizations],
       permissions: {
-        viewRoles: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        viewRoles: ['THERAPIST', 'ADMIN', 'SUPER_ADMIN'],
         editRoles: ['ADMIN', 'SUPER_ADMIN'],
-        executeRoles: ['USER', 'ADMIN', 'SUPER_ADMIN']
+        executeRoles: ['THERAPIST', 'ADMIN', 'SUPER_ADMIN']
       },
       createdAt: new Date(),
       updatedAt: new Date(),

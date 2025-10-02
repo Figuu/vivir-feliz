@@ -522,8 +522,8 @@ export class MedicalFormValidationUtils {
     }
 
     // Check for valid height/weight ratio
-    if (data.physicalInfo.height > 0 && data.physicalInfo.weight > 0) {
-      const bmi = data.physicalInfo.weight / Math.pow(data.physicalInfo.height / 100, 2)
+    if (data.physicalInfo.blockSize > 0 && data.physicalInfo.weight > 0) {
+      const bmi = data.physicalInfo.weight / Math.pow(data.physicalInfo.blockSize / 100, 2)
       if (bmi < 10 || bmi > 50) {
         result.warnings.physicalInfo = ['Height/weight ratio appears unusual']
       }
@@ -593,7 +593,7 @@ export class MedicalFormValidationUtils {
     // Check for valid behavioral concerns
     const behavioralConcerns = data.behavioralConcerns
     const presentConcerns = Object.entries(behavioralConcerns)
-      .filter(([_, concern]) => concern.present)
+      .filter(([_, concern]) => typeof concern === 'object' && concern !== null && 'present' in concern && concern.present)
       .map(([key, _]) => key)
 
     if (presentConcerns.length === 0) {

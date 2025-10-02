@@ -11,8 +11,8 @@ const versionCreateSchema = z.object({
   changeDescription: z.string().min(10, 'Change description must be at least 10 characters').max(1000, 'Change description cannot exceed 1000 characters'),
   changedBy: z.string().uuid('Invalid user ID'),
   changedFields: z.array(z.string().max(100, 'Field name cannot exceed 100 characters')).optional().default([]),
-  previousData: z.record(z.any()).optional(),
-  currentData: z.record(z.any())
+  previousData: z.record(z.string(), z.any()).optional(),
+  currentData: z.record(z.string(), z.any())
 })
 
 const versionQuerySchema = z.object({

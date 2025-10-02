@@ -194,7 +194,7 @@ export async function POST(
       therapistComments: session.therapistComments,
       patient: session.patient,
       therapist: session.therapist,
-      services: session.serviceAssignments.map(sa => sa.proposalService.service),
+      services: session.serviceAssignment.map(sa => sa.service),
       estimatedEndTime: new Date(actualStartTime.getTime() + (session.duration * 60 * 1000)).toISOString()
     }
 

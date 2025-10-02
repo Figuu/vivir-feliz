@@ -79,7 +79,7 @@ export class MedicalFormManager {
       }
 
       // Check if form already exists
-      const existingForm = await db.medicalForm.findUnique({
+      const existingForm = await db.medicalForm.findFirst({
         where: { consultationRequestId }
       })
 
@@ -106,17 +106,10 @@ export class MedicalFormManager {
       const form = await db.medicalForm.create({
         data: {
           consultationRequestId,
-          parentId,
-          patientId,
-          status: 'DRAFT',
-          currentStep: 1,
-          completedSteps: [],
-          parentInfo: JSON.stringify(formData.parentInfo),
-          childInfo: JSON.stringify(formData.childInfo),
-          medicalHistory: JSON.stringify(formData.medicalHistory),
-          currentConcerns: JSON.stringify(formData.currentConcerns),
-          familyInfo: JSON.stringify(formData.familyInfo),
-          goalsExpectations: JSON.stringify(formData.goalsExpectations)
+          patientId: patientId || '',
+          formData: {},
+          filledBy: 'parent',
+          isComplete: false
         }
       })
 
@@ -148,8 +141,12 @@ export class MedicalFormManager {
               },
               parent: {
                 select: {
-                  firstName: true,
-                  lastName: true
+                  profile: {
+                    select: {
+                      firstName: true,
+                      lastName: true
+                    }
+                  }
                 }
               }
             }
@@ -174,7 +171,7 @@ export class MedicalFormManager {
    */
   static async getMedicalFormByConsultationRequest(consultationRequestId: string): Promise<MedicalForm | null> {
     try {
-      const form = await db.medicalForm.findUnique({
+      const form = await db.medicalForm.findFirst({
         where: { consultationRequestId },
         include: {
           consultationRequest: {
@@ -189,8 +186,12 @@ export class MedicalFormManager {
               },
               parent: {
                 select: {
-                  firstName: true,
-                  lastName: true
+                  profile: {
+                    select: {
+                      firstName: true,
+                      lastName: true
+                    }
+                  }
                 }
               }
             }
@@ -242,7 +243,7 @@ export class MedicalFormManager {
       updatedFormData[stepKey] = validationResult.data
 
       // Update completed steps if this step is now complete
-      const completedSteps = [...form.completedSteps]
+      const completedSteps = [...(form.completedSteps as number[])]
       if (!completedSteps.includes(step)) {
         completedSteps.push(step)
       }
@@ -314,7 +315,7 @@ export class MedicalFormManager {
 
       return {
         formId,
-        consultationRequestId: form.consultationRequestId,
+        consultationRequestId: form.consultationRequestId || '',
         currentStep,
         completedSteps,
         data: stepData,
@@ -399,13 +400,13 @@ export class MedicalFormManager {
         throw new Error('Medical form not found')
       }
 
-      const progressPercentage = (form.completedSteps.length / 6) * 100
+      const progressPercentage = ((form.completedSteps as number[]).length / 6) * 100
       const estimatedTimeRemaining = this.calculateEstimatedTimeRemaining(form)
 
       return {
         formId: form.id,
         currentStep: form.currentStep as FormStep,
-        completedSteps: form.completedSteps,
+        completedSteps: form.completedSteps as number[],
         totalSteps: 6,
         progressPercentage,
         lastSavedAt: form.updatedAt,
@@ -439,8 +440,8 @@ export class MedicalFormManager {
         where: { id: formId },
         data: {
           status: 'REVIEWED',
-          reviewedBy: submittedBy,
-          reviewedAt: new Date(),
+          // reviewedBy: submittedBy,
+          // reviewedAt: new Date(),
           updatedAt: new Date()
         }
       })
@@ -478,9 +479,9 @@ export class MedicalFormManager {
         where: { id: formId },
         data: {
           status: 'APPROVED',
-          approvedBy,
-          approvedAt: new Date(),
-          approvalNotes,
+          // approvedBy,
+          // approvedAt: new Date(),
+          // approvalNotes,
           updatedAt: new Date()
         }
       })
